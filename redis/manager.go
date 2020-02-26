@@ -111,5 +111,6 @@ func (m *Manager) closePool() {
 		for _, redis := range m.redis {
 			redis.pool.Close()
 		}
+		os.Exit(0)
 	}()
 }
