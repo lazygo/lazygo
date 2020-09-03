@@ -3,7 +3,7 @@ package lazygo
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lazygo/lazygo/library"
+	"github.com/lazygo/lazygo/utils"
 	"net/http"
 	"runtime/debug"
 )
@@ -27,19 +27,19 @@ func (c *Controller) Init(res http.ResponseWriter, req *http.Request) {
 }
 
 func (c *Controller) GetString(name string) string {
-	return library.ToString(c.Req.URL.Query().Get(name))
+	return utils.ToString(c.Req.URL.Query().Get(name))
 }
 
 func (c *Controller) GetInt(name string) int {
-	return library.ToInt(c.Req.URL.Query().Get(name))
+	return utils.ToInt(c.Req.URL.Query().Get(name))
 }
 
 func (c *Controller) PostString(name string) string {
-	return library.ToString(c.Req.FormValue(name))
+	return utils.ToString(c.Req.FormValue(name))
 }
 
 func (c *Controller) PostInt(name string) int {
-	return library.ToInt(c.Req.FormValue(name))
+	return utils.ToInt(c.Req.FormValue(name))
 }
 
 func (c *Controller) Run(action func()) {

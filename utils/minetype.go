@@ -1,4 +1,4 @@
-package library
+package utils
 
 import (
 	"path"

@@ -59,7 +59,7 @@ func (b *Builder) buildCond() string {
 	if len(b.cond) == 0 {
 		return ""
 	}
-	result := " WHERE " + strings.Join(b.cond, "AND")
+	result := strings.Join(b.cond, " AND ")
 	b.Clear()
 	return result
 }
@@ -98,7 +98,7 @@ func (b *Builder) MakeQueryString(fields string, order string, group string, lim
 
 	cond := b.buildCond()
 	if cond != "" {
-		queryString += " " + cond
+		queryString += " WHERE " + cond
 	}
 
 	if group != "" {
@@ -122,7 +122,7 @@ func (b *Builder) MakeQueryString(fields string, order string, group string, lim
 func Multi(count int64, perpage int, page int) ResultData {
 	var data ResultData
 	data.Count = int64(math.Max(float64(count), 0))
-	data.Page = page
+	data.Page = int(math.Max(float64(page), 1))
 	data.PerPage = int(math.Max(float64(perpage), 1))
 	data.PageCount = int(math.Ceil(float64(data.Count) / float64(data.PerPage)))
 	data.Start = int(math.Max(float64(data.PerPage*data.Page-data.PerPage), 0))
@@ -147,9 +147,6 @@ func (b *Builder) Count() int64 {
 func (b *Builder) FetchWithPage(fields string, order string, group string, limit int, page int) (*ResultData, error) {
 
 	cond := b.buildCond()
-	if len(cond) <= 0 {
-		return &ResultData{}, nil
-	}
 	count := b.Clear().WhereClause(cond).Count()
 	data := Multi(count, limit, page)
 
@@ -198,7 +195,14 @@ func (b *Builder) Insert(set map[string]interface{}) (int64, error) {
 		panic("没有指定表名")
 	}
 
-	queryString := "INSERT INTO " + b.table + " SET " + buildVal(set, []string{})
+	var fields []string
+	var values []string
+	for name, value := range set {
+		fields = append(fields, "`"+name+"`")
+		values = append(values, "'"+Addslashes(ToString(value))+"'")
+	}
+
+	queryString := "INSERT INTO " + b.table + " (" + strings.Join(fields, ",") + ") VALUES (" + strings.Join(values, ",") + ")"
 
 	res, err := b.schema.Exec(queryString)
 	if err != nil {
@@ -222,11 +226,11 @@ func (b *Builder) Update(set map[string]interface{}, limit ...int) (int64, error
 	}
 
 	where := b.buildCond()
-	if len(where) <= 0 {
+	if where == "" {
 		return 0, nil
 	}
 
-	queryString := "UPDATE " + b.table + " SET " + buildVal(set, []string{}) + where
+	queryString := "UPDATE " + b.table + " SET " + buildVal(set, []string{}) + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += fmt.Sprintf(" LIMIT %d", limit[0])
@@ -239,9 +243,9 @@ func (b *Builder) Update(set map[string]interface{}, limit ...int) (int64, error
 		return 0, err
 	}
 
-	id, err := res.RowsAffected()
+	num, err := res.RowsAffected()
 	CheckError(err)
-	return id, err
+	return num, err
 }
 
 // 自增
@@ -254,7 +258,7 @@ func (b *Builder) Increment(column string, amount int, set ...map[string]interfa
 	}
 
 	where := b.buildCond()
-	if len(where) <= 0 {
+	if where == "" {
 		return 0, nil
 	}
 
@@ -271,9 +275,9 @@ func (b *Builder) Increment(column string, amount int, set ...map[string]interfa
 
 	var queryString = ""
 	if len(set) == 1 && set[0] != nil {
-		queryString = "UPDATE " + b.table + " SET " + buildVal(set[0], extra) + where
+		queryString = "UPDATE " + b.table + " SET " + buildVal(set[0], extra) + " WHERE " + where
 	} else {
-		queryString = "UPDATE " + b.table + " SET " + extra[0] + where
+		queryString = "UPDATE " + b.table + " SET " + extra[0] + " WHERE " + where
 	}
 
 	res, err := b.schema.Exec(queryString)
@@ -302,11 +306,11 @@ func (b *Builder) Delete(limit ...int) (int64, error) {
 		panic("没有指定表名")
 	}
 	where := b.buildCond()
-	if len(where) <= 0 {
+	if where == "" {
 		return 0, nil
 	}
 
-	queryString := "DELETE FROM " + b.table + " " + where
+	queryString := "DELETE FROM " + b.table + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += fmt.Sprintf(" LIMIT %d", limit[0])

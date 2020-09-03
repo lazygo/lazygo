@@ -6,8 +6,9 @@ import (
 )
 
 type Db struct {
-	name string
-	db   *sql.DB
+	name   string
+	db     *sql.DB
+	prefix string
 }
 
 // 分页返回数据 - 表字段名定义
@@ -23,6 +24,21 @@ type ResultData struct {
 	PageCount int
 	Start     int
 	Mark      int
+}
+
+func (r *ResultData) ToMap() map[string]interface{} {
+	if r == nil {
+		return map[string]interface{}{}
+	}
+	return map[string]interface{}{
+		"list":       r.List,
+		"count":      r.Count,
+		"pre_page":   r.PerPage,
+		"page":       r.Page,
+		"page_count": r.PageCount,
+		"start":      r.Start,
+		"mark":       r.Mark,
+	}
 }
 
 var LostConnection = []string{
@@ -49,16 +65,17 @@ var LostConnection = []string{
 	"connection refused",
 }
 
-func NewDb(name string, db *sql.DB) *Db {
+func NewDb(name string, db *sql.DB, prefix string) *Db {
 	return &Db{
-		name: name,
-		db:   db,
+		name:   name,
+		db:     db,
+		prefix: prefix,
 	}
 }
 
 // 获取查询构建器
 func (d *Db) Table(table string) *Builder {
-	return NewBuilder(d, table)
+	return NewBuilder(d, d.prefix+table)
 }
 
 // 获取查询构建器
@@ -121,7 +138,7 @@ func (d *Db) GetRow(query string) (map[string]interface{}, error) {
 
 // 解析结果集
 func parseData(rows *sql.Rows) ([]map[string]interface{}, error) {
-	var data []map[string]interface{} = nil
+	data := make([]map[string]interface{}, 0, 20)
 
 	columns, err := rows.Columns()
 	if err != nil {

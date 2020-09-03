@@ -2,7 +2,7 @@ package lazygo
 
 import (
 	"fmt"
-	"github.com/lazygo/lazygo/library"
+	"github.com/lazygo/lazygo/utils"
 	"github.com/tidwall/gjson"
 	"net/http"
 	"strconv"
@@ -23,8 +23,8 @@ func NewServer(conf *gjson.Result, router *Router) (*Server, error) {
 	port := conf.Get("port").Int()
 
 	return &Server{
-		host:   library.ToString(host, "127.0.0.1"),
-		port:   library.ToInt(port, 8080),
+		host:   utils.ToString(host, "127.0.0.1"),
+		port:   utils.ToInt(port, 8080),
 		router: router,
 	}, nil
 }

@@ -12,71 +12,51 @@ type adapterMc struct {
 	memcached *memcache.Memcache
 }
 
-func NewMemcacheAdapter(name string, adapter interface{}) (*adapterMc, error) {
+func NewMemcacheImpl(name string, adapter interface{}) (*adapterMc, error) {
 	if mcAdapter, ok := adapter.(*memcache.Memcache); ok {
 		a := &adapterMc{
 			name,
 			mcAdapter,
 		}
 		return a, nil
-	} else {
-		return nil, errors.New("Memcache Drive Adapter Failure")
 	}
+	return nil, errors.New("Memcache Drive Adapter Failure")
 }
 
-func (a adapterMc) Remember(key string, val interface{}, timeout time.Duration) string {
+func (a adapterMc) Remember(key string, value interface{}, timeout time.Duration) DataResult {
 	item, err := a.memcached.Conn().Get(key)
-	if err != nil {
-		var data string
-		if v, ok := val.([]byte); ok {
-			data = string(v)
-		} else if str, ok := val.(string); ok {
-			data = str
-		} else {
-			panic(errors.New("val only support string and []byte"))
+	wrapper := NewWrapper()
+
+	if err == nil {
+		err := json.Unmarshal(item.Value, wrapper)
+		if err == nil {
+			return wrapper
 		}
-		a.memcached.Set(key, data, int32(timeout.Seconds()))
-		//return res
 	}
-	return string(item.Value)
+
+	// 穿透
+	err = wrapper.Pack(value)
+	CheckError(err)
+
+	data, err := json.Marshal(wrapper)
+	CheckError(err)
+
+	a.memcached.Set(key, data, int32(timeout.Seconds()))
+	//return res
+	return wrapper
 }
 
-func (a adapterMc) Row(key string, callback func() (map[string]interface{}, error), timeout time.Duration) map[string]interface{} {
+func (a adapterMc) Get(key string) (DataResult, error) {
 	item, err := a.memcached.Conn().Get(key)
-	if err != nil {
-		res, err := callback()
-		if err != nil {
-			return nil
-		}
-		data, err := json.Marshal(res)
-		if err != nil {
-			return nil
-		}
-		a.memcached.Set(key, string(data), int32(timeout.Seconds()))
-		return res
-	}
-	var res map[string]interface{}
-	json.Unmarshal(item.Value, &res)
-	return res
-}
+	wrapper := NewWrapper()
 
-func (a adapterMc) List(key string, callback func() ([]map[string]interface{}, error), timeout time.Duration) []map[string]interface{} {
-	item, err := a.memcached.Conn().Get(key)
-	if err != nil {
-		res, err := callback()
-		if err != nil {
-			return nil
+	if err == nil {
+		err := json.Unmarshal(item.Value, wrapper)
+		if err == nil {
+			return wrapper, nil
 		}
-		data, err := json.Marshal(res)
-		if err != nil {
-			return nil
-		}
-		a.memcached.Set(key, string(data), int32(timeout.Seconds()))
-		return res
 	}
-	var res []map[string]interface{}
-	json.Unmarshal(item.Value, &res)
-	return res
+	return nil, err
 }
 
 func (a adapterMc) Has(key string) bool {

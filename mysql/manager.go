@@ -47,6 +47,7 @@ func (m *Manager) connect(item *gjson.Result) error {
 	name := item.Get("name").String()
 	dbname := item.Get("dbname").String()
 	charset := item.Get("charset").String()
+	prefix := item.Get("prefix").String()
 	maxOpenConns := item.Get("maxOpenConns").Int()
 
 	dataSourceName := fmt.Sprintf(
@@ -66,7 +67,7 @@ func (m *Manager) connect(item *gjson.Result) error {
 	database.SetMaxOpenConns(int(DefaultInt64(maxOpenConns, 1000)))
 	database.SetConnMaxLifetime(time.Duration(60) * time.Second)
 	m.lock.Lock()
-	m.databases[name] = NewDb(name, database)
+	m.databases[name] = NewDb(name, database, prefix)
 	m.lock.Unlock()
 	return nil
 }

@@ -27,17 +27,17 @@ func (m *Memcache) Conn() *memcache.Client {
 
 // Get gets the item for the given key.
 // The key must be at most 250 bytes in length.
-func (m *Memcache) Get(key string) string {
+func (m *Memcache) Get(key string) []byte {
 
 	var err error
 	var item *memcache.Item
 	for retry := 2; retry > 0; retry-- {
 		item, err = m.mc.Get(key)
 		if err == nil {
-			return string(item.Value)
+			return item.Value
 		}
 		if err == memcache.ErrCacheMiss {
-			return ""
+			return nil
 		}
 		if !ContainInArray(err.Error(), LostConnection) {
 			break
@@ -50,16 +50,16 @@ func (m *Memcache) Get(key string) string {
 // items may have fewer elements than the input slice, due to memcache
 // cache misses. Each key must be at most 250 bytes in length.
 // If no error is returned, the returned map will also be non-nil.
-func (m *Memcache) GetMulti(keys []string) map[string]string {
+func (m *Memcache) GetMulti(keys []string) map[string][]byte {
 
 	var err error
 	var items map[string]*memcache.Item
 	for retry := 2; retry > 0; retry-- {
 		items, err = m.mc.GetMulti(keys)
 		if err == nil {
-			val := map[string]string{}
+			val := map[string][]byte{}
 			for key, item := range items {
-				val[key] = string(item.Value)
+				val[key] = item.Value
 			}
 			return val
 		}
@@ -94,10 +94,10 @@ func (m *Memcache) Decrement(key string, delta uint64) uint64 {
 }
 
 // Set writes the given item, unconditionally.
-func (m *Memcache) Set(key string, value string, expiration int32) bool {
+func (m *Memcache) Set(key string, value []byte, expiration int32) bool {
 	item := &memcache.Item{
 		Key:        key,
-		Value:      []byte(value),
+		Value:      value,
 		Expiration: expiration,
 	}
 	err := m.mc.Set(item)
@@ -106,10 +106,10 @@ func (m *Memcache) Set(key string, value string, expiration int32) bool {
 
 // Add writes the given item, if no value already exists for its
 // key. ErrNotStored is returned if that condition is not met.
-func (m *Memcache) Add(key string, value string, expiration int32) bool {
+func (m *Memcache) Add(key string, value []byte, expiration int32) bool {
 	item := &memcache.Item{
 		Key:        key,
-		Value:      []byte(value),
+		Value:      value,
 		Expiration: expiration,
 	}
 	err := m.mc.Add(item)
@@ -118,10 +118,10 @@ func (m *Memcache) Add(key string, value string, expiration int32) bool {
 
 // Replace writes the given item, but only if the server *does*
 // already hold data for this key
-func (m *Memcache) Replace(key string, value string, expiration int32) error {
+func (m *Memcache) Replace(key string, value []byte, expiration int32) error {
 	item := &memcache.Item{
 		Key:        key,
-		Value:      []byte(value),
+		Value:      value,
 		Expiration: expiration,
 	}
 	return m.mc.Replace(item)

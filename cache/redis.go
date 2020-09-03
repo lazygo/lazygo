@@ -11,7 +11,7 @@ type adapterRedis struct {
 	redis *redis.Redis
 }
 
-func NewRedisAdapter(name string, adapter interface{}) (*adapterRedis, error) {
+func NewRedisImpl(name string, adapter interface{}) (*adapterRedis, error) {
 	if redisAdapter, ok := adapter.(*redis.Redis); ok {
 		a := &adapterRedis{
 			name,
@@ -23,47 +23,30 @@ func NewRedisAdapter(name string, adapter interface{}) (*adapterRedis, error) {
 	}
 }
 
-func (a adapterRedis) Remember(key string, val interface{}, timeout time.Duration) string {
-	item, err := a.redis.GetString(key)
-	if err != nil {
-		var data string
-		if v, ok := val.([]byte); ok {
-			data = string(v)
-		} else if str, ok := val.(string); ok {
-			data = str
-		} else {
-			panic(errors.New("val only support string and []byte"))
-		}
-		a.redis.Set(key, data, int64(timeout.Seconds()))
-		//return res
+func (a adapterRedis) Remember(key string, value interface{}, timeout time.Duration) DataResult {
+	wrapper := NewWrapper()
+	err := a.redis.GetObject(key, wrapper)
+	if err == nil {
+		return wrapper
 	}
-	return item
+
+	// 穿透
+	err = wrapper.Pack(value)
+	CheckError(err)
+
+	err = a.redis.Set(key, wrapper, int64(timeout.Seconds()))
+	CheckError(err)
+	//return res
+	return wrapper
 }
 
-func (a adapterRedis) Row(key string, callback func() (map[string]interface{}, error), timeout time.Duration) map[string]interface{} {
-	item, err := a.redis.Get(key)
-	if err != nil {
-		res, err := callback()
-		if err != nil {
-			return nil
-		}
-		a.redis.Set(key, res, int64(timeout.Seconds()))
-		return res
+func (a adapterRedis) Get(key string) (DataResult, error) {
+	wrapper := NewWrapper()
+	err := a.redis.GetObject(key, wrapper)
+	if err == nil {
+		return wrapper, nil
 	}
-	return item.(map[string]interface{})
-}
-
-func (a adapterRedis) List(key string, callback func() ([]map[string]interface{}, error), timeout time.Duration) []map[string]interface{} {
-	item, err := a.redis.Get(key)
-	if err != nil {
-		res, err := callback()
-		if err != nil {
-			return nil
-		}
-		a.redis.Set(key, res, int64(timeout.Seconds()))
-		return res
-	}
-	return item.([]map[string]interface{})
+	return nil, err
 }
 
 func (a adapterRedis) Has(key string) bool {

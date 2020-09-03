@@ -3,10 +3,10 @@ package lazygo
 import (
 	"errors"
 	"github.com/lazygo/lazygo/cache"
-	"github.com/lazygo/lazygo/library"
 	"github.com/lazygo/lazygo/memcache"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
+	"github.com/lazygo/lazygo/utils"
 	"sync"
 )
 
@@ -15,7 +15,7 @@ type Application struct {
 	mysql    *mysql.Manager
 	memcache *memcache.Manager
 	redis    *redis.Manager
-	cache    cache.ICache
+	cache    cache.Cache
 	router   *Router
 	asset    func(name string) ([]byte, error)
 	server   *Server
@@ -36,25 +36,25 @@ func App() *Application {
 
 func (a *Application) InitApp(configPath string, regRoute RouteRegister, regAsset AssetRegister) {
 	config, err := NewConfig(configPath)
-	library.CheckFatal(err)
+	utils.CheckFatal(err)
 	a.conf = config
 
 	// initMysql
 	if conf, err := config.GetSection("mysql"); err == nil {
 		a.mysql, err = mysql.NewManager(conf)
-		library.CheckFatal(err)
+		utils.CheckFatal(err)
 	}
 
 	// initRedis
 	if conf, err := config.GetSection("redis"); err == nil {
 		a.redis, err = redis.NewManager(conf)
-		library.CheckFatal(err)
+		utils.CheckFatal(err)
 	}
 
 	// initMemcache
 	if conf, err := config.GetSection("memcached"); err == nil {
 		a.memcache, err = memcache.NewManager(conf)
-		library.CheckFatal(err)
+		utils.CheckFatal(err)
 	}
 
 	// initCache
@@ -66,7 +66,7 @@ func (a *Application) InitApp(configPath string, regRoute RouteRegister, regAsse
 			return a.GetMc(name)
 		}
 		a.cache, err = cache.NewCache(conf, getAdapter)
-		library.CheckFatal(err)
+		utils.CheckFatal(err)
 	}
 
 	a.initRouter(regRoute)
@@ -86,7 +86,7 @@ func (a *Application) GetDb(name string) *mysql.Db {
 		panic(errors.New("mysql未初始化"))
 	}
 	db, err := a.mysql.Database(name)
-	library.CheckError(err)
+	utils.CheckError(err)
 	return db
 }
 
@@ -95,7 +95,7 @@ func (a *Application) GetMc(name string) *memcache.Memcache {
 		panic(errors.New("memcache未初始化"))
 	}
 	mc, err := a.memcache.Mc(name)
-	library.CheckError(err)
+	utils.CheckError(err)
 	return mc
 }
 
@@ -104,11 +104,11 @@ func (a *Application) GetRedis(name string) *redis.Redis {
 		panic(errors.New("redis未初始化"))
 	}
 	pool, err := a.redis.RedisPool(name)
-	library.CheckError(err)
+	utils.CheckError(err)
 	return pool
 }
 
-func (a *Application) GetCache() cache.ICache {
+func (a *Application) GetCache() cache.Cache {
 	if a.cache == nil {
 		panic(errors.New("缓存未初始化"))
 	}
@@ -117,8 +117,7 @@ func (a *Application) GetCache() cache.ICache {
 }
 
 func (a *Application) initRouter(route func(*Router)) bool {
-	router, err := NewRouter()
-	library.CheckError(err)
+	router := NewRouter()
 	a.router = router
 	route(a.router)
 	return true
@@ -144,10 +143,10 @@ func (a *Application) initServer() bool {
 		panic(errors.New("路由未初始化"))
 	}
 	conf, err := a.conf.GetSection("server")
-	library.CheckError(err)
+	utils.CheckError(err)
 
 	server, err := NewServer(conf, a.router)
-	library.CheckError(err)
+	utils.CheckError(err)
 	a.server = server
 	return true
 }
