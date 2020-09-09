@@ -37,12 +37,12 @@ type HttpSettings struct {
 	ConnectTimeout   time.Duration
 	ReadWriteTimeout time.Duration
 	// TLSClientConfig  *tls.Config
-	Proxy            func(*http.Request) (*url.URL, error)
-	CheckRedirect    func(req *http.Request, via []*http.Request) error
-	EnableCookie     bool
-	Gzip             bool
-	DumpBody         bool
-	Retries          int // if set to -1 means will retry forever
+	Proxy         func(*http.Request) (*url.URL, error)
+	CheckRedirect func(req *http.Request, via []*http.Request) error
+	EnableCookie  bool
+	Gzip          bool
+	DumpBody      bool
+	Retries       int // if set to -1 means will retry forever
 }
 
 //
@@ -130,11 +130,6 @@ func (h *HttpRequest) AddCookie(cookie *http.Cookie) *HttpRequest {
 }
 
 // 设置Http代理
-//
-// func(req *http.Request) (*url.URL, error) {
-//     u, _ := url.ParseRequestURI("http://127.0.0.1:8118")
-//     return u, nil
-// }
 func (h *HttpRequest) SetProxy(proxy func(*http.Request) (*url.URL, error)) *HttpRequest {
 	h.settings.Proxy = proxy
 	return h

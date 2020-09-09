@@ -31,7 +31,7 @@ func ToString(value interface{}) string {
 	return str
 }
 
-func Go(callback func())  {
+func Go(callback func()) {
 	go func() {
 		defer func() { // 防止程序异常退出
 			if err := recover(); err != nil {
