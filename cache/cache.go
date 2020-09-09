@@ -38,5 +38,9 @@ func NewCache(conf *gjson.Result, getAdapter func(driver string, name string) in
 		adapter := getAdapter("redis", name)
 		return NewRedisImpl(name, adapter)
 	}
+	if driver == "lru" {
+		adapter := getAdapter("lru", name)
+		return NewLRUImpl(name, adapter)
+	}
 	return nil, errors.New("不支持此驱动: " + driver)
 }

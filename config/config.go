@@ -1,4 +1,4 @@
-package lazygo
+package config
 
 import (
 	"errors"
@@ -9,12 +9,21 @@ import (
 	"runtime"
 )
 
-type Config struct {
+var Config *config
+
+type config struct {
 	file string
 	data map[string]gjson.Result
 }
 
-func NewConfig(filename string) (*Config, error) {
+func init() {
+	Config = &config{
+		file: "",
+		data: nil,
+	}
+}
+
+func LoadFile(filename string) error {
 
 	confPaths := make([]string, 0, 3)
 	confPaths = append(confPaths, "./"+filename+".json")
@@ -27,18 +36,22 @@ func NewConfig(filename string) (*Config, error) {
 		content, err := ioutil.ReadFile(confPath)
 		if err != nil {
 			if _, isPathErr := err.(*os.PathError); !isPathErr {
-				return nil, fmt.Errorf("%v: %v", confPath, err)
+				return fmt.Errorf("%v: %v", confPath, err)
 			}
 			continue
 		}
 
-		config := gjson.ParseBytes(content).Map()
-		return &Config{confPath, config}, nil
+		Config.data = gjson.ParseBytes(content).Map()
+		Config.file = confPath
+		return nil
 	}
-	return nil, errors.New("未找到配置文件")
+	return errors.New("未找到配置文件")
 }
 
-func (c *Config) GetSection(section string) (*gjson.Result, error) {
+func (c *config) GetSection(section string) (*gjson.Result, error) {
+	if c.data == nil {
+		return nil, errors.New("未加载配置文件")
+	}
 	if result, ok := c.data[section]; ok {
 		return &result, nil
 	}

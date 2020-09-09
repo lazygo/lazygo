@@ -3,6 +3,7 @@ package lazygo
 import (
 	"errors"
 	"github.com/lazygo/lazygo/cache"
+	"github.com/lazygo/lazygo/config"
 	"github.com/lazygo/lazygo/memcache"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
@@ -11,7 +12,6 @@ import (
 )
 
 type Application struct {
-	conf     *Config
 	mysql    *mysql.Manager
 	memcache *memcache.Manager
 	redis    *redis.Manager
@@ -35,35 +35,38 @@ func App() *Application {
 }
 
 func (a *Application) InitApp(configPath string, regRoute RouteRegister, regAsset AssetRegister) {
-	config, err := NewConfig(configPath)
+	err := config.LoadFile(configPath)
 	utils.CheckFatal(err)
-	a.conf = config
+
 
 	// initMysql
-	if conf, err := config.GetSection("mysql"); err == nil {
+	if conf, err := config.Config.GetSection("mysql"); err == nil {
 		a.mysql, err = mysql.NewManager(conf)
 		utils.CheckFatal(err)
 	}
 
 	// initRedis
-	if conf, err := config.GetSection("redis"); err == nil {
+	if conf, err := config.Config.GetSection("redis"); err == nil {
 		a.redis, err = redis.NewManager(conf)
 		utils.CheckFatal(err)
 	}
 
 	// initMemcache
-	if conf, err := config.GetSection("memcached"); err == nil {
+	if conf, err := config.Config.GetSection("memcached"); err == nil {
 		a.memcache, err = memcache.NewManager(conf)
 		utils.CheckFatal(err)
 	}
 
 	// initCache
-	if conf, err := config.GetSection("cache"); err == nil {
+	if conf, err := config.Config.GetSection("cache"); err == nil {
 		getAdapter := func(driver string, name string) interface{} {
 			if driver == "redis"  {
 				return a.GetRedis(name)
+			} else if driver == "lru" {
+				return a.GetMc(name)
+			} else {
+				return cache.NewLRUCache(10 * cache.MB)
 			}
-			return a.GetMc(name)
 		}
 		a.cache, err = cache.NewCache(conf, getAdapter)
 		utils.CheckFatal(err)
@@ -136,13 +139,13 @@ func (a *Application) GetAsset(name string) ([]byte, error) {
 }
 
 func (a *Application) initServer() bool {
-	if a.conf == nil {
+	if config.Config == nil {
 		panic(errors.New("配置信息未初始化"))
 	}
 	if a.router == nil {
 		panic(errors.New("路由未初始化"))
 	}
-	conf, err := a.conf.GetSection("server")
+	conf, err := config.Config.GetSection("server")
 	utils.CheckError(err)
 
 	server, err := NewServer(conf, a.router)
