@@ -2,7 +2,6 @@ package cache
 
 import (
 	"container/list"
-	"errors"
 	"sync"
 	"time"
 )
@@ -10,22 +9,7 @@ import (
 const KB = 1 << 10
 const MB = 1 << 20
 
-type adapterLRU struct {
-	name  string
-	redis LRU
-}
-
-func NewLRUImpl(name string, adapter interface{}) (*adapterLRU, error) {
-	if LRUAdapter, ok := adapter.(LRU); ok {
-		a := &adapterLRU{
-			name,
-			LRUAdapter,
-		}
-		return a, nil
-	} else {
-		return nil, errors.New("LRU Drive Adapter Failure")
-	}
-}
+var LRUCache = NewLRUCache(10 * MB)
 
 type LRU interface {
 	Get(key string) (v Value, ok bool)

@@ -9,11 +9,14 @@ import (
 	"time"
 )
 
-type Manager struct {
+type mcManager struct {
 	mc   map[string]*Memcache
 	conf *gjson.Result
 	lock *sync.RWMutex
 }
+
+// 单例
+var mc *mcManager = nil
 
 /*
 [
@@ -21,9 +24,12 @@ type Manager struct {
 	{"name": "mc2", "server": [{"host": "127.0.0.1", "port": 11213}, {"host": "127.0.0.1", "port": 11214}]},
 ]
 */
+func Init(conf *gjson.Result) error {
+	if mc != nil {
+		panic("Memcached不能重复初始化")
+	}
 
-func NewManager(conf *gjson.Result) (*Manager, error) {
-	m := &Manager{
+	m := &mcManager{
 		mc:   map[string]*Memcache{},
 		conf: conf,
 		lock: new(sync.RWMutex),
@@ -31,13 +37,13 @@ func NewManager(conf *gjson.Result) (*Manager, error) {
 	for _, item := range conf.Array() {
 		err := m.connect(&item)
 		if err != nil {
-			return nil, err
+			return err
 		}
 	}
-	return m, nil
+	return nil
 }
 
-func (m *Manager) connect(item *gjson.Result) error {
+func (m *mcManager) connect(item *gjson.Result) error {
 	name := item.Get("name").String()
 	server := item.Get("server").Array()
 
@@ -58,11 +64,12 @@ func (m *Manager) connect(item *gjson.Result) error {
 	return nil
 }
 
-func (m *Manager) Mc(name string) (*Memcache, error) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
+// 获取memcached
+func Mc(name string) (*Memcache, error) {
+	mc.lock.RLock()
+	defer mc.lock.RUnlock()
 
-	if mc, ok := m.mc[name]; ok {
+	if mc, ok := mc.mc[name]; ok {
 		return mc, nil
 	}
 	return nil, errors.New("指定Memcached不存在")

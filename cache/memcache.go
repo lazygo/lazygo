@@ -7,25 +7,27 @@ import (
 	"time"
 )
 
-type adapterMc struct {
-	name      string
-	memcached *memcache.Memcache
+type mcAdapter struct {
+	name string
+	conn *memcache.Memcache
 }
 
-func NewMemcacheImpl(name string, adapter interface{}) (*adapterMc, error) {
-	if mcAdapter, ok := adapter.(*memcache.Memcache); ok {
-		a := &adapterMc{
-			name,
-			mcAdapter,
-		}
-		return a, nil
+func (m *mcAdapter) init(opt map[string]interface{}) error {
+	if _, ok := opt["name"]; !ok {
+		return errors.New("memcached适配器参数错误")
 	}
-	return nil, errors.New("Memcache Drive Adapter Failure")
+	m.name = toString(opt["name"])
+	p, err := memcache.Mc(m.name)
+	if err != nil {
+		return err
+	}
+	m.conn = p
+	return nil
 }
 
-func (a adapterMc) Remember(key string, value interface{}, timeout time.Duration) DataResult {
-	item, err := a.memcached.Conn().Get(key)
-	wrapper := NewWrapper()
+func (m *mcAdapter) Remember(key string, value interface{}, ttl time.Duration) DataResult {
+	item, err := m.conn.Conn().Get(key)
+	wrapper := &wrapper{}
 
 	if err == nil {
 		err := json.Unmarshal(item.Value, wrapper)
@@ -41,14 +43,14 @@ func (a adapterMc) Remember(key string, value interface{}, timeout time.Duration
 	data, err := json.Marshal(wrapper)
 	CheckError(err)
 
-	a.memcached.Set(key, data, int32(timeout.Seconds()))
+	m.conn.Set(key, data, int32(ttl.Seconds()))
 	//return res
 	return wrapper
 }
 
-func (a adapterMc) Get(key string) (DataResult, error) {
-	item, err := a.memcached.Conn().Get(key)
-	wrapper := NewWrapper()
+func (m *mcAdapter) Get(key string) (DataResult, error) {
+	item, err := m.conn.Conn().Get(key)
+	wrapper := &wrapper{}
 
 	if err == nil {
 		err := json.Unmarshal(item.Value, wrapper)
@@ -59,12 +61,16 @@ func (a adapterMc) Get(key string) (DataResult, error) {
 	return nil, err
 }
 
-func (a adapterMc) Has(key string) bool {
-	_, err := a.memcached.Conn().Get(key)
+func (m *mcAdapter) Has(key string) bool {
+	_, err := m.conn.Conn().Get(key)
 	return err != nil
 }
 
-func (a adapterMc) Forget(key string) bool {
-	err := a.memcached.Delete(key)
+func (m *mcAdapter) Forget(key string) bool {
+	err := m.conn.Delete(key)
 	return err == nil
+}
+
+func init() {
+	registry["memcached"] = &mcAdapter{}
 }

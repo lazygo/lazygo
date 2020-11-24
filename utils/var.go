@@ -6,6 +6,9 @@ import (
 	"strconv"
 )
 
+// 转换为字符串
+// 如果value不能转换为字符串，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为空字符串""
 func ToString(value interface{}, defVal ...string) string {
 	if len(defVal) > 1 {
 		panic("too many arguments")
@@ -21,6 +24,10 @@ func ToString(value interface{}, defVal ...string) string {
 		str = strconv.Itoa(value.(int))
 	case int64:
 		str = strconv.FormatInt(value.(int64), 10)
+	case float32:
+		str = strconv.FormatFloat(float64(value.(float32)), 'f', -1, 32)
+	case float64:
+		str = strconv.FormatFloat(value.(float64), 'f', -1, 64)
 	default:
 		str = ""
 	}
@@ -31,6 +38,10 @@ func ToString(value interface{}, defVal ...string) string {
 	return str
 }
 
+// 转换为int64类型
+// value 可以是数字、数字字符串
+// 如果value不能转换为数字，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为0
 func ToInt64(value interface{}, defVal ...int64) int64 {
 	if len(defVal) > 1 {
 		panic("too many arguments")
@@ -44,8 +55,12 @@ func ToInt64(value interface{}, defVal ...int64) int64 {
 		d = val.Int()
 	case uint, uint8, uint16, uint32, uint64:
 		d = int64(val.Uint())
+	case float32, float64:
+		d = int64(val.Float())
 	case string:
 		d, err = strconv.ParseInt(val.String(), 10, 64)
+	case []byte:
+		d, err = strconv.ParseInt(string(value.([]byte)), 10, 64)
 	default:
 		err = fmt.Errorf("ToInt64 need numeric not `%T`", value)
 	}
@@ -58,6 +73,10 @@ func ToInt64(value interface{}, defVal ...int64) int64 {
 	return d
 }
 
+// 转换为int类型
+// value 可以是数字、数字字符串
+// 如果value不能转换为数字，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为0
 func ToInt(value interface{}, defVal ...int) int {
 	if len(defVal) > 1 {
 		panic("too many arguments")
@@ -71,8 +90,12 @@ func ToInt(value interface{}, defVal ...int) int {
 		d = int(val.Int())
 	case uint, uint8, uint16, uint32, uint64:
 		d = int(val.Uint())
+	case float32, float64:
+		d = int(val.Float())
 	case string:
 		d, err = strconv.Atoi(val.String())
+	case []byte:
+		d, err = strconv.Atoi(string(value.([]byte)))
 	default:
 		err = fmt.Errorf("ToInt64 need numeric not `%T`", value)
 	}

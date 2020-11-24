@@ -1,44 +1,24 @@
-package mysql
+package locker
 
 import (
 	"fmt"
+	"math/rand"
 	"reflect"
 	"strconv"
+	"time"
 )
 
-// str == "" ? def : str
-func defaultString(str string, def string) string {
-	if str == "" {
-		return def
-	}
-	return str
+func randomToken() uint64 {
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return r.Uint64()
 }
 
-// i == 0 ? def : i
-func defaultInt64(i int64, def int64) int64 {
-	if i == 0 {
-		return def
+func randRange(min uint64, max uint64) uint64 {
+	if min > max {
+		max, min = min, max
 	}
-	return i
-}
-
-// 转义字符串防止sql注入
-// 会在 \ ' " 之前增加斜杠\
-func Addslashes(v string) string {
-	pos := 0
-	buf := make([]byte, len(v)*2)
-	for i := 0; i < len(v); i++ {
-		c := v[i]
-		if c == '\'' || c == '"' || c == '\\' {
-			buf[pos] = '\\'
-			buf[pos+1] = c
-			pos += 2
-		} else {
-			buf[pos] = c
-			pos++
-		}
-	}
-	return string(buf[:pos])
+	r := rand.New(rand.NewSource(time.Now().UnixNano()))
+	return min + uint64(r.Int63n(int64(max - min)))
 }
 
 // 转换为string

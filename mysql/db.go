@@ -3,12 +3,16 @@ package mysql
 import (
 	"database/sql"
 	"errors"
+	"github.com/lazygo/lazygo/utils"
+	"strconv"
+	"time"
 )
 
 type Db struct {
-	name   string
+	name   string // 数据库名称
 	db     *sql.DB
-	prefix string
+	prefix string // 表前缀
+	slow   int    // 慢查询时间
 }
 
 // 分页返回数据 - 表字段名定义
@@ -17,15 +21,16 @@ type ResultRow struct {
 
 // 分页返回数据 - 返回结果定义
 type ResultData struct {
-	List      []map[string]interface{}
-	Count     int64
-	PerPage   int
-	Page      int
-	PageCount int
-	Start     int
-	Mark      int
+	List      []map[string]interface{} `json:"list"`
+	Count     int64                    `json:"count"`
+	PerPage   int                      `json:"pre_page"`
+	Page      int                      `json:"page"`
+	PageCount int                      `json:"page_count"`
+	Start     int                      `json:"start"`
+	Mark      int                      `json:"mark"`
 }
 
+// 分页结果集转化为map
 func (r *ResultData) ToMap() map[string]interface{} {
 	if r == nil {
 		return map[string]interface{}{}
@@ -41,62 +46,34 @@ func (r *ResultData) ToMap() map[string]interface{} {
 	}
 }
 
-var LostConnection = []string{
-	"server has gone away",
-	"no connection to the server",
-	"Lost connection",
-	"is dead or not enabled",
-	"Error while sending",
-	"decryption failed or bad record mac",
-	"server closed the connection unexpectedly",
-	"SSL connection has been closed unexpectedly",
-	"Error writing data to the connection",
-	"Resource deadlock avoided",
-	"Transaction() on null",
-	"child connection forced to terminate due to client_idle_limit",
-	"query_wait_timeout",
-	"reset by peer",
-	"Physical connection is not usable",
-	"TCP Provider: Error code 0x68",
-	"ORA-03114",
-	"Packets out of order. Expected",
-	"Adaptive Server connection failed",
-	"Communication link failure",
-	"connection refused",
-}
-
-func NewDb(name string, db *sql.DB, prefix string) *Db {
+func newDb(name string, db *sql.DB, prefix string) *Db {
 	return &Db{
 		name:   name,
 		db:     db,
 		prefix: prefix,
+		slow:   200,
 	}
 }
 
 // 获取查询构建器
 func (d *Db) Table(table string) *Builder {
-	return NewBuilder(d, d.prefix+table)
+	return newBuilder(d, d.prefix+table)
 }
 
-// 获取查询构建器
+// 查询sql并返回结果集
 func (d *Db) Query(query string) (*sql.Rows, error) {
-	var err error
-	var rows *sql.Rows
-	for retry := 2; retry > 0; retry-- {
-		rows, err = d.db.Query(query)
-		if err == nil {
-			return rows, nil
+	start := time.Now()
+	defer func() {
+		// 计算查询执行时间，记录慢查询
+		since := time.Since(start)
+		if since > time.Duration(d.slow)*time.Millisecond {
+			utils.Warn("慢查询 " + strconv.FormatInt(int64(since/time.Millisecond), 10) + " SQL:" + query)
 		}
-		if !ContainInArray(err.Error(), LostConnection) {
-			break
-		}
-	}
-	if rows != nil {
-		rows.Close()
-	}
-	return nil, err
+	}()
+	return d.db.Query(query)
 }
 
+// 执行sql
 func (d *Db) Exec(query string) (sql.Result, error) {
 	stmt, err := d.db.Prepare(query)
 	if err != nil {
@@ -111,6 +88,7 @@ func (d *Db) Exec(query string) (sql.Result, error) {
 	return res, nil
 }
 
+// 直接执行sql原生语句并返回多行
 func (d *Db) GetAll(query string) ([]map[string]interface{}, error) {
 	rows, err := d.Query(query)
 	if err != nil {
@@ -125,6 +103,7 @@ func (d *Db) GetAll(query string) ([]map[string]interface{}, error) {
 	return outArr, nil
 }
 
+// 直接执行sql原生语句并返回1行
 func (d *Db) GetRow(query string) (map[string]interface{}, error) {
 	rows, err := d.Query(query)
 	if err != nil {

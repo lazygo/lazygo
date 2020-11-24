@@ -6,55 +6,61 @@ import (
 	"time"
 )
 
-type adapterRedis struct {
-	name  string
-	redis *redis.Redis
+type redisAdapter struct {
+	name string
+	conn *redis.Redis
 }
 
-func NewRedisImpl(name string, adapter interface{}) (*adapterRedis, error) {
-	if redisAdapter, ok := adapter.(*redis.Redis); ok {
-		a := &adapterRedis{
-			name,
-			redisAdapter,
-		}
-		return a, nil
-	} else {
-		return nil, errors.New("Redis Drive Adapter Failure")
+// 初始化redis适配器
+func (r *redisAdapter) init(opt map[string]interface{}) error {
+	if _, ok := opt["name"]; !ok {
+		return errors.New("redis适配器参数错误")
 	}
+	r.name = toString(opt["name"])
+	p, err := redis.RedisPool(r.name)
+	if err != nil {
+		return err
+	}
+	r.conn = p
+	return nil
 }
 
-func (a adapterRedis) Remember(key string, value interface{}, timeout time.Duration) DataResult {
-	wrapper := NewWrapper()
-	err := a.redis.GetObject(key, wrapper)
+func (r *redisAdapter) Remember(key string, value interface{}, ttl time.Duration) DataResult {
+	wp := &wrapper{}
+	err := r.conn.GetObject(key, wp)
 	if err == nil {
-		return wrapper
+		return wp
 	}
 
 	// 穿透
-	err = wrapper.Pack(value)
+	err = wp.Pack(value)
 	CheckError(err)
 
-	err = a.redis.Set(key, wrapper, int64(timeout.Seconds()))
+	err = r.conn.Set(key, wp, int64(ttl.Seconds()))
 	CheckError(err)
 	//return res
-	return wrapper
+	return wp
 }
 
-func (a adapterRedis) Get(key string) (DataResult, error) {
-	wrapper := NewWrapper()
-	err := a.redis.GetObject(key, wrapper)
+func (r *redisAdapter) Get(key string) (DataResult, error) {
+	wp := &wrapper{}
+	err := r.conn.GetObject(key, wp)
 	if err == nil {
-		return wrapper, nil
+		return wp, nil
 	}
 	return nil, err
 }
 
-func (a adapterRedis) Has(key string) bool {
-	_, err := a.redis.Get(key)
+func (r *redisAdapter) Has(key string) bool {
+	_, err := r.conn.Get(key)
 	return err != nil
 }
 
-func (a adapterRedis) Forget(key string) bool {
-	err := a.redis.Del(key)
+func (r *redisAdapter) Forget(key string) bool {
+	err := r.conn.Del(key)
 	return err == nil
+}
+
+func init() {
+	registry["redis"] = &redisAdapter{}
 }

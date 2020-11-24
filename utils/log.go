@@ -1,9 +1,7 @@
 package utils
 
 import (
-	"fmt"
 	"github.com/lazygo/lazygo/logs"
-	"strings"
 )
 
 // beeLogger references the used application logger.
@@ -20,12 +18,12 @@ func Async(msgLen ...int64) *logs.BeeLogger {
 }
 
 // SetLevel sets the global log level used by the simple logger.
-func SetLevel(l int) {
+func SetLogLevel(l int) {
 	beeLogger.SetLevel(l)
 }
 
 // SetPrefix sets the prefix
-func SetPrefix(s string) {
+func SetLogPrefix(s string) {
 	beeLogger.SetPrefix(s)
 }
 
@@ -35,87 +33,65 @@ func SetLogFuncCall(b bool) {
 	beeLogger.SetLogFuncCallDepth(4)
 }
 
-// SetLogger sets a new logger.
+// 设置日志
+// adapter console、file、multifile
+// beego.SetLogger("file", `{"filename":"logs/test.log"}`)
 func SetLogger(adapter string, config ...string) error {
 	return beeLogger.SetLogger(adapter, config...)
 }
 
 // Emergency logs a message at emergency level.
-func Emergency(f interface{}, v ...interface{}) {
-	beeLogger.Emergency(formatLog(f, v...))
+func Emergency(msg string, v ...map[string]interface{}) {
+	beeLogger.Emergency(formatLog(msg, v...))
 }
 
 // Alert logs a message at alert level.
-func Alert(f interface{}, v ...interface{}) {
-	beeLogger.Alert(formatLog(f, v...))
+func Alert(msg string, v ...map[string]interface{}) {
+	beeLogger.Alert(formatLog(msg, v...))
 }
 
 // Critical logs a message at critical level.
-func Critical(f interface{}, v ...interface{}) {
-	beeLogger.Critical(formatLog(f, v...))
+func Critical(msg string, v ...map[string]interface{}) {
+	beeLogger.Critical(formatLog(msg, v...))
 }
 
 // Error logs a message at error level.
-func Error(f interface{}, v ...interface{}) {
-	beeLogger.Error(formatLog(f, v...))
-}
-
-// Warning logs a message at warning level.
-func Warning(f interface{}, v ...interface{}) {
-	beeLogger.Warn(formatLog(f, v...))
+func Error(msg string, v ...map[string]interface{}) {
+	beeLogger.Error(formatLog(msg, v...))
 }
 
 // Warn compatibility alias for Warning()
-func Warn(f interface{}, v ...interface{}) {
-	beeLogger.Warn(formatLog(f, v...))
+func Warn(msg string, v ...map[string]interface{}) {
+	beeLogger.Warn(formatLog(msg, v...))
 }
 
 // Notice logs a message at notice level.
-func Notice(f interface{}, v ...interface{}) {
-	beeLogger.Notice(formatLog(f, v...))
-}
-
-// Informational logs a message at info level.
-func Informational(f interface{}, v ...interface{}) {
-	beeLogger.Info(formatLog(f, v...))
+func Notice(msg string, v ...map[string]interface{}) {
+	beeLogger.Notice(formatLog(msg, v...))
 }
 
 // Info compatibility alias for Warning()
-func Info(f interface{}, v ...interface{}) {
-	beeLogger.Info(formatLog(f, v...))
+func Info(msg string, v ...map[string]interface{}) {
+	beeLogger.Info(formatLog(msg, v...))
 }
 
 // Debug logs a message at debug level.
-func Debug(f interface{}, v ...interface{}) {
-	beeLogger.Debug(formatLog(f, v...))
+func Debug(msg string, v ...map[string]interface{}) {
+	beeLogger.Debug(formatLog(msg, v...))
 }
 
 // Trace logs a message at trace level.
 // compatibility alias for Warning()
-func Trace(f interface{}, v ...interface{}) {
-	beeLogger.Trace(formatLog(f, v...))
+func Trace(msg string, v ...map[string]interface{}) {
+	beeLogger.Trace(formatLog(msg, v...))
 }
 
-func formatLog(f interface{}, v ...interface{}) string {
-	var msg string
-	switch f.(type) {
-	case string:
-		msg = f.(string)
-		if len(v) == 0 {
-			return msg
-		}
-		if strings.Contains(msg, "%") && !strings.Contains(msg, "%%") {
-			//format string
-		} else {
-			//do not contain format char
-			msg += strings.Repeat(" %v", len(v))
-		}
-	default:
-		msg = fmt.Sprint(f)
-		if len(v) == 0 {
-			return msg
-		}
-		msg += strings.Repeat(" %v", len(v))
+func formatLog(msg string, v ...map[string]interface{}) map[string]interface{} {
+	data := map[string]interface{}{}
+	if len(v) > 0 {
+		data = v[0]
+		data["ext_data"] = v[1:]
 	}
-	return fmt.Sprintf(msg, v...)
+	data["message"] = msg
+	return data
 }

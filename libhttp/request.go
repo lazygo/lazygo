@@ -277,7 +277,7 @@ func (h *HttpRequest) buildURL(paramBody string) {
 	}
 }
 
-// DoRequest will do the client.Do
+// 发起请求
 func (h *HttpRequest) doRequest() (*http.Response, error) {
 	var paramBody string = h.params.Encode()
 	h.buildURL(paramBody)
@@ -338,7 +338,8 @@ func (h *HttpRequest) doRequest() (*http.Response, error) {
 	return resp, err
 }
 
-func (h *HttpRequest) getResponse() (*http.Response, error) {
+// 获取http.response
+func (h *HttpRequest) GetResponse() (*http.Response, error) {
 	if h.resp.StatusCode != 0 {
 		return h.resp, nil
 	}
@@ -354,7 +355,7 @@ func (h *HttpRequest) ToBytes() ([]byte, error) {
 	if h.body != nil {
 		return h.body, nil
 	}
-	resp, err := h.getResponse()
+	resp, err := h.GetResponse()
 	if err != nil {
 		return nil, err
 	}
@@ -374,8 +375,7 @@ func (h *HttpRequest) ToBytes() ([]byte, error) {
 	return h.body, err
 }
 
-// String returns the body string in response.
-// it calls Response inner.
+// 将相应转换成字符串
 func (h *HttpRequest) ToString() (string, error) {
 	data, err := h.ToBytes()
 	if err != nil {
@@ -384,8 +384,7 @@ func (h *HttpRequest) ToString() (string, error) {
 	return string(data), nil
 }
 
-// ToJSON returns the map that marshals from the body bytes as json in response .
-// it calls Response inner.
+// 将响应作为json解析
 func (h *HttpRequest) ToJSON(v interface{}) error {
 	data, err := h.ToBytes()
 	if err != nil {
@@ -413,7 +412,7 @@ func (h *HttpRequest) ToFile(filename string) error {
 	}
 	defer f.Close()
 
-	resp, err := h.getResponse()
+	resp, err := h.GetResponse()
 	if err != nil {
 		return err
 	}

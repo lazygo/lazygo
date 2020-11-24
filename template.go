@@ -1,10 +1,13 @@
 package lazygo
 
 import (
+	"fmt"
 	"html/template"
 	"net/http"
 	"path/filepath"
 )
+
+type AssetRegister func(name string) ([]byte, error)
 
 type Template struct {
 	tpl     *template.Template
@@ -14,9 +17,10 @@ type Template struct {
 	Res     http.ResponseWriter
 	Req     *http.Request
 	Header  map[string]string
+	asset   AssetRegister
 }
 
-func NewTemplate(res http.ResponseWriter, req *http.Request, prefix string, suffix string) *Template {
+func NewTemplate(res http.ResponseWriter, req *http.Request, prefix string, suffix string, asset AssetRegister) *Template {
 	return &Template{
 		prefix:  prefix,
 		suffix:  suffix,
@@ -24,6 +28,7 @@ func NewTemplate(res http.ResponseWriter, req *http.Request, prefix string, suff
 		Res:     res,
 		Req:     req,
 		Header:  map[string]string{},
+		asset:   asset,
 	}
 }
 
@@ -62,7 +67,10 @@ func (t *Template) ParseFiles(tplName ...string) *Template {
 
 func (t *Template) parseFiles(filenames []string) (*template.Template, error) {
 	for _, filename := range filenames {
-		b, err := App().GetAsset(filename)
+		if t.asset == nil {
+			return nil, fmt.Errorf("未注册资源")
+		}
+		b, err := t.asset(filename)
 		if err != nil {
 			return nil, err
 		}

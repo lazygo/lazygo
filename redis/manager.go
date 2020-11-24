@@ -13,11 +13,14 @@ import (
 	"time"
 )
 
-type Manager struct {
+type redisManager struct {
 	redis map[string]*Redis
 	conf  *gjson.Result
 	lock  *sync.RWMutex
 }
+
+// 单例
+var manager *redisManager = nil
 
 /*
 [
@@ -25,27 +28,41 @@ type Manager struct {
 	{"name": "redis2", "host": "127.0.0.1", "port": 11212, "password": "secret", "db": 0}
 ]
 */
-
-func NewManager(conf *gjson.Result) (*Manager, error) {
-	m := &Manager{
+// 在框架初始化时调用
+func Init(conf *gjson.Result) error {
+	if manager != nil {
+		panic("Redis不能重复初始化")
+	}
+	// 保持单例
+	manager = &redisManager{
 		redis: map[string]*Redis{},
 		conf:  conf,
 		lock:  new(sync.RWMutex),
 	}
 	for _, item := range conf.Array() {
-		err := m.connect(&item)
+		err := manager.connect(&item)
 		if err != nil {
-			return nil, err
+			return err
 		}
 
 	}
-	m.closePool()
-	return m, nil
+	// 退出时执行清理工作
+	manager.closePool()
+	return nil
 }
 
-func (m *Manager) connect(item *gjson.Result) error {
+// 连接redis
+func (m *redisManager) connect(item *gjson.Result) error {
 
 	name := item.Get("name").String()
+	m.lock.RLock()
+	_, ok := m.redis[name]
+	m.lock.RUnlock()
+	if ok {
+		// 已连接的就不再次连接了
+		return nil
+	}
+
 	host := item.Get("host").String()
 	port := item.Get("port").Int()
 	password := item.Get("password").String()
@@ -90,25 +107,28 @@ func (m *Manager) connect(item *gjson.Result) error {
 	return nil
 }
 
-func (m *Manager) RedisPool(name string) (*Redis, error) {
-	m.lock.RLock()
-	defer m.lock.RUnlock()
+// 获取redis连接
+func RedisPool(name string) (*Redis, error) {
+	manager.lock.RLock()
+	defer manager.lock.RUnlock()
 
-	if redis, ok := m.redis[name]; ok {
+	if redis, ok := manager.redis[name]; ok {
 		return redis, nil
 	}
 	return nil, errors.New("指定Redis不存在")
 }
 
 // closePool 程序进程退出时关闭连接池
-func (m *Manager) closePool() {
+func (m *redisManager) closePool() {
 	ch := make(chan os.Signal, 1)
+	// 捕获信号
 	signal.Notify(ch, os.Interrupt)
 	signal.Notify(ch, syscall.SIGTERM)
 	signal.Notify(ch, syscall.SIGKILL)
 	go func() {
 		<-ch
 		for _, redis := range m.redis {
+			// 关闭连接池
 			redis.pool.Close()
 		}
 		os.Exit(0)

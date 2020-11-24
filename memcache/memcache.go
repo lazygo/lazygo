@@ -4,11 +4,6 @@ import (
 	"github.com/bradfitz/gomemcache/memcache"
 )
 
-var LostConnection = []string{
-	"reset by peer",
-	"connection refused",
-}
-
 type Memcache struct {
 	name string
 	mc   *memcache.Client
@@ -21,79 +16,61 @@ func NewMemcache(name string, mc *memcache.Client) *Memcache {
 	}
 }
 
+// 获取memcached
 func (m *Memcache) Conn() *memcache.Client {
 	return m.mc
 }
 
-// Get gets the item for the given key.
-// The key must be at most 250 bytes in length.
+// 获取给定密钥的项，密钥的长度必须不超过250字节。
 func (m *Memcache) Get(key string) []byte {
-
 	var err error
 	var item *memcache.Item
-	for retry := 2; retry > 0; retry-- {
-		item, err = m.mc.Get(key)
-		if err == nil {
-			return item.Value
-		}
-		if err == memcache.ErrCacheMiss {
-			return nil
-		}
-		if !ContainInArray(err.Error(), LostConnection) {
-			break
-		}
+	item, err = m.mc.Get(key)
+	if err == nil {
+		return item.Value
+	}
+	if err == memcache.ErrCacheMiss {
+		return nil
 	}
 	panic(err)
 }
 
-// GetMulti is a batch version of Get. The returned map from keys to
-// items may have fewer elements than the input slice, due to memcache
-// cache misses. Each key must be at most 250 bytes in length.
-// If no error is returned, the returned map will also be non-nil.
+// GetMulti是Get的批处理版本
 func (m *Memcache) GetMulti(keys []string) map[string][]byte {
-
 	var err error
 	var items map[string]*memcache.Item
-	for retry := 2; retry > 0; retry-- {
-		items, err = m.mc.GetMulti(keys)
-		if err == nil {
-			val := map[string][]byte{}
-			for key, item := range items {
-				val[key] = item.Value
-			}
-			return val
+	items, err = m.mc.GetMulti(keys)
+	if err == nil {
+		val := map[string][]byte{}
+		for key, item := range items {
+			val[key] = item.Value
 		}
-		if !ContainInArray(err.Error(), LostConnection) {
-			break
-		}
+		return val
 	}
 	panic(err)
 }
 
-// Increment atomically increments key by delta. The return value is
-// the new value after being incremented or an error. If the value
-// didn't exist in memcached the error is ErrCacheMiss. The value in
-// memcached must be an decimal number, or an error will be returned.
-// On 64-bit overflow, the new value wraps around.
+// 按增量键原子递增
+// 返回值是递增或出错后的新值
+// 如果该值在memcached中不存在，则错误为ErrCacheMiss
+// memcached中的值必须是十进制数，否则将返回错误
 func (m *Memcache) Increment(key string, delta uint64) uint64 {
 	newValue, err := m.mc.Increment(key, delta)
 	CheckError(err)
 	return newValue
 }
 
-// Decrement atomically decrements key by delta. The return value is
-// the new value after being decremented or an error. If the value
-// didn't exist in memcached the error is ErrCacheMiss. The value in
-// memcached must be an decimal number, or an error will be returned.
-// On underflow, the new value is capped at zero and does not wrap
-// around.
+// 按增量原子递减键的值
+// 返回值是递减或出错后的新值
+// 如果该值在memcached中不存在，则错误为ErrCacheMiss
+// memcached中的值必须是十进制数，否则将返回错误
 func (m *Memcache) Decrement(key string, delta uint64) uint64 {
 	newValue, err := m.mc.Decrement(key, delta)
 	CheckError(err)
 	return newValue
 }
 
-// Set writes the given item, unconditionally.
+// 无条件地写入给定项
 func (m *Memcache) Set(key string, value []byte, expiration int32) bool {
 	item := &memcache.Item{
 		Key:        key,
@@ -104,8 +81,7 @@ func (m *Memcache) Set(key string, value []byte, expiration int32) bool {
 	return err == nil
 }
 
-// Add writes the given item, if no value already exists for its
-// key. ErrNotStored is returned if that condition is not met.
+// 如果给定项的键值不存在，则写入该项。如果不满足该条件，则返回ErrNotStored
 func (m *Memcache) Add(key string, value []byte, expiration int32) bool {
 	item := &memcache.Item{
 		Key:        key,
@@ -116,8 +92,7 @@ func (m *Memcache) Add(key string, value []byte, expiration int32) bool {
 	return err == nil
 }
 
-// Replace writes the given item, but only if the server *does*
-// already hold data for this key
+// 写入给定项，但仅当服务器*确实*已经保存此键的数据
 func (m *Memcache) Replace(key string, value []byte, expiration int32) error {
 	item := &memcache.Item{
 		Key:        key,
@@ -127,17 +102,15 @@ func (m *Memcache) Replace(key string, value []byte, expiration int32) error {
 	return m.mc.Replace(item)
 }
 
-// Delete deletes the item with the provided key. The error ErrCacheMiss is
-// returned if the item didn't already exist in the cache.
+// 使用提供的键删除项。如果缓存中不存在该项，则返回错误ErrCacheMiss。
 func (m *Memcache) Delete(key string) error {
 	return m.mc.Delete(key)
 }
 
-// Touch updates the expiry for the given key. The seconds parameter is either
-// a Unix timestamp or, if seconds is less than 1 month, the number of seconds
-// into the future at which time the item will expire. Zero means the item has
-// no expiration time. ErrCacheMiss is returned if the key is not in the cache.
-// The key must be at most 250 bytes in length.
+// 更新给定密钥的有效期
+// seconds参数是Unix时间戳，如果秒数小于1个月，则是该项将在未来过期的秒数。 0表示该项目没有过期时间
+// 如果键不在缓存中，则返回ErrCacheMiss
+// key的长度必须不超过250字节
 func (m *Memcache) Touch(key string, seconds int32) error {
 	return m.mc.Touch(key, seconds)
 }
