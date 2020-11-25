@@ -9,7 +9,7 @@ import (
 	"runtime"
 )
 
-var Config *config
+var conf *config
 
 type config struct {
 	file string
@@ -17,7 +17,7 @@ type config struct {
 }
 
 func init() {
-	Config = &config{
+	conf = &config{
 		file: "",
 		data: nil,
 	}
@@ -41,18 +41,18 @@ func LoadFile(filename string) error {
 			continue
 		}
 
-		Config.data = gjson.ParseBytes(content).Map()
-		Config.file = confPath
+		conf.data = gjson.ParseBytes(content).Map()
+		conf.file = confPath
 		return nil
 	}
 	return errors.New("未找到配置文件")
 }
 
-func (c *config) GetSection(section string) (*gjson.Result, error) {
-	if c.data == nil {
+func GetSection(section string) (*gjson.Result, error) {
+	if conf.data == nil {
 		return nil, errors.New("未加载配置文件")
 	}
-	if result, ok := c.data[section]; ok {
+	if result, ok := conf.data[section]; ok {
 		return &result, nil
 	}
 	return nil, errors.New("配置段不存在")
