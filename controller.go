@@ -13,7 +13,7 @@ import (
 
 var (
 	ErrNotFound     = errors.New("404 page not found") // 404错误
-	HttpResponseEnd = 0 // Http响应完成
+	HttpResponseEnd = 0                                // Http响应完成
 )
 
 type IController interface {
@@ -140,19 +140,19 @@ func (c *Controller) ApiSucc(data map[string]interface{}, message string) {
 		data = map[string]interface{}{}
 	}
 	result := map[string]interface{}{
-		"error_code": 0,
-		"message":    message,
-		"data":       data,
+		"code":    200,
+		"message": message,
+		"data":    data,
 	}
 	c.JsonResponse(result)
 }
 
 // 失败响应
-func (c *Controller) ApiFail(code int, message string, error interface{}) {
+func (c *Controller) ApiFail(code int, message string, data interface{}) {
 	result := map[string]interface{}{
-		"error_code": code,
-		"message":    message,
-		"error":      error,
+		"code":    code,
+		"message": message,
+		"data":    data,
 	}
 	c.JsonResponse(result)
 }
