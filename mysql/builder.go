@@ -19,7 +19,7 @@ type Builder struct {
 	cond   []string // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
 }
 
-// 实例化查询构建器
+// newBuilder 实例化查询构建器
 func newBuilder(schema *Db, table string) *Builder {
 	return &Builder{
 		schema: schema,
@@ -28,10 +28,11 @@ func newBuilder(schema *Db, table string) *Builder {
 	}
 }
 
-// 自动识别查询
+// Where 自动识别查询 推荐使用
 // cond string 字符串查询条件
 // cond map[string]interface{} map查询条件，同WhereMap
 // cond string, []interface{} In查询条件，同WhereIn
+// cond string, []anytype In查询条件，同WhereIn
 func (b *Builder) Where(cond ...interface{}) *Builder {
 	switch len(cond) {
 	case 1:
@@ -63,8 +64,9 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 	panic("invalid arguments")
 }
 
-// Map查询
+// WhereMap Map查询
 // 会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
+// map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
 func (b *Builder) WhereMap(cond map[string]interface{}) *Builder {
 	for k, v := range cond {
 		if vv, ok := CreateAnyTypeSlice(v); ok {
@@ -76,7 +78,7 @@ func (b *Builder) WhereMap(cond map[string]interface{}) *Builder {
 	return b
 }
 
-// 子句查询
+// WhereClause 子句查询
 func (b *Builder) WhereClause(cond string) *Builder {
 	cond = strings.Trim(cond, " ")
 	if cond != "" {
@@ -85,7 +87,7 @@ func (b *Builder) WhereClause(cond string) *Builder {
 	return b
 }
 
-// IN查询
+// WhereIn IN查询
 func (b *Builder) WhereIn(k string, in []interface{}) *Builder {
 	var arr []string
 	for _, v := range in {
@@ -96,7 +98,7 @@ func (b *Builder) WhereIn(k string, in []interface{}) *Builder {
 	return b
 }
 
-// NOT IN查询
+// WhereNotIn NOT IN查询
 func (b *Builder) WhereNotIn(k string, in []interface{}) *Builder {
 	var arr []string
 	for _, v := range in {
@@ -107,14 +109,14 @@ func (b *Builder) WhereNotIn(k string, in []interface{}) *Builder {
 	return b
 }
 
-// 清空当前where
+// Clear 清空当前where
 //（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *Builder) Clear() *Builder {
 	b.cond = []string{}
 	return b
 }
 
-// 构建条件
+// buildCond 构建条件
 // 把cond用 AND 连接起来
 // buildCond调用之后会清空当期查询构建器中暂存的条件
 //（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
@@ -127,7 +129,7 @@ func (b *Builder) buildCond() string {
 	return strings.TrimSpace(result)
 }
 
-// 构建值
+// buildVal 构建值
 // val map[string]interface{} 将会被展开成 k=v 的形式 多个元素用逗号隔开
 // extra []string 多个元素间用逗号隔开，并追加在 val参数展开的字符串后面
 // 示例：val = {"last_view_time": "12345678", "last_view_user": "li"}; extra = ["view_num=view_num+1"]
@@ -151,7 +153,7 @@ func buildVal(val map[string]interface{}, extra []string) string {
 	return result
 }
 
-// 构造
+// build 构造
 // 用操作符op把key和value连接起来
 // 示例 k = "name", op = "=", v ="li"    `name`='li'
 func build(k string, op string, v interface{}) string {
@@ -159,7 +161,7 @@ func build(k string, op string, v interface{}) string {
 	return fmt.Sprintf("`%s` %s '%s'", k, op, str)
 }
 
-// 拼接查询语句字符串
+// MakeQueryString 拼接查询语句字符串
 func (b *Builder) MakeQueryString(fields string, order string, group string, limit int, start int) string {
 
 	if b.table == "" {
@@ -191,7 +193,7 @@ func (b *Builder) MakeQueryString(fields string, order string, group string, lim
 	return queryString
 }
 
-// 构造分页返回结果
+// Multi 构造分页返回结果
 // count int64 总数
 // perpage int64 每页数量
 // page int64 当前页
@@ -206,7 +208,7 @@ func Multi(count int64, page int, perpage int) ResultData {
 	return data
 }
 
-// 查询统计个数
+// Count 查询统计个数
 func (b *Builder) Count() int64 {
 	if b.table == "" {
 		panic("没有指定表名")
@@ -219,7 +221,7 @@ func (b *Builder) Count() int64 {
 	return toInt64(data["num"])
 }
 
-// 查询并返回多条记录，且包含分页信息
+// FetchWithPage 查询并返回多条记录，且包含分页信息
 // field string 返回的字段 示例："*"
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
@@ -236,7 +238,7 @@ func (b *Builder) FetchWithPage(fields string, order string, group string, limit
 	return &data, err
 }
 
-// 查询并返回多条记录
+// Fetch 查询并返回多条记录
 // field string 返回的字段 示例："*"
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
@@ -250,7 +252,7 @@ func (b *Builder) Fetch(fields string, order string, group string, limit int, st
 
 }
 
-// 查询并返回单条记录
+// FetchRow 查询并返回单条记录
 // field string 返回的字段 示例："*"
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
@@ -262,7 +264,7 @@ func (b *Builder) FetchRow(fields string, order string, group string, start int)
 	return b.schema.GetRow(queryString)
 }
 
-// 查询并返回单个字段
+// FetchOne 查询并返回单个字段
 // field string 返回的字段 示例："count(*) AS count"
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
@@ -279,7 +281,7 @@ func (b *Builder) FetchOne(field string, order string, group string, start int) 
 	return toString(item[field])
 }
 
-// 单条插入
+// Insert 单条插入
 // set map[string]interface{} 插入的数据
 // 返回插入的id，错误信息
 func (b *Builder) Insert(set map[string]interface{}) (int64, error) {
@@ -307,7 +309,7 @@ func (b *Builder) Insert(set map[string]interface{}) (int64, error) {
 	return id, err
 }
 
-// 更新
+// Update 更新
 // set map[string]interface{} 更新的字段
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
@@ -345,7 +347,7 @@ func (b *Builder) Update(set map[string]interface{}, limit ...int) (int64, error
 	return res.RowsAffected()
 }
 
-// 自增
+// Increment 自增
 // column string 自增的字段
 // amount int 自增的数量
 // set map[string]interface{} （可选参数）自增同时update的字段
@@ -396,7 +398,7 @@ func (b *Builder) Increment(column string, amount int64, set ...map[string]inter
 	return res.RowsAffected()
 }
 
-// 自减
+// Decrement 自减
 // column string 自减的字段
 // amount int 自减的数量
 // set map[string]interface{} （可选参数）自减同时update的字段
@@ -405,7 +407,7 @@ func (b *Builder) Decrement(column string, amount int64, set ...map[string]inter
 	return b.Increment(column, -amount, set...)
 }
 
-// 删除
+// Delete 删除
 func (b *Builder) Delete(limit ...int) (int64, error) {
 	if len(limit) > 1 {
 		panic("too many arguments")
