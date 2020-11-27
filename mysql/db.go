@@ -115,6 +115,11 @@ func (d *Db) GetRow(query string) (map[string]interface{}, error) {
 	return outArr, err
 }
 
+// GetTablePrefix 获取表前缀
+func (d *Db) GetTablePrefix() string {
+	return d.prefix
+}
+
 // 解析结果集
 func parseData(rows *sql.Rows) ([]map[string]interface{}, error) {
 	data := make([]map[string]interface{}, 0, 20)
