@@ -52,7 +52,7 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 		if !ok {
 			break
 		}
-		in, ok := cond[0].([]interface{})
+		in, ok := CreateAnyTypeSlice(cond[1])
 		if !ok {
 			break
 		}
@@ -67,7 +67,7 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 // 会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
 func (b *Builder) WhereMap(cond map[string]interface{}) *Builder {
 	for k, v := range cond {
-		if vv, ok := v.([]interface{}); ok {
+		if vv, ok := CreateAnyTypeSlice(v); ok {
 			b.WhereIn(k, vv)
 		} else {
 			b.cond = append(b.cond, build(k, "=", v))
