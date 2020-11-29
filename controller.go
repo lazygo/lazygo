@@ -98,23 +98,33 @@ func (c *Controller) GetBody() ([]byte, error) {
 }
 
 // 获取Get字符串变量
-func (c *Controller) GetString(name string) string {
-	return utils.ToString(c.Req.URL.Query().Get(name))
+func (c *Controller) GetString(name string, defVal ...string) string {
+	return utils.ToString(c.Req.URL.Query().Get(name), defVal...)
 }
 
 // 获取Get整型变量
-func (c *Controller) GetInt(name string) int {
-	return utils.ToInt(c.Req.URL.Query().Get(name))
+func (c *Controller) GetInt(name string, defVal ...int) int {
+	return utils.ToInt(c.Req.URL.Query().Get(name), defVal...)
+}
+
+// 获取Get整型变量
+func (c *Controller) GetInt64(name string, defVal ...int64) int64 {
+	return utils.ToInt64(c.Req.URL.Query().Get(name), defVal...)
 }
 
 // 获取Post字符串变量
-func (c *Controller) PostString(name string) string {
-	return utils.ToString(c.Req.FormValue(name))
+func (c *Controller) PostString(name string, defVal ...string) string {
+	return utils.ToString(c.Req.FormValue(name), defVal...)
 }
 
 // 获取Post整型变量
-func (c *Controller) PostInt(name string) int {
-	return utils.ToInt(c.Req.FormValue(name))
+func (c *Controller) PostInt(name string, defVal ...int) int {
+	return utils.ToInt(c.Req.FormValue(name), defVal...)
+}
+
+// 获取Post整型变量
+func (c *Controller) PostInt64(name string, defVal ...int64) int64 {
+	return utils.ToInt64(c.Req.FormValue(name), defVal...)
 }
 
 // 终止当前请求执行 并写入http响应
@@ -125,6 +135,7 @@ func (c *Controller) Abort(httpCode int, message string) {
 	panic(HttpResponseEnd)
 }
 
+// SetHeader 设置响应头
 func (c *Controller) SetHeader(headerOptions map[string]string) *Controller {
 	if len(headerOptions) > 0 {
 		for field, val := range headerOptions {
@@ -132,6 +143,11 @@ func (c *Controller) SetHeader(headerOptions map[string]string) *Controller {
 		}
 	}
 	return c
+}
+
+// GetHeader 获取请求头
+func (c *Controller) GetHeader(name string) string {
+	return c.Req.Header.Get(name)
 }
 
 // 成功响应
