@@ -66,6 +66,9 @@ func (m *mcManager) connect(item *gjson.Result) error {
 
 // 获取memcached
 func Mc(name string) (*Memcache, error) {
+	if mc == nil {
+		return nil, errors.New("未初始化Memcached")
+	}
 	mc.lock.RLock()
 	defer mc.lock.RUnlock()
 

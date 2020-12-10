@@ -91,15 +91,12 @@ func toInt64(value interface{}) int64 {
 // CreateAnyTypeSlice interface{}转为 []interface{}
 func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
 	val, ok := isSlice(slice)
-
 	if !ok {
 		return nil, false
 	}
 
 	sliceLen := val.Len()
-
 	out := make([]interface{}, sliceLen)
-
 	for i := 0; i < sliceLen; i++ {
 		out[i] = val.Index(i).Interface()
 	}
@@ -107,14 +104,12 @@ func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
 	return out, true
 }
 
-
 // isSlice 判断是否为slcie数据
-func isSlice(arg interface{}) (val reflect.Value, ok bool) {
-	val = reflect.ValueOf(arg)
-
+func isSlice(arg interface{}) (reflect.Value, bool) {
+	val := reflect.ValueOf(arg)
+	ok := false
 	if val.Kind() == reflect.Slice {
 		ok = true
 	}
-
-	return
+	return val, ok
 }

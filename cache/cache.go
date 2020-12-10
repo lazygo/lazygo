@@ -25,6 +25,9 @@ type adapter interface {
 	init(map[string]interface{}) error
 }
 
+// 缓存未初始化
+var Uninitialized = errors.New("缓存未初始化")
+
 // 适配器注册器
 var registry = map[string]adapter{}
 
@@ -60,7 +63,7 @@ func Init(adapterName string, opt map[string]interface{}) {
 // Remember 设置缓存
 func Remember(key string, value interface{}, ttl time.Duration) DataResult {
 	if setting == nil {
-		panic(errors.New("缓存未初始化"))
+		panic(Uninitialized)
 	}
 	// 获取适配器
 	adapterName := setting.adapterName
@@ -73,7 +76,7 @@ func Remember(key string, value interface{}, ttl time.Duration) DataResult {
 // Get 获取缓存
 func Get(key string) (DataResult, error) {
 	if setting == nil {
-		panic(errors.New("缓存未初始化"))
+		panic(Uninitialized)
 	}
 	// 获取适配器
 	adapterName := setting.adapterName
@@ -86,7 +89,7 @@ func Get(key string) (DataResult, error) {
 // Has 判断缓存是否存在
 func Has(key string) bool {
 	if setting == nil {
-		panic(errors.New("缓存未初始化"))
+		panic(Uninitialized)
 	}
 	// 获取适配器
 	adapterName := setting.adapterName
@@ -99,7 +102,7 @@ func Has(key string) bool {
 // Forget 删除缓存
 func Forget(key string) bool {
 	if setting == nil {
-		panic(errors.New("缓存未初始化"))
+		panic(Uninitialized)
 	}
 	// 获取适配器
 	adapterName := setting.adapterName

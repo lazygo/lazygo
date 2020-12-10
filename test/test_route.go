@@ -11,7 +11,7 @@ func main() {
 	r := lazygo.NewRouter()
 	r.RegisterController(&app.TestController{})
 	config.LoadFile("test")
-	conf, err := config.Config.GetSection("server")
+	conf, err := config.GetSection("server")
 	utils.CheckError(err)
 	s ,err := lazygo.NewServer(conf, r)
 	utils.CheckError(err)

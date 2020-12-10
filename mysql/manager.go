@@ -93,6 +93,9 @@ func (m *mysqlManager) connect(item *gjson.Result) error {
 
 // Database 通过名称获取数据库
 func Database(name string) (*Db, error) {
+	if manager == nil {
+		return nil, errors.New("未初始化Mysql")
+	}
 	manager.lock.RLock()
 	defer manager.lock.RUnlock()
 
