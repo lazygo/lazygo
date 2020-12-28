@@ -7,33 +7,11 @@ import (
 	"net"
 	"net/http"
 	"sync"
-	"time"
 )
 
 type (
-	// Engine is the top-level framework instance.
-	Engine struct {
-		common
-		premiddleware    []MiddlewareFunc
-		middleware       []MiddlewareFunc
-		maxParam         *int
-		router           *Router
-		notFoundHandler  HandlerFunc
-		pool             sync.Pool
-		Server           *http.Server
-		Listener         net.Listener
-		Debug            bool
-		HTTPErrorHandler HTTPErrorHandler
-		Logger           *log.Logger
-		ListenerNetwork  string
-	}
-
-	// HTTPError represents an error that occurred while handling a request.
-	HTTPError struct {
-		Code     int         `json:"-"`
-		Message  interface{} `json:"message"`
-		Internal error       `json:"-"` // Stores the error returned by an external dependency
-	}
+	// HTTPErrorHandler is a centralized HTTP error handler.
+	HTTPErrorHandler func(error, Context)
 
 	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
@@ -41,12 +19,26 @@ type (
 	// HandlerFunc defines a function to serve HTTP requests.
 	HandlerFunc func(Context) error
 
-	// HTTPErrorHandler is a centralized HTTP error handler.
-	HTTPErrorHandler func(error, Context)
-
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
 )
+
+// Engine is the top-level framework instance.
+type Engine struct {
+	common
+	premiddleware    []MiddlewareFunc
+	middleware       []MiddlewareFunc
+	maxParam         *int
+	router           *Router
+	notFoundHandler  HandlerFunc
+	pool             sync.Pool
+	Server           *http.Server
+	Listener         net.Listener
+	Debug            bool
+	HTTPErrorHandler HTTPErrorHandler
+	Logger           *log.Logger
+	ListenerNetwork  string
+}
 
 var (
 	methods = [...]string{
@@ -61,17 +53,6 @@ var (
 		http.MethodPut,
 		http.MethodTrace,
 		REPORT,
-	}
-)
-
-// Error handlers
-var (
-	NotFoundHandler = func(c Context) error {
-		return ErrNotFound
-	}
-
-	MethodNotAllowedHandler = func(c Context) error {
-		return ErrMethodNotAllowed
 	}
 )
 
@@ -259,56 +240,6 @@ func (e *Engine) Close() error {
 // It internally calls `http.Server#Shutdown()`.
 func (e *Engine) Shutdown(ctx stdContext.Context) error {
 	return e.Server.Shutdown(ctx)
-}
-
-// Error makes it compatible with `error` interface.
-func (he *HTTPError) Error() string {
-	if he.Internal == nil {
-		return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
-	}
-	return fmt.Sprintf("code=%d, message=%v, internal=%v", he.Code, he.Message, he.Internal)
-}
-
-// SetInternal sets error to HTTPError.Internal
-func (he *HTTPError) SetInternal(err error) *HTTPError {
-	he.Internal = err
-	return he
-}
-
-// Unwrap satisfies the Go 1.13 error wrapper interface.
-func (he *HTTPError) Unwrap() error {
-	return he.Internal
-}
-
-// tcpKeepAliveListener sets TCP keep-alive timeouts on accepted
-// connections. It's used by ListenAndServe and ListenAndServeTLS so
-// dead TCP connections (e.g. closing laptop mid-download) eventually
-// go away.
-type tcpKeepAliveListener struct {
-	*net.TCPListener
-}
-
-func (ln tcpKeepAliveListener) Accept() (c net.Conn, err error) {
-	if c, err = ln.AcceptTCP(); err != nil {
-		return
-	} else if err = c.(*net.TCPConn).SetKeepAlive(true); err != nil {
-		return
-	}
-	// Ignore error from setting the KeepAlivePeriod as some systems, such as
-	// OpenBSD, do not support setting TCP_USER_TIMEOUT on IPPROTO_TCP
-	_ = c.(*net.TCPConn).SetKeepAlivePeriod(3 * time.Minute)
-	return
-}
-
-func newListener(address, network string) (*tcpKeepAliveListener, error) {
-	if network != "tcp" && network != "tcp4" && network != "tcp6" {
-		return nil, ErrInvalidListenerNetwork
-	}
-	l, err := net.Listen(network, address)
-	if err != nil {
-		return nil, err
-	}
-	return &tcpKeepAliveListener{l.(*net.TCPListener)}, nil
 }
 
 func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {

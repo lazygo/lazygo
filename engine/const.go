@@ -1,39 +1,8 @@
 package engine
 
 import (
-	"errors"
 	"net/http"
 )
-
-// Errors
-var (
-	ErrUnsupportedMediaType        = NewHTTPError(http.StatusUnsupportedMediaType)
-	ErrNotFound                    = NewHTTPError(http.StatusNotFound)
-	ErrUnauthorized                = NewHTTPError(http.StatusUnauthorized)
-	ErrForbidden                   = NewHTTPError(http.StatusForbidden)
-	ErrMethodNotAllowed            = NewHTTPError(http.StatusMethodNotAllowed)
-	ErrStatusRequestEntityTooLarge = NewHTTPError(http.StatusRequestEntityTooLarge)
-	ErrTooManyRequests             = NewHTTPError(http.StatusTooManyRequests)
-	ErrBadRequest                  = NewHTTPError(http.StatusBadRequest)
-	ErrBadGateway                  = NewHTTPError(http.StatusBadGateway)
-	ErrInternalServerError         = NewHTTPError(http.StatusInternalServerError)
-	ErrRequestTimeout              = NewHTTPError(http.StatusRequestTimeout)
-	ErrServiceUnavailable          = NewHTTPError(http.StatusServiceUnavailable)
-	ErrValidatorNotRegistered      = errors.New("validator not registered")
-	ErrActionNotExists             = errors.New("action not exists")
-	ErrInvalidRedirectCode         = errors.New("invalid redirect status code")
-	ErrCookieNotFound              = errors.New("cookie not found")
-	ErrInvalidListenerNetwork      = errors.New("invalid listener network")
-)
-
-// NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, message ...interface{}) *HTTPError {
-	he := &HTTPError{Code: code, Message: http.StatusText(code)}
-	if len(message) > 0 {
-		he.Message = message[0]
-	}
-	return he
-}
 
 // HTTP methods
 // NOTE: Deprecated, please use the stdlib constants directly instead.
