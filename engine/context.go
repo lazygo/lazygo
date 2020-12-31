@@ -3,10 +3,14 @@ package engine
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/lazygo/lazygo/utils"
 	"io"
+	"mime/multipart"
 	"net/http"
+	"net/url"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 )
 
@@ -26,11 +30,36 @@ type (
 		// ParamValues returns path parameter values.
 		ParamValues() []string
 
+		GetString(name string, defVal ...string) string
+		GetInt(name string, defVal ...int) int
+		GetInt64(name string, defVal ...int64) int64
+		PostString(name string, defVal ...string) string
+		PostInt(name string, defVal ...int) int
+		PostInt64(name string, defVal ...int64) int64
+
+		QueryParam(name string) string
+		FormValue(name string) string
+		FormParams() (url.Values, error)
+		FormFile(name string) (*multipart.FileHeader, error)
+		MultipartForm() (*multipart.Form, error)
+
 		// Get retrieves data from the context.
 		Get(key string) interface{}
 
 		// Set saves data in the context.
 		Set(key string, val interface{})
+
+		// SetHeader 设置响应头
+		SetHeader(headerOptions map[string]string) *context
+
+		// GetHeader 获取请求头
+		GetHeader(name string) string
+
+		// 失败响应
+		ApiFail(code int, message string, data interface{})
+
+		// 成功响应
+		ApiSucc(data map[string]interface{}, message string)
 
 		// JSON sends a JSON response with status code.
 		JSON(code int, i interface{}) error
@@ -70,6 +99,7 @@ type (
 		path           string
 		pnames         []string
 		pvalues        []string
+		query          url.Values
 		handler        HandlerFunc
 		store          Map
 		engine         *Engine
@@ -98,6 +128,7 @@ func (c *context) ResponseWriter() *ResponseWriter {
 	return c.responseWriter
 }
 
+// 路由参数
 func (c *context) Param(name string) string {
 	for i, n := range c.pnames {
 		if i < len(c.pvalues) {
@@ -109,8 +140,77 @@ func (c *context) Param(name string) string {
 	return ""
 }
 
+// 路由参数
 func (c *context) ParamValues() []string {
 	return c.pvalues[:len(c.pnames)]
+}
+
+// 获取Get字符串变量
+func (c *context) GetString(name string, defVal ...string) string {
+	return utils.ToString(c.QueryParam(name), defVal...)
+}
+
+// 获取Get整型变量
+func (c *context) GetInt(name string, defVal ...int) int {
+	return utils.ToInt(c.QueryParam(name), defVal...)
+}
+
+// 获取Get整型变量
+func (c *context) GetInt64(name string, defVal ...int64) int64 {
+	return utils.ToInt64(c.QueryParam(name), defVal...)
+}
+
+// 获取Post字符串变量
+func (c *context) PostString(name string, defVal ...string) string {
+	return utils.ToString(c.FormValue(name), defVal...)
+}
+
+// 获取Post整型变量
+func (c *context) PostInt(name string, defVal ...int) int {
+	return utils.ToInt(c.FormValue(name), defVal...)
+}
+
+// 获取Post整型变量
+func (c *context) PostInt64(name string, defVal ...int64) int64 {
+	return utils.ToInt64(c.FormValue(name), defVal...)
+}
+
+func (c *context) QueryParam(name string) string {
+	if c.query == nil {
+		c.query = c.request.URL.Query()
+	}
+	return c.query.Get(name)
+}
+
+func (c *context) FormValue(name string) string {
+	return c.request.FormValue(name)
+}
+
+func (c *context) FormParams() (url.Values, error) {
+	if strings.HasPrefix(c.request.Header.Get(HeaderContentType), MIMEMultipartForm) {
+		if err := c.request.ParseMultipartForm(defaultMemory); err != nil {
+			return nil, err
+		}
+	} else {
+		if err := c.request.ParseForm(); err != nil {
+			return nil, err
+		}
+	}
+	return c.request.Form, nil
+}
+
+func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
+	f, fh, err := c.request.FormFile(name)
+	if err != nil {
+		return nil, err
+	}
+	f.Close()
+	return fh, nil
+}
+
+func (c *context) MultipartForm() (*multipart.Form, error) {
+	err := c.request.ParseMultipartForm(defaultMemory)
+	return c.request.MultipartForm, err
 }
 
 func (c *context) Get(key string) interface{} {
@@ -129,15 +229,46 @@ func (c *context) Set(key string, val interface{}) {
 	c.store[key] = val
 }
 
-func (c *context) JSON(code int, i interface{}) (err error) {
-	return c.json(code, i, "")
+// SetHeader 设置响应头
+func (c *context) SetHeader(headerOptions map[string]string) *context {
+	if len(headerOptions) > 0 {
+		for field, val := range headerOptions {
+			c.responseWriter.Header().Set(field, val)
+		}
+	}
+	return c
 }
 
-func (c *context) json(code int, i interface{}, indent string) error {
-	enc := json.NewEncoder(c.responseWriter)
-	if indent != "" {
-		enc.SetIndent("", indent)
+// GetHeader 获取请求头
+func (c *context) GetHeader(name string) string {
+	return c.responseWriter.Header().Get(name)
+}
+
+// 成功响应
+func (c *context) ApiSucc(data map[string]interface{}, message string) {
+	if data == nil {
+		data = map[string]interface{}{}
 	}
+	result := map[string]interface{}{
+		"code":    200,
+		"message": message,
+		"data":    data,
+	}
+	c.JSON(200, result)
+}
+
+// 失败响应
+func (c *context) ApiFail(code int, message string, data interface{}) {
+	result := map[string]interface{}{
+		"code":    code,
+		"message": message,
+		"data":    data,
+	}
+	c.JSON(200, result)
+}
+
+func (c *context) JSON(code int, i interface{}) (err error) {
+	enc := json.NewEncoder(c.responseWriter)
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.responseWriter.Status = code
 	return enc.Encode(i)
@@ -225,6 +356,7 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	c.store = nil
 	c.path = ""
 	c.pnames = nil
+	c.query = nil
 	// NOTE: Don't reset because it has to have length c.engine.maxParam at all times
 	for i := 0; i < *c.engine.maxParam; i++ {
 		c.pvalues[i] = ""

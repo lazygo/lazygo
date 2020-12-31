@@ -70,7 +70,7 @@ func (m *mysqlManager) connect(item *gjson.Result) error {
 	dataSourceName := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
 		defaultString(user, "root"),
-		defaultString(passwd, "root"),
+		passwd,
 		defaultString(host, "127.0.0.1"),
 		defaultInt64(port, 3306),
 		defaultString(dbname, "test"),

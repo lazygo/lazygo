@@ -21,6 +21,9 @@ type (
 
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
+
+	// 控制器
+	Controller struct{}
 )
 
 // Engine is the top-level framework instance.
