@@ -40,3 +40,11 @@ func (g *Group) Add(method, path string, handler HandlerFunc, middleware ...Midd
 	m = append(m, middleware...)
 	g.engine.Add(method, g.prefix+path, handler, m...)
 }
+
+// Group creates a new sub-group with prefix and optional sub-group-level middleware.
+func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
+	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
+	m = append(m, g.middleware...)
+	m = append(m, middleware...)
+	return g.engine.Group(g.prefix+prefix, m...)
+}

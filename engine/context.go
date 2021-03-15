@@ -43,11 +43,11 @@ type (
 		FormFile(name string) (*multipart.FileHeader, error)
 		MultipartForm() (*multipart.Form, error)
 
-		// Get retrieves data from the context.
-		Get(key string) interface{}
+		// GetVar 取出存入当前请求context的数据
+		GetVar(key string) interface{}
 
-		// Set saves data in the context.
-		Set(key string, val interface{})
+		// SetVar 存入数据到当前请求的context
+		SetVar(key string, val interface{})
 
 		// SetHeader 设置响应头
 		SetHeader(headerOptions map[string]string) *context
@@ -213,13 +213,13 @@ func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm, err
 }
 
-func (c *context) Get(key string) interface{} {
+func (c *context) GetVar(key string) interface{} {
 	c.lock.RLock()
 	defer c.lock.RUnlock()
 	return c.store[key]
 }
 
-func (c *context) Set(key string, val interface{}) {
+func (c *context) SetVar(key string, val interface{}) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
