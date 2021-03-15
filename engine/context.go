@@ -20,9 +20,11 @@ type (
 	Context interface {
 		// Request returns `*http.Request`.
 		Request() *http.Request
+		SetRequest(*http.Request)
 
 		// ResponseWriter returns `*Response`.
 		ResponseWriter() *ResponseWriter
+		SetResponseWriter(*ResponseWriter)
 
 		// Param returns path parameter by name.
 		Param(name string) string
@@ -57,19 +59,21 @@ type (
 
 		// 失败响应
 		ApiFail(code int, message string, data interface{})
-
 		// 成功响应
 		ApiSucc(data map[string]interface{}, message string)
 
 		// JSON sends a JSON response with status code.
 		JSON(code int, i interface{}) error
-
 		// Blob sends a blob response with status code and content type.
 		Blob(code int, contentType string, b []byte) error
 
+		// HTML sends an HTTP response with status code.
+		HTML(code int, html string) error
+		// HTMLBlob sends an HTTP blob response with status code.
+		HTMLBlob(code int, b []byte) error
+
 		// Stream sends a streaming response with status code and content type.
 		Stream(code int, contentType string, r io.Reader) error
-
 		// File sends a response with the content of the file.
 		File(file string) error
 
@@ -124,8 +128,16 @@ func (c *context) Request() *http.Request {
 	return c.request
 }
 
+func (c *context) SetRequest(r *http.Request) {
+	c.request = r
+}
+
 func (c *context) ResponseWriter() *ResponseWriter {
 	return c.responseWriter
+}
+
+func (c *context) SetResponseWriter(w *ResponseWriter) {
+	c.responseWriter = w
 }
 
 // 路由参数
@@ -309,6 +321,14 @@ func (c *context) File(file string) (err error) {
 	}
 	http.ServeContent(c.responseWriter, c.Request(), fi.Name(), fi.ModTime(), f)
 	return
+}
+
+func (c *context) HTML(code int, html string) (err error) {
+	return c.HTMLBlob(code, []byte(html))
+}
+
+func (c *context) HTMLBlob(code int, b []byte) (err error) {
+	return c.Blob(code, MIMETextHTMLCharsetUTF8, b)
 }
 
 func (c *context) Attachment(file, name string) error {
