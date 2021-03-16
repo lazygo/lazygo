@@ -58,9 +58,9 @@ type (
 		GetHeader(name string) string
 
 		// 失败响应
-		ApiFail(code int, message string, data interface{})
+		ApiFail(code int, message string, data interface{}) error
 		// 成功响应
-		ApiSucc(data map[string]interface{}, message string)
+		ApiSucc(data map[string]interface{}, message string) error
 
 		// JSON sends a JSON response with status code.
 		JSON(code int, i interface{}) error
@@ -257,7 +257,7 @@ func (c *context) GetHeader(name string) string {
 }
 
 // 成功响应
-func (c *context) ApiSucc(data map[string]interface{}, message string) {
+func (c *context) ApiSucc(data map[string]interface{}, message string) error {
 	if data == nil {
 		data = map[string]interface{}{}
 	}
@@ -266,41 +266,41 @@ func (c *context) ApiSucc(data map[string]interface{}, message string) {
 		"message": message,
 		"data":    data,
 	}
-	c.JSON(200, result)
+	return c.JSON(200, result)
 }
 
 // 失败响应
-func (c *context) ApiFail(code int, message string, data interface{}) {
+func (c *context) ApiFail(code int, message string, data interface{}) error {
 	result := map[string]interface{}{
 		"code":    code,
 		"message": message,
 		"data":    data,
 	}
-	c.JSON(200, result)
+	return c.JSON(200, result)
 }
 
-func (c *context) JSON(code int, i interface{}) (err error) {
+func (c *context) JSON(code int, i interface{}) error {
 	enc := json.NewEncoder(c.responseWriter)
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.responseWriter.Status = code
 	return enc.Encode(i)
 }
 
-func (c *context) Blob(code int, contentType string, b []byte) (err error) {
+func (c *context) Blob(code int, contentType string, b []byte) error {
 	c.writeContentType(contentType)
 	c.responseWriter.WriteHeader(code)
-	_, err = c.responseWriter.Write(b)
-	return
+	_, err := c.responseWriter.Write(b)
+	return err
 }
 
-func (c *context) Stream(code int, contentType string, r io.Reader) (err error) {
+func (c *context) Stream(code int, contentType string, r io.Reader) error {
 	c.writeContentType(contentType)
 	c.responseWriter.WriteHeader(code)
-	_, err = io.Copy(c.responseWriter, r)
-	return
+	_, err := io.Copy(c.responseWriter, r)
+	return err
 }
 
-func (c *context) File(file string) (err error) {
+func (c *context) File(file string) error {
 	f, err := os.Open(file)
 	if err != nil {
 		return NotFoundHandler(c)
@@ -316,18 +316,18 @@ func (c *context) File(file string) (err error) {
 		}
 		defer f.Close()
 		if fi, err = f.Stat(); err != nil {
-			return
+			return err
 		}
 	}
 	http.ServeContent(c.responseWriter, c.Request(), fi.Name(), fi.ModTime(), f)
-	return
+	return err
 }
 
-func (c *context) HTML(code int, html string) (err error) {
+func (c *context) HTML(code int, html string) error {
 	return c.HTMLBlob(code, []byte(html))
 }
 
-func (c *context) HTMLBlob(code int, b []byte) (err error) {
+func (c *context) HTMLBlob(code int, b []byte) error {
 	return c.Blob(code, MIMETextHTMLCharsetUTF8, b)
 }
 
