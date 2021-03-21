@@ -61,7 +61,7 @@ var defaultCookieJar http.CookieJar
 func NewRequest(rawUrl, method string) *HttpRequest {
 	var resp http.Response
 	u, err := url.Parse(rawUrl)
-	CheckError(err)
+	checkError(err)
 	req := http.Request{
 		URL:        u,
 		Method:     method,
@@ -169,7 +169,7 @@ func (h *HttpRequest) SetParams(params map[string]interface{}) *HttpRequest {
 				h.params.Set(k, vv)
 			}
 		default:
-			h.params.Add(k, ToString(v))
+			h.params.Add(k, toString(v))
 		}
 	}
 	return h
@@ -245,16 +245,16 @@ func (h *HttpRequest) buildURL(paramBody string) {
 		if len(h.files) > 0 {
 			pr, pw := io.Pipe()
 			bodyWriter := multipart.NewWriter(pw)
-			Go(func() {
+			recoverGo(func() {
 				for formname, filename := range h.files {
 					fileWriter, err := bodyWriter.CreateFormFile(formname, filename)
-					CheckError(err)
+					checkError(err)
 					fh, err := os.Open(filename)
-					CheckError(err)
+					checkError(err)
 					//iocopy
 					_, err = io.Copy(fileWriter, fh)
 					_ = fh.Close()
-					CheckError(err)
+					checkError(err)
 				}
 				for k, v := range h.params {
 					for _, vv := range v {
@@ -292,7 +292,7 @@ func (h *HttpRequest) doRequest() (*http.Response, error) {
 	trans := &http.Transport{
 		// TLSClientConfig:     h.settings.TLSClientConfig,
 		Proxy:               h.settings.Proxy,
-		Dial:                TimeoutDialer(h.settings.ConnectTimeout, h.settings.ReadWriteTimeout),
+		Dial:                timeoutDialer(h.settings.ConnectTimeout, h.settings.ReadWriteTimeout),
 		MaxIdleConnsPerHost: -1,
 	}
 

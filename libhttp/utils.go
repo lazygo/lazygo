@@ -7,14 +7,14 @@ import (
 	"time"
 )
 
-func CheckError(err error) {
+func checkError(err error) {
 	if err != nil {
 		fmt.Println(err.Error())
 		panic(err)
 	}
 }
 
-func ToString(value interface{}) string {
+func toString(value interface{}) string {
 	var str string
 	switch value.(type) {
 	case string:
@@ -31,7 +31,7 @@ func ToString(value interface{}) string {
 	return str
 }
 
-func Go(callback func()) {
+func recoverGo(callback func()) {
 	go func() {
 		defer func() { // 防止程序异常退出
 			if err := recover(); err != nil {
@@ -42,8 +42,8 @@ func Go(callback func()) {
 	}()
 }
 
-// TimeoutDialer returns functions of connection dialer with timeout settings for http.Transport Dial field.
-func TimeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) func(net, addr string) (net.Conn, error) {
+// timeoutDialer returns functions of connection dialer with timeout settings for http.Transport Dial field.
+func timeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) func(net, addr string) (net.Conn, error) {
 	return func(netw, addr string) (net.Conn, error) {
 		conn, err := net.DialTimeout(netw, addr, cTimeout)
 		if err != nil {
