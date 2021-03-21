@@ -108,3 +108,11 @@ func ToInt(value interface{}, defVal ...int) int {
 
 	return d
 }
+
+// Iif 模拟三元运算符
+func Iif(expr bool, trueVal interface{}, falseVal interface{}) interface{} {
+	if expr {
+		return trueVal
+	}
+	return falseVal
+}
