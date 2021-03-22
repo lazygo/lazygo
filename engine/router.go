@@ -431,7 +431,6 @@ func (r *Router) fetchPath(csnd *node) (string, bool) {
 	if csnd.methodHandler == nil {
 		return "", false
 	}
-	csnd.methodHandler = nil
 	t := reflect.TypeOf(*csnd.methodHandler)
 	v := reflect.ValueOf(*csnd.methodHandler)
 	for k := 0; k < t.NumField(); k++ {
