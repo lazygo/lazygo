@@ -1,6 +1,7 @@
 package engine
 
 import (
+	"reflect"
 	"strings"
 )
 
@@ -363,4 +364,84 @@ func (r *Router) Find(method, path string, c Context) {
 	}
 
 	return
+}
+
+type sNode struct {
+	childs children
+	curr   int
+}
+
+func (n *sNode) current() *node {
+	if n.curr < len(n.childs) {
+		return n.childs[n.curr]
+	}
+	return nil
+}
+
+// GetList 获取所有路由
+func (r *Router) GetList() []string {
+
+	var paths []string
+
+	stack := []*sNode{
+		{children{r.tree}, 0},
+	}
+
+	for {
+		l := len(stack)
+		if l <= 0 {
+			break
+		}
+		snd := stack[l-1] // 取栈最后一个node
+		csnd := snd.current()
+
+		if snd.childs == nil {
+			// 出栈
+			stack = stack[0 : l-1]
+		} else {
+			if csnd.children != nil {
+				childs := csnd.children
+				// 压栈
+				stack = append(stack, &sNode{
+					childs,
+					0,
+				})
+			}
+
+			// 父级指针后移
+			snd.curr++
+			if snd.curr >= len(snd.childs) {
+				// last
+				snd.childs = nil
+			}
+
+			// 获取路由
+			if path, ok := r.fetchPath(csnd); ok {
+				paths = append(paths, path)
+			}
+			//
+		}
+	}
+
+	return paths
+}
+
+// fetchPath 获取有效node的path
+func (r *Router) fetchPath(csnd *node) (string, bool) {
+	if csnd.methodHandler == nil {
+		return "", false
+	}
+	csnd.methodHandler = nil
+	t := reflect.TypeOf(*csnd.methodHandler)
+	v := reflect.ValueOf(*csnd.methodHandler)
+	for k := 0; k < t.NumField(); k++ {
+		if v.Field(k).IsNil() {
+			continue
+		}
+		if csnd.kind == 0 {
+			return csnd.ppath, true
+		}
+		break
+	}
+	return "", false
 }
