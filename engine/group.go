@@ -21,13 +21,13 @@ func newGroup(prefix string, e *Engine) *Group {
 // Use implements `Engine#Use()` for sub-routes within the Group.
 func (g *Group) Use(middleware ...MiddlewareFunc) {
 	g.middleware = append(g.middleware, middleware...)
-	if len(g.middleware) == 0 {
-		return
-	}
+	// if len(g.middleware) == 0 {
+	// 	return
+	// }
 	// Allow all requests to reach the group as they might get dropped if router
 	// doesn't find a match, making none of the group middleware process.
-	g.Any("", NotFoundHandler)
-	g.Any("/*", NotFoundHandler)
+	// g.Any("", NotFoundHandler)
+	// g.Any("/*", NotFoundHandler)
 }
 
 // Add implements `Engine#Add()` for sub-routes within the Group.
