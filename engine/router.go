@@ -26,6 +26,11 @@ type (
 		trace    HandlerFunc
 		report   HandlerFunc
 	}
+
+	pair struct {
+		Method string
+		Path string
+	}
 )
 
 const (
@@ -379,9 +384,9 @@ func (n *sNode) current() *node {
 }
 
 // GetList 获取所有路由
-func (r *Router) GetList() []string {
+func (r *Router) GetList() []*pair {
 
-	var paths []string
+	var list []*pair
 
 	stack := []*sNode{
 		{children{r.tree}, 0},
@@ -416,20 +421,26 @@ func (r *Router) GetList() []string {
 			}
 
 			// 获取路由
-			if path, ok := r.fetchPath(csnd); ok {
-				paths = append(paths, path)
+			if pr, ok := r.fetchPath(csnd); ok {
+				list = append(list, pr...)
 			}
 			//
 		}
 	}
 
-	return paths
+	return list
 }
 
 // fetchPath 获取有效node的path
-func (r *Router) fetchPath(csnd *node) (string, bool) {
+func (r *Router) fetchPath(csnd *node) (list []*pair, ok bool) {
+	ok = false
+	if csnd.kind != 0 {
+		list = nil
+		return
+	}
 	if csnd.methodHandler == nil {
-		return "", false
+		list = nil
+		return
 	}
 	t := reflect.TypeOf(*csnd.methodHandler)
 	v := reflect.ValueOf(*csnd.methodHandler)
@@ -437,10 +448,9 @@ func (r *Router) fetchPath(csnd *node) (string, bool) {
 		if v.Field(k).IsNil() {
 			continue
 		}
-		if csnd.kind == 0 {
-			return csnd.ppath, true
-		}
-		break
+		method := t.Field(k).Name
+		list = append(list, &pair{method, csnd.ppath})
+		ok = true
 	}
-	return "", false
+	return
 }
