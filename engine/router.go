@@ -29,7 +29,7 @@ type (
 
 	pair struct {
 		Method string
-		Path string
+		Path   string
 	}
 )
 
@@ -448,7 +448,7 @@ func (r *Router) fetchPath(csnd *node) (list []*pair, ok bool) {
 		if v.Field(k).IsNil() {
 			continue
 		}
-		method := t.Field(k).Name
+		method := strings.ToUpper(t.Field(k).Name)
 		list = append(list, &pair{method, csnd.ppath})
 		ok = true
 	}
