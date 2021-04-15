@@ -39,26 +39,37 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 		switch cond[0].(type) {
 		case string:
 			// 字符串查询
-			b.WhereClause(cond[0].(string))
+			return b.WhereClause(cond[0].(string))
 		case map[string]interface{}:
 			// map拼接查询
-			b.WhereMap(cond[0].(map[string]interface{}))
+			return b.WhereMap(cond[0].(map[string]interface{}))
 		default:
 			panic("invalid arguments")
 		}
-		return b
 	case 2:
-		// in查询
 		k, ok := cond[0].(string)
 		if !ok {
 			break
 		}
+		// in查询
 		in, ok := CreateAnyTypeSlice(cond[1])
+		if ok {
+			return b.WhereIn(k, in)
+		}
+		// k = v
+		return b.Where(k, "=", cond[1])
+	case 3:
+		k, ok := cond[0].(string)
 		if !ok {
 			break
 		}
-		b.WhereIn(k, in)
-		return b
+		op, ok := cond[1].(string)
+		if !ok {
+			break
+		}
+		v := toString(cond[2])
+		// k op v
+		return b.WhereClause(build(k, op, v))
 	default:
 	}
 	panic("invalid arguments")
@@ -93,7 +104,7 @@ func (b *Builder) WhereIn(k string, in []interface{}) *Builder {
 	for _, v := range in {
 		arr = append(arr, Addslashes(toString(v)))
 	}
-	cond := fmt.Sprintf("`%s` IN('%s')", k, strings.Join(arr, "', '"))
+	cond := fmt.Sprintf("%s IN('%s')", buildK(k), strings.Join(arr, "', '"))
 	b.cond = append(b.cond, cond)
 	return b
 }
@@ -104,7 +115,7 @@ func (b *Builder) WhereNotIn(k string, in []interface{}) *Builder {
 	for _, v := range in {
 		arr = append(arr, Addslashes(toString(v)))
 	}
-	cond := fmt.Sprintf("`%s` NOT IN('%s')", k, strings.Join(arr, "', '"))
+	cond := fmt.Sprintf("%s NOT IN('%s')", buildK(k), strings.Join(arr, "', '"))
 	b.cond = append(b.cond, cond)
 	return b
 }
@@ -158,7 +169,26 @@ func buildVal(val map[string]interface{}, extra []string) string {
 // 示例 k = "name", op = "=", v ="li"    `name`='li'
 func build(k string, op string, v interface{}) string {
 	str := Addslashes(toString(v))
-	return fmt.Sprintf("`%s` %s '%s'", k, op, str)
+	return fmt.Sprintf("%s %s '%s'", buildK(k), op, str)
+}
+
+func buildK(k string) string {
+	k = strings.ReplaceAll(k, "`", "")
+	t := ""
+	idx := strings.Index(k, ".")
+	if idx != -1 {
+		t = k[:idx+1]
+		k = k[idx+1:]
+	}
+	return fmt.Sprintf("%s`%s`", t, k)
+}
+
+func buildFields(fields string) string {
+	arr := strings.Split(fields, ",")
+	for i, v := range arr {
+		arr[i] = buildK(strings.TrimSpace(v))
+	}
+	return strings.Join(arr, ", ")
 }
 
 // MakeQueryString 拼接查询语句字符串
@@ -168,7 +198,7 @@ func (b *Builder) MakeQueryString(fields string, order string, group string, lim
 		panic("没有指定表名")
 	}
 
-	queryString := fmt.Sprintf("SELECT %s FROM %s ", fields, b.table)
+	queryString := fmt.Sprintf("SELECT %s FROM %s ", buildFields(fields), b.table)
 
 	// 构建where条件
 	cond := b.buildCond()
@@ -199,12 +229,12 @@ func (b *Builder) MakeQueryString(fields string, order string, group string, lim
 // page int64 当前页
 func Multi(count int64, page int, perpage int) ResultData {
 	var data ResultData
-	data.Count = int64(math.Max(float64(count), 0)) // 总数
-	data.Page = int(math.Max(float64(page), 1)) // 当前页
-	data.PerPage = int(math.Max(float64(perpage), 1)) // 每页数量
+	data.Count = int64(math.Max(float64(count), 0))                              // 总数
+	data.Page = int(math.Max(float64(page), 1))                                  // 当前页
+	data.PerPage = int(math.Max(float64(perpage), 1))                            // 每页数量
 	data.PageCount = int(math.Ceil(float64(data.Count) / float64(data.PerPage))) // 总页数
-	data.Start = int(math.Max(float64(data.PerPage*data.Page-data.PerPage), 0)) // 当前页之前有多少条数据
-	data.Mark = data.Start + 1 // 当前页开始是第几条数据
+	data.Start = int(math.Max(float64(data.PerPage*data.Page-data.PerPage), 0))  // 当前页之前有多少条数据
+	data.Mark = data.Start + 1                                                   // 当前页开始是第几条数据
 	return data
 }
 
@@ -293,7 +323,7 @@ func (b *Builder) Insert(set map[string]interface{}) (int64, error) {
 	var fields []string
 	var values []string
 	for name, value := range set {
-		fields = append(fields, "`"+name+"`")
+		fields = append(fields, buildK(name))
 		values = append(values, "'"+Addslashes(toString(value))+"'")
 	}
 	queryString := "INSERT INTO " + b.table + " (" + strings.Join(fields, ",") + ") VALUES (" + strings.Join(values, ",") + ")"
@@ -368,15 +398,16 @@ func (b *Builder) Increment(column string, amount int64, set ...map[string]inter
 		return 0, ErrEmptyCond
 	}
 
+	column = buildK(column)
 	// 拼接自增语句
 	var extra []string
 	if amount >= 0 {
 		extra = []string{
-			fmt.Sprintf("`%s`=`%s`+%d", column, column, amount),
+			fmt.Sprintf("%s=%s+%d", column, column, amount),
 		}
 	} else {
 		extra = []string{
-			fmt.Sprintf("`%s`=`%s`-%d", column, column, -amount),
+			fmt.Sprintf("%s=%s-%d", column, column, -amount),
 		}
 	}
 
