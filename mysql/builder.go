@@ -11,6 +11,7 @@ import (
 // 防止在update、delete操作时，漏掉条件造成的严重后果
 // 如果确实不需要条件，请将条件设置为 1=1
 var ErrEmptyCond = errors.New("条件不能为空")
+var ErrEmptyValue = errors.New("值不能为空")
 
 // 查询构建器
 type Builder struct {
@@ -319,6 +320,10 @@ func (b *Builder) Insert(set map[string]interface{}) (int64, error) {
 		panic("没有指定表名")
 	}
 
+	if len(set) == 0 {
+		return 0, ErrEmptyValue
+	}
+
 	// 拼接查询语句
 	var fields []string
 	var values []string
@@ -358,6 +363,10 @@ func (b *Builder) Update(set map[string]interface{}, limit ...int) (int64, error
 		// 防止在update、delete操作时，漏掉条件造成的严重后果
 		// 如果确实不需要条件，请将条件设置为 1=1
 		return 0, ErrEmptyCond
+	}
+
+	if len(set) == 0 {
+		return 0, ErrEmptyValue
 	}
 
 	// 查询字符串
@@ -413,8 +422,8 @@ func (b *Builder) Increment(column string, amount int64, set ...map[string]inter
 
 	// 拼接sql
 	var queryString = ""
-	if len(set) == 1 && set[0] != nil {
-		queryString = "UPDATE " + b.table + " SET " + buildVal(set[0], extra) + " WHERE " + where
+	if len(set) > 0 && set[0] != nil {
+		queryString = "UPDATE " + b.table + " SET " + buildVal(mergeMap(set...), extra) + " WHERE " + where
 	} else {
 		queryString = "UPDATE " + b.table + " SET " + extra[0] + " WHERE " + where
 	}

@@ -113,3 +113,13 @@ func isSlice(arg interface{}) (reflect.Value, bool) {
 	}
 	return val, ok
 }
+
+func mergeMap(maps ...map[string]interface{}) map[string]interface{} {
+	var merged = make(map[string]interface{}, cap(maps))
+	for _, m := range maps {
+		for mk, mv := range m {
+			merged[mk] = mv
+		}
+	}
+	return merged
+}
