@@ -173,7 +173,12 @@ func build(k string, op string, v interface{}) string {
 	return fmt.Sprintf("%s %s '%s'", buildK(k), op, str)
 }
 
+// buildK key增加反引号
 func buildK(k string) string {
+	k = strings.TrimSpace(k)
+	if k == "*" {
+		return "*"
+	}
 	k = strings.ReplaceAll(k, "`", "")
 	t := ""
 	idx := strings.Index(k, ".")
