@@ -20,6 +20,8 @@ type Builder struct {
 	cond   []string // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
 }
 
+type Raw string
+
 // newBuilder 实例化查询构建器
 func newBuilder(schema *Db, table string) *Builder {
 	return &Builder{
@@ -189,16 +191,23 @@ func buildK(k string) string {
 	return fmt.Sprintf("%s`%s`", t, k)
 }
 
-func buildFields(fields string) string {
-	arr := strings.Split(fields, ",")
-	for i, v := range arr {
-		arr[i] = buildK(strings.TrimSpace(v))
+// buildFields 构造查询fields
+func buildFields(fields []interface{}) string {
+	arr := make([]string, len(fields), cap(fields))
+	for i, v := range fields {
+		str := toString(v)
+		switch v.(type) {
+		case Raw:
+			arr[i] = str
+		default:
+			arr[i] = buildK(strings.TrimSpace(str))
+		}
 	}
 	return strings.Join(arr, ", ")
 }
 
 // MakeQueryString 拼接查询语句字符串
-func (b *Builder) MakeQueryString(fields string, order string, group string, limit int, start int) string {
+func (b *Builder) MakeQueryString(fields []interface{}, order string, group string, limit int, start int) string {
 
 	if b.table == "" {
 		panic("没有指定表名")
@@ -249,7 +258,7 @@ func (b *Builder) Count() int64 {
 	if b.table == "" {
 		panic("没有指定表名")
 	}
-	data, err := b.FetchRow("COUNT(*) AS num", "", "", 0)
+	data, err := b.FetchRow([]interface{}{Raw("COUNT(*) AS num")}, "", "", 0)
 	if err != nil {
 		return 0
 	}
@@ -263,7 +272,7 @@ func (b *Builder) Count() int64 {
 // group string 分组字段 示例："user_group"
 // limit 结果数量
 // page 第几页，从1开始
-func (b *Builder) FetchWithPage(fields string, order string, group string, limit int, page int) (*ResultData, error) {
+func (b *Builder) FetchWithPage(fields []interface{}, order string, group string, limit int, page int) (*ResultData, error) {
 
 	cond := b.buildCond()
 	count := b.Clear().WhereClause(cond).Count()
@@ -280,7 +289,7 @@ func (b *Builder) FetchWithPage(fields string, order string, group string, limit
 // group string 分组字段 示例："user_group"
 // limit 结果数量
 // start 起始位置
-func (b *Builder) Fetch(fields string, order string, group string, limit int, start int) ([]map[string]interface{}, error) {
+func (b *Builder) Fetch(fields []interface{}, order string, group string, limit int, start int) ([]map[string]interface{}, error) {
 
 	queryString := b.MakeQueryString(fields, order, group, limit, start)
 
@@ -293,7 +302,7 @@ func (b *Builder) Fetch(fields string, order string, group string, limit int, st
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
 // start 起始位置
-func (b *Builder) FetchRow(fields string, order string, group string, start int) (map[string]interface{}, error) {
+func (b *Builder) FetchRow(fields []interface{}, order string, group string, start int) (map[string]interface{}, error) {
 
 	queryString := b.MakeQueryString(fields, order, group, 1, start)
 
@@ -305,16 +314,16 @@ func (b *Builder) FetchRow(fields string, order string, group string, start int)
 // order string 排序 示例："display_order DESC,id DESC"
 // group string 分组字段 示例："user_group"
 // start 起始位置
-func (b *Builder) FetchOne(field string, order string, group string, start int) string {
+func (b *Builder) FetchOne(field interface{}, order string, group string, start int) string {
 
-	queryString := b.MakeQueryString(field, order, group, 1, start)
+	queryString := b.MakeQueryString([]interface{}{field}, order, group, 1, start)
 
 	item, err := b.schema.GetRow(queryString)
 	if err != nil {
 		panic(err)
 	}
 
-	return toString(item[field])
+	return toString(item[toString(field)])
 }
 
 // Insert 单条插入
