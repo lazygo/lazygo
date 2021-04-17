@@ -162,7 +162,7 @@ builder := database.Table("table_name")
 
 // 可以通过指定参数调用的方式设置条件，性能高。
 builder.WhereMap(cond map[string]interface{})
-.WhereClause(cond string)
+.WhereRaw(cond string)
 .WhereIn(k string, in []interface{})
 .WhereNotIn(k string, in []interface{})
 

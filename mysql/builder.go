@@ -42,7 +42,7 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 		switch cond[0].(type) {
 		case string:
 			// 字符串查询
-			return b.WhereClause(cond[0].(string))
+			return b.WhereRaw(cond[0].(string))
 		case map[string]interface{}:
 			// map拼接查询
 			return b.WhereMap(cond[0].(map[string]interface{}))
@@ -72,7 +72,7 @@ func (b *Builder) Where(cond ...interface{}) *Builder {
 		}
 		v := toString(cond[2])
 		// k op v
-		return b.WhereClause(build(k, op, v))
+		return b.WhereRaw(build(k, op, v))
 	default:
 	}
 	panic("invalid arguments")
@@ -92,8 +92,8 @@ func (b *Builder) WhereMap(cond map[string]interface{}) *Builder {
 	return b
 }
 
-// WhereClause 子句查询
-func (b *Builder) WhereClause(cond string) *Builder {
+// WhereRaw 子句查询
+func (b *Builder) WhereRaw(cond string) *Builder {
 	cond = strings.Trim(cond, " ")
 	if cond != "" {
 		b.cond = append(b.cond, cond)
@@ -275,11 +275,11 @@ func (b *Builder) Count() int64 {
 func (b *Builder) FetchWithPage(fields []interface{}, order string, group string, limit int, page int) (*ResultData, error) {
 
 	cond := b.buildCond()
-	count := b.Clear().WhereClause(cond).Count()
+	count := b.Clear().WhereRaw(cond).Count()
 	data := Multi(count, page, limit)
 
 	var err error = nil
-	data.List, err = b.Clear().WhereClause(cond).Fetch(fields, order, group, limit, data.Start)
+	data.List, err = b.Clear().WhereRaw(cond).Fetch(fields, order, group, limit, data.Start)
 	return &data, err
 }
 
