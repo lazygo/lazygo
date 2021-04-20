@@ -115,9 +115,9 @@ func (e *Engine) DefaultHTTPErrorHandler(err error, c Context) {
 	message := he.Message
 	if m, ok := he.Message.(string); ok {
 		if e.Debug {
-			message = Map{"message": m, "error": err.Error()}
+			message = Map{"code": code, "message": m, "error": err.Error()}
 		} else {
-			message = Map{"message": m}
+			message = Map{"code": code, "message": m}
 		}
 	}
 
