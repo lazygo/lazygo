@@ -51,11 +51,11 @@ type (
 		// SetVar 存入数据到当前请求的context
 		SetVar(key string, val interface{})
 
-		// SetHeader 设置响应头
-		SetHeader(headerOptions map[string]string) *context
+		// SetResponseHeader 设置响应头
+		SetResponseHeader(headerOptions map[string]string) *context
 
-		// GetHeader 获取请求头
-		GetHeader(name string) string
+		// GetRequestHeader 获取请求头
+		GetRequestHeader(name string) string
 
 		// 失败响应
 		ApiFail(code int, message string, data interface{}) error
@@ -241,8 +241,8 @@ func (c *context) SetVar(key string, val interface{}) {
 	c.store[key] = val
 }
 
-// SetHeader 设置响应头
-func (c *context) SetHeader(headerOptions map[string]string) *context {
+// SetResponseHeader 设置响应头
+func (c *context) SetResponseHeader(headerOptions map[string]string) *context {
 	if len(headerOptions) > 0 {
 		for field, val := range headerOptions {
 			c.responseWriter.Header().Set(field, val)
@@ -251,9 +251,9 @@ func (c *context) SetHeader(headerOptions map[string]string) *context {
 	return c
 }
 
-// GetHeader 获取请求头
-func (c *context) GetHeader(name string) string {
-	return c.responseWriter.Header().Get(name)
+// GetRequestHeader 获取请求头
+func (c *context) GetRequestHeader(name string) string {
+	return c.request.Header.Get(name)
 }
 
 // 成功响应
