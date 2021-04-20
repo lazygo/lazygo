@@ -40,7 +40,7 @@ var (
 
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError struct {
-	Code     int         `json:"-"`
+	Code     int         `json:"code"`
 	Message  interface{} `json:"message"`
 	Internal error       `json:"-"` // Stores the error returned by an external dependency
 }
