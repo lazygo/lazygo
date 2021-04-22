@@ -26,6 +26,9 @@ type (
 		ResponseWriter() *ResponseWriter
 		SetResponseWriter(*ResponseWriter)
 
+		// GetRoutePath route info
+		GetRoutePath() string
+
 		// Param returns path parameter by name.
 		Param(name string) string
 
@@ -138,6 +141,10 @@ func (c *context) ResponseWriter() *ResponseWriter {
 
 func (c *context) SetResponseWriter(w *ResponseWriter) {
 	c.responseWriter = w
+}
+
+func (c *context) GetRoutePath() string {
+	return c.path
 }
 
 // 路由参数
