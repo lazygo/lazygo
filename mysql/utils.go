@@ -51,6 +51,12 @@ func toString(value interface{}) string {
 		str = string(value.([]byte))
 	case int:
 		str = strconv.Itoa(value.(int))
+	case int8:
+		str = strconv.Itoa(int(value.(int8)))
+	case int16:
+		str = strconv.Itoa(int(value.(int16)))
+	case int32:
+		str = strconv.Itoa(int(value.(int32)))
 	case int64:
 		str = strconv.FormatInt(value.(int64), 10)
 	case float32:

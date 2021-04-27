@@ -387,7 +387,49 @@ func (b *Builder) Update(set map[string]interface{}, limit ...int) (int64, error
 	queryString := "UPDATE " + b.table + " SET " + buildVal(set, []string{}) + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
-		queryString += fmt.Sprintf(" LIMIT %d", limit[0])
+		queryString += " LIMIT " + strconv.Itoa(limit[0])
+	}
+
+	// 执行更新语句
+	res, err := b.schema.Exec(queryString)
+	if err != nil {
+		return 0, err
+	}
+
+	// 获取影响的行数
+	return res.RowsAffected()
+}
+
+// UpdateRaw 更新
+// set map[string]interface{} 更新的字段
+// limit （可选参数）限制更新limit
+// 返回影响的条数，错误信息
+func (b *Builder) UpdateRaw(set string, limit ...int) (int64, error) {
+	if len(limit) > 1 {
+		panic("too many arguments")
+	}
+
+	if b.table == "" {
+		panic("没有指定表名")
+	}
+
+	// 构建where条件
+	where := b.buildCond()
+	if where == "" {
+		// 防止在update、delete操作时，漏掉条件造成的严重后果
+		// 如果确实不需要条件，请将条件设置为 1=1
+		return 0, ErrEmptyCond
+	}
+
+	if len(set) == 0 {
+		return 0, ErrEmptyValue
+	}
+
+	// 查询字符串
+	queryString := "UPDATE " + b.table + " SET " + set + " WHERE " + where
+
+	if len(limit) == 1 && limit[0] > 0 {
+		queryString += " LIMIT " + strconv.Itoa(limit[0])
 	}
 
 	// 执行更新语句
@@ -483,7 +525,7 @@ func (b *Builder) Delete(limit ...int) (int64, error) {
 	queryString := "DELETE FROM " + b.table + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
-		queryString += fmt.Sprintf(" LIMIT %d", limit[0])
+		queryString += " LIMIT " + strconv.Itoa(limit[0])
 	}
 
 	// 获取影响的行数
