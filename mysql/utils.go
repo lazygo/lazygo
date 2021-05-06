@@ -57,6 +57,8 @@ func toString(value interface{}) string {
 		str = strconv.FormatFloat(float64(value.(float32)), 'f', -1, 32)
 	case float64:
 		str = strconv.FormatFloat(value.(float64), 'f', -1, 64)
+	case Raw:
+		str = string(value.(Raw))
 	default:
 		str = ""
 	}
