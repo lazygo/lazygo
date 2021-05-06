@@ -20,10 +20,10 @@ func ToString(value interface{}, defVal ...string) string {
 		str = value.(string)
 	case []byte:
 		str = string(value.([]byte))
-	case int:
-		str = strconv.Itoa(value.(int))
-	case int64:
-		str = strconv.FormatInt(value.(int64), 10)
+	case int, int8, int16, int32, int64:
+		str = strconv.FormatInt(reflect.ValueOf(value).Int(), 10)
+	case uint, uint8, uint16, uint32, uint64:
+		str = strconv.FormatUint(reflect.ValueOf(value).Uint(), 10)
 	case float32:
 		str = strconv.FormatFloat(float64(value.(float32)), 'f', -1, 32)
 	case float64:
