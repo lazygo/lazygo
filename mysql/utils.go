@@ -1,47 +1,11 @@
 package mysql
 
 import (
-	"fmt"
 	"reflect"
 	"strconv"
 )
 
-// str == "" ? def : str
-func defaultString(str string, def string) string {
-	if str == "" {
-		return def
-	}
-	return str
-}
-
-// i == 0 ? def : i
-func defaultInt64(i int64, def int64) int64 {
-	if i == 0 {
-		return def
-	}
-	return i
-}
-
-// 转义字符串防止sql注入
-// 会在 \ ' " 之前增加斜杠\
-func Addslashes(v string) string {
-	pos := 0
-	buf := make([]byte, len(v)*2)
-	for i := 0; i < len(v); i++ {
-		c := v[i]
-		if c == '\'' || c == '"' || c == '\\' {
-			buf[pos] = '\\'
-			buf[pos+1] = c
-			pos += 2
-		} else {
-			buf[pos] = c
-			pos++
-		}
-	}
-	return string(buf[:pos])
-}
-
-// 转换为string
+// toString 转换为string
 func toString(value interface{}) string {
 	var str string
 	switch value.(type) {
@@ -65,31 +29,6 @@ func toString(value interface{}) string {
 	return str
 }
 
-// 转换为int64
-func toInt64(value interface{}) int64 {
-	val := reflect.ValueOf(value)
-	var d int64
-	var err error
-	switch value.(type) {
-	case int, int8, int16, int32, int64:
-		d = val.Int()
-	case uint, uint8, uint16, uint32, uint64:
-		d = int64(val.Uint())
-	case float32, float64:
-		d = int64(val.Float())
-	case string:
-		d, err = strconv.ParseInt(val.String(), 10, 64)
-	case []byte:
-		d, err = strconv.ParseInt(string(value.([]byte)), 10, 64)
-	default:
-		err = fmt.Errorf("ToInt64 need numeric not `%T`", value)
-	}
-	if err != nil {
-		d = 0
-	}
-	return d
-}
-
 // CreateAnyTypeSlice interface{}转为 []interface{}
 func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
 	val, ok := isSlice(slice)
@@ -106,7 +45,7 @@ func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
 	return out, true
 }
 
-// isSlice 判断是否为slcie数据
+// isSlice 判断是否为slice数据
 func isSlice(arg interface{}) (reflect.Value, bool) {
 	val := reflect.ValueOf(arg)
 	ok := false

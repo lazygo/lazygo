@@ -2,105 +2,101 @@ package mysql
 
 import (
 	"database/sql"
-	"errors"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/tidwall/gjson"
 	"sync"
 	"time"
 )
 
-type mysqlManager struct {
-	databases map[string]*Db
-	conf      *gjson.Result
-	lock      *sync.RWMutex
+type Config struct {
+	Name            string `json:"name" toml:"name"`
+	User            string `json:"user" toml:"user"`
+	Passwd          string `json:"passwd" toml:"passwd"`
+	Host            string `json:"host" toml:"host"`
+	Port            int    `json:"port" toml:"port"`
+	DbName          string `json:"db_name" toml:"db_name"`
+	Charset         string `json:"charset" toml:"charset"`
+	Prefix          string `json:"prefix" toml:"prefix"`
+	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
+	MaxIdleConns    int    `json:"max_idle_conns" toml:"max_idle_conns"`
+	ConnMaxLifetime int    `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
+}
+
+type Manager struct {
+	sync.Map
 }
 
 // 单例
-var manager *mysqlManager = nil
+var manager = &Manager{}
 
-/*
-配置文件格式
-[
-	{"name": "test_w", "user": "root", "passwd": "root", "host": "127.0.0.1", "port": 3306, "dbname": "test", "charset": "utf8", "maxOpenConns": 1000},
-	{"name": "test1-r", "user": "root", "passwd": "root", "host": "127.0.0.1", "port": 3306, "dbname": "test1", "charset": "utf8", "maxOpenConns": 1000}
-]
-*/
-// 框架初始化时调用，请不要在业务中调用
-// Init 初始化数据库连接
-func Init(conf *gjson.Result) error {
-	if manager != nil {
-		panic("数据库不能重复初始化")
-	}
-	// 保持单例
-	manager = &mysqlManager{
-		databases: map[string]*Db{},
-		conf:      conf,
-		lock:      new(sync.RWMutex),
-	}
-	for _, item := range conf.Array() {
-		err := manager.connect(&item)
+// init 初始化数据库连接
+func (m *Manager) init(conf []*Config) error {
+	for _, item := range conf {
+		if _, ok := manager.Load(item.Name); ok {
+			// 已连接的就不再次连接了
+			continue
+		}
+		database, err := manager.open(item)
 		if err != nil {
 			return err
 		}
+		db := newDb(item.Name, database, item.Prefix)
+		m.Store(item.Name, db)
 	}
 	return nil
 }
 
-// 连接数据库
-func (m *mysqlManager) connect(item *gjson.Result) error {
-	name := item.Get("name").String()
-	m.lock.RLock()
-	_, ok := m.databases[name]
-	m.lock.RUnlock()
-	if ok {
-		// 已连接的就不再次连接了
-		return nil
-	}
-	user := item.Get("user").String()
-	passwd := item.Get("passwd").String()
-	host := item.Get("host").String()
-	port := item.Get("port").Int()
-	dbname := item.Get("dbname").String()
-	charset := item.Get("charset").String()
-	prefix := item.Get("prefix").String()
-	maxOpenConns := item.Get("maxOpenConns").Int()
-	maxIdleConns := item.Get("maxIdleConns").Int()
-	connMaxLifetime := item.Get("connMaxLifetime").Int()
+// closeAll 关闭数据库连接
+func (m *Manager) closeAll() error {
+	var err error
+	m.Range(func(name, db interface{}) bool {
+		err = db.(*DB).Close()
+		if err != nil {
+			return false
+		}
+		m.Delete(name)
+		return true
+	})
+	return err
+}
+
+// open 连接数据库
+func (m *Manager) open(item *Config) (*sql.DB, error) {
 	dataSourceName := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
-		defaultString(user, "root"),
-		passwd,
-		defaultString(host, "127.0.0.1"),
-		defaultInt64(port, 3306),
-		defaultString(dbname, "test"),
-		defaultString(charset, "utf8"),
+		item.User,
+		item.Passwd,
+		item.Host,
+		item.Port,
+		item.DbName,
+		item.Charset,
 	)
 	database, err := sql.Open("mysql", dataSourceName)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	database.SetMaxIdleConns(int(defaultInt64(maxIdleConns, 16)))
-	database.SetMaxOpenConns(int(defaultInt64(maxOpenConns, 1000)))
-	if connMaxLifetime > 0 {
-		database.SetConnMaxLifetime(time.Duration(defaultInt64(connMaxLifetime, 60)) * time.Second)
+	database.SetMaxIdleConns(item.MaxIdleConns)
+	database.SetMaxOpenConns(item.MaxOpenConns)
+	if item.ConnMaxLifetime > 0 {
+		database.SetConnMaxLifetime(time.Duration(item.ConnMaxLifetime) * time.Second)
 	}
-	m.lock.Lock()
-	m.databases[name] = newDb(name, database, prefix)
-	m.lock.Unlock()
-	return nil
+	return database, nil
+}
+
+// Init 初始化数据库
+func Init(conf []*Config) error {
+	return manager.init(conf)
+}
+
+// CloseAll 关闭数据库连接
+func CloseAll() error {
+	return manager.closeAll()
 }
 
 // Database 通过名称获取数据库
-func Database(name string) (*Db, error) {
-	if manager == nil {
-		return nil, errors.New("未初始化Mysql")
+func Database(name string) (*DB, error) {
+	if databases, ok := manager.Load(name); ok {
+		return databases.(*DB), nil
 	}
-	manager.lock.RLock()
-	defer manager.lock.RUnlock()
-
-	if databases, ok := manager.databases[name]; ok {
-		return databases, nil
-	}
-	return nil, errors.New("指定数据库不存在，或未初始化")
+	return nil, ErrDatabaseNotExists
 }
