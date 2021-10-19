@@ -36,12 +36,11 @@ func (m *Manager) init(conf []*Config) error {
 			// 已连接的就不再次连接了
 			continue
 		}
-		database, err := manager.open(item)
+		db, err := manager.open(item)
 		if err != nil {
 			return err
 		}
-		db := newDb(item.Name, database, item.Prefix)
-		m.Store(item.Name, db)
+		m.Store(item.Name, newDb(item.Name, db, item.Prefix))
 	}
 	return nil
 }

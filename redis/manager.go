@@ -1,74 +1,63 @@
 package redis
 
 import (
-	"errors"
 	"fmt"
 	redigo "github.com/gomodule/redigo/redis"
-	"github.com/tidwall/gjson"
-	"os"
-	"os/signal"
 	"runtime"
 	"sync"
-	"syscall"
 	"time"
 )
 
-type redisManager struct {
-	redis map[string]*Redis
-	conf  *gjson.Result
-	lock  *sync.RWMutex
+type Config struct {
+	Name     string `json:"name" toml:"name"`
+	Host     string `json:"host" toml:"host"`
+	Port     int    `json:"port" toml:"port"`
+	Password string `json:"password" toml:"password"`
+	Db       int    `json:"db" toml:"db"`
+	Prefix   string `json:"prefix" toml:"prefix"`
+}
+
+type Manager struct {
+	sync.Map
 }
 
 // 单例
-var manager *redisManager = nil
+var manager = &Manager{}
 
-/*
-[
-	{"name": "redis1", "host": "127.0.0.1", "port": 11211, "password": "secret", "db": 0},
-	{"name": "redis2", "host": "127.0.0.1", "port": 11212, "password": "secret", "db": 0}
-]
-*/
-// 在框架初始化时调用
-func Init(conf *gjson.Result) error {
-	if manager != nil {
-		panic("Redis不能重复初始化")
-	}
-	// 保持单例
-	manager = &redisManager{
-		redis: map[string]*Redis{},
-		conf:  conf,
-		lock:  new(sync.RWMutex),
-	}
-	for _, item := range conf.Array() {
-		err := manager.connect(&item)
+// init 初始化数据库连接
+func (m *Manager) init(conf []*Config) error {
+	for _, item := range conf {
+		if _, ok := manager.Load(item.Name); ok {
+			// 已连接的就不再次连接了
+			continue
+		}
+		pool, err := manager.open(item)
 		if err != nil {
 			return err
 		}
-
+		m.Store(item.Name, newRedis(item.Name, pool, item.Prefix))
 	}
-	// 退出时执行清理工作
-	manager.closePool()
 	return nil
 }
 
+// closeAll 关闭数据库连接
+func (m *Manager) closeAll() error {
+	var err error
+	m.Range(func(name, db interface{}) bool {
+		err = db.(*Redis).Close()
+		if err != nil {
+			return false
+		}
+		m.Delete(name)
+		return true
+	})
+	return err
+}
+
 // 连接redis
-func (m *redisManager) connect(item *gjson.Result) error {
+func (m *Manager) open(item *Config) (*redigo.Pool, error) {
 
-	name := item.Get("name").String()
-	m.lock.RLock()
-	_, ok := m.redis[name]
-	m.lock.RUnlock()
-	if ok {
-		// 已连接的就不再次连接了
-		return nil
-	}
-
-	host := item.Get("host").String()
-	port := item.Get("port").Int()
-	password := item.Get("password").String()
-	db := item.Get("db").Int()
-
-	addr := fmt.Sprintf("%s:%d", host, port)
+	addr := fmt.Sprintf("%s:%d", item.Host, item.Port)
 
 	dialOpts := []redigo.DialOption{
 		redigo.DialConnectTimeout(time.Millisecond * 500), // 连接超时，默认500*time.Millisecond
@@ -81,11 +70,11 @@ func (m *redisManager) connect(item *gjson.Result) error {
 		redigo.DialTLSConfig(nil),                         // 默认nil，详见tls.Config
 	}
 
-	if password != "" {
-		dialOpts = append(dialOpts, redigo.DialPassword(password)) // 鉴权密码，默认空
+	if item.Password != "" {
+		dialOpts = append(dialOpts, redigo.DialPassword(item.Password)) // 鉴权密码，默认空
 	}
-	if db != 0 {
-		dialOpts = append(dialOpts, redigo.DialDatabase(int(db))) // 数据库号，默认0
+	if item.Db != 0 {
+		dialOpts = append(dialOpts, redigo.DialDatabase(item.Db)) // 数据库号，默认0
 	}
 
 	pool := &redigo.Pool{
@@ -100,37 +89,23 @@ func (m *redisManager) connect(item *gjson.Result) error {
 		},
 	}
 
-	m.lock.Lock()
-	m.redis[name] = NewRedis(name, pool)
-	m.lock.Unlock()
-
-	return nil
+	return pool, nil
 }
 
-// 获取redis连接
-func RedisPool(name string) (*Redis, error) {
-	manager.lock.RLock()
-	defer manager.lock.RUnlock()
+// Init 初始化数据库
+func Init(conf []*Config) error {
+	return manager.init(conf)
+}
 
-	if redis, ok := manager.redis[name]; ok {
-		return redis, nil
+// CloseAll 关闭数据库连接
+func CloseAll() error {
+	return manager.closeAll()
+}
+
+// Pool 通过名称获取Redis
+func Pool(name string) (*Redis, error) {
+	if redis, ok := manager.Load(name); ok {
+		return redis.(*Redis), nil
 	}
-	return nil, errors.New("指定Redis不存在")
-}
-
-// closePool 程序进程退出时关闭连接池
-func (m *redisManager) closePool() {
-	ch := make(chan os.Signal, 1)
-	// 捕获信号
-	signal.Notify(ch, os.Interrupt)
-	signal.Notify(ch, syscall.SIGTERM)
-	signal.Notify(ch, syscall.SIGKILL)
-	go func() {
-		<-ch
-		for _, redis := range m.redis {
-			// 关闭连接池
-			redis.pool.Close()
-		}
-		os.Exit(0)
-	}()
+	return nil, ErrRedisNotExists
 }

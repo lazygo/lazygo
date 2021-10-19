@@ -8,15 +8,23 @@ import (
 )
 
 type Redis struct {
-	name string
-	pool *redigo.Pool
+	name   string
+	pool   *redigo.Pool
+	prefix string // 前缀
+	slow   int    // 慢查询时间
 }
 
-func NewRedis(name string, pool *redigo.Pool) *Redis {
+func newRedis(name string, pool *redigo.Pool, prefix string) *Redis {
 	return &Redis{
-		name: name,
-		pool: pool,
+		name:   name,
+		pool:   pool,
+		prefix: prefix,
 	}
+}
+
+// Close 关闭Redis连接
+func (r *Redis) Close() error {
+	return r.pool.Close()
 }
 
 // Do 执行redis命令并返回结果。执行时从连接池获取连接并在执行完命令后关闭连接。
@@ -706,9 +714,6 @@ func (r *Redis) toGeoResult(reply interface{}, err error, options GeoOptions) ([
 				geoResult.Longitude = lon
 			}
 		}
-		if err != nil {
-			return nil, err
-		}
 		results[i] = geoResult
 	}
 	return results, nil
@@ -716,7 +721,7 @@ func (r *Redis) toGeoResult(reply interface{}, err error, options GeoOptions) ([
 
 // getKey 将健名加上指定的前缀。
 func (r *Redis) getKey(key string) string {
-	return key
+	return r.prefix + key
 }
 
 // encode 序列化要保存的值
