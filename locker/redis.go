@@ -1,18 +1,20 @@
 package locker
 
 import (
-	"errors"
+	"runtime"
+	"strconv"
+	"sync"
+
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
-	"strconv"
-	"time"
 )
 
 // redis适配器
 type redisAdapter struct {
-	name          string
-	conn          *redis.Redis
-	retryInterval uint64
+	local sync.Map
+	name  string
+	conn  *redis.Redis
+	retry int
 }
 
 // 释放锁脚本
@@ -24,56 +26,114 @@ const script = `
         end
     `
 
-// 初始化redis适配器
-func (r *redisAdapter) init(config map[string]interface{}) error {
-	if _, ok := config["name"]; !ok {
-		return errors.New("redis适配器参数错误")
+// newRedisLocker 初始化redis适配器
+func newRedisLocker(opt map[string]string) (Locker, error) {
+	name, ok := opt["name"]
+	if !ok || name == "" {
+		return nil, ErrInvalidRedisAdapterParams
 	}
-	r.name = toString(config["name"])
-	p, err := redis.RedisPool(r.name)
+
+	var err error
+	conn, err := redis.Pool(name)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	r.conn = p
-	if retryInterval, ok := config["retry_interval"]; ok {
-		r.retryInterval = uint64(toInt64(retryInterval))
+	a := &redisAdapter{
+		name:  name,
+		conn:  conn,
+		retry: 3,
 	}
-	return nil
+	return a, nil
 }
 
-// lock 获取锁
-func (r *redisAdapter) lock(resource string, ttl time.Duration, retry uint) (Locker, bool, error) {
+// Lock 分布式自旋锁
+func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
+
+	actual, _ := r.local.LoadOrStore(resource, &sync.Mutex{})
+	mu := actual.(*sync.Mutex)
+	mu.Lock()
 
 	token := strconv.FormatUint(randomToken(), 10)
-	for ; retry >= 0; retry-- {
-		_, err := r.conn.Do("SET", resource, token, "EX", ttl.Seconds(), "NX")
-		if err == redigo.ErrNil {
-			// key 已存在，获取锁失败
-			if retry > 0 && r.retryInterval > 0 {
-				// 等待
-				delay := time.Duration(randRange(r.retryInterval/2, r.retryInterval)) * time.Millisecond
-				<-time.After(delay)
-				continue
-			}
-			return nil, false, nil
-		}
-		if err != nil {
-			return nil, false, err
-		}
-	}
 
-	// 获取锁成功
+	// 获取锁成功，返回释放锁的方法
 	handleRelease := func() error {
-		// 返回释放锁的方法
-		_, err := r.conn.Do("EVAL", script, 1, resource, token)
+		defer func() {
+			mu.Unlock()
+			r.local.Delete(resource)
+		}()
+		var err error
+		for retry := r.retry; retry >= 0; retry-- {
+			_, err = r.conn.Do("EVAL", script, 1, resource, token)
+			if err == nil {
+				return nil
+			}
+		}
 		return err
 	}
+
+	retry := r.retry
+	for {
+		_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
+		if err == redigo.ErrNil {
+			// key 已存在，获取锁失败
+			runtime.Gosched()
+			continue
+		}
+		if err != nil {
+			if retry >= 0 {
+				retry--
+				continue
+			}
+			_ = handleRelease()
+			mu.Unlock()
+			return nil, err
+		}
+		break
+	}
+
+	return releaseFunc(handleRelease), nil
+}
+
+// TryLock 获取分布式锁（非阻塞）
+func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, error) {
+	token := strconv.FormatUint(randomToken(), 10)
+	_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
+	if err == redigo.ErrNil {
+		// key 已存在，获取锁失败
+		return nil, false, nil
+	}
+	if err != nil {
+		return nil, false, err
+	}
+
+	// 获取锁成功，返回释放锁的方法
+	handleRelease := func() error {
+		var err error
+		for retry := r.retry; retry > 0; retry-- {
+			_, err = r.conn.Do("EVAL", script, 1, resource, token)
+			if err == nil {
+				return nil
+			}
+		}
+		return err
+	}
+
 	return releaseFunc(handleRelease), true, nil
+}
+
+func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface{}) (result interface{}, err error) {
+	lock, err := r.Lock(resource, ttl)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err = lock.Release()
+	}()
+	return fn(), nil
 }
 
 func init() {
 	// 注册适配器
-	registry["redis"] = &redisAdapter{
-		retryInterval: 200, // 默认200毫秒重试间隔（毫秒）
-	}
+	registry.add("redis", adapterFunc(newRedisLocker))
 }

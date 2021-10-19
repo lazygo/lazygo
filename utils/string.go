@@ -44,3 +44,11 @@ func ToCamelString(s string) string {
 	}
 	return string(data[:])
 }
+
+func CutRune(str string, n int) string {
+	r := []rune(str)
+	if len(r) > n {
+		r = r[:n]
+	}
+	return string(r)
+}

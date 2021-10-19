@@ -3,26 +3,37 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
-	redigo "github.com/gomodule/redigo/redis"
 	"time"
+
+	redigo "github.com/gomodule/redigo/redis"
 )
 
 type Redis struct {
-	name string
-	pool *redigo.Pool
+	name   string
+	pool   *redigo.Pool
+	prefix string // 前缀
+	slow   int    // 慢查询时间
 }
 
-func NewRedis(name string, pool *redigo.Pool) *Redis {
+func newRedis(name string, pool *redigo.Pool, prefix string) *Redis {
 	return &Redis{
-		name: name,
-		pool: pool,
+		name:   name,
+		pool:   pool,
+		prefix: prefix,
 	}
 }
 
+// Close 关闭Redis连接
+func (r *Redis) Close() error {
+	return r.pool.Close()
+}
+
 // Do 执行redis命令并返回结果。执行时从连接池获取连接并在执行完命令后关闭连接。
-func (r *Redis) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+func (r *Redis) Do(commandName string, args ...interface{}) (interface{}, error) {
 	conn := r.pool.Get()
-	defer conn.Close()
+	defer func() {
+		_ = conn.Close()
+	}()
 	return conn.Do(commandName, args...)
 }
 
@@ -81,7 +92,7 @@ func (r *Redis) GetBool(key string) (bool, error) {
 	return r.Bool(r.Get(key))
 }
 
-// GetObject 获取非基本类型stuct的键值。在实现上，使用json的Marshal和Unmarshal做序列化存取。
+// GetObject 获取非基本类型struct的键值。在实现上，使用json的Marshal和Unmarshal做序列化存取。
 func (r *Redis) GetObject(key string, val interface{}) error {
 	reply, err := r.Get(key)
 	return r.decode(reply, err, val)
@@ -102,12 +113,23 @@ func (r *Redis) Set(key string, val interface{}, expire int64) error {
 	return err
 }
 
+// SetExNx 不存在则设置有效时长。时长的单位为秒。
+// 基础类型直接保存，其他用json.Marshal后转成string保存。
+func (r *Redis) SetExNx(key string, val interface{}, expire int64) error {
+	value, err := r.encode(val)
+	if err != nil {
+		return err
+	}
+	_, err = r.Do("SET", key, value, "EX", expire, "NX")
+	return err
+}
+
 // Exists 检查键是否存在
 func (r *Redis) Exists(key string) (bool, error) {
 	return r.Bool(r.Do("EXISTS", r.getKey(key)))
 }
 
-//Del 删除键
+// Del 删除键
 func (r *Redis) Del(key string) error {
 	_, err := r.Do("DEL", r.getKey(key))
 	return err
@@ -159,22 +181,24 @@ func (r *Redis) DecrBy(key string, amount int64) (val int64, err error) {
 // m["age"] = 23
 // err := r.HMSet("user", m, 10)
 // ```
-func (r *Redis) HMSet(key string, val interface{}, expire int) (err error) {
+func (r *Redis) HMSet(key string, val interface{}, expire int) error {
 	conn := r.pool.Get()
-	defer conn.Close()
-	err = conn.Send("HMSET", redigo.Args{}.Add(r.getKey(key)).AddFlat(val)...)
+	defer func() {
+		_ = conn.Close()
+	}()
+	err := conn.Send("HMSET", redigo.Args{}.Add(r.getKey(key)).AddFlat(val)...)
 	if err != nil {
-		return
+		return err
 	}
 	if expire > 0 {
 		err = conn.Send("EXPIRE", r.getKey(key), int64(expire))
 	}
 	if err != nil {
-		return
+		return err
 	}
 	conn.Flush()
 	_, err = conn.Receive()
-	return
+	return err
 }
 
 /** Redis hash 是一个string类型的field和value的映射表，hash特别适合用于存储对象。 **/
@@ -706,9 +730,6 @@ func (r *Redis) toGeoResult(reply interface{}, err error, options GeoOptions) ([
 				geoResult.Longitude = lon
 			}
 		}
-		if err != nil {
-			return nil, err
-		}
 		results[i] = geoResult
 	}
 	return results, nil
@@ -716,14 +737,14 @@ func (r *Redis) toGeoResult(reply interface{}, err error, options GeoOptions) ([
 
 // getKey 将健名加上指定的前缀。
 func (r *Redis) getKey(key string) string {
-	return key
+	return r.prefix + key
 }
 
 // encode 序列化要保存的值
 func (r *Redis) encode(val interface{}) (interface{}, error) {
 	var value interface{}
 	switch v := val.(type) {
-	case string, int, uint, int8, int16, int32, int64, float32, float64, bool:
+	case string, int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, bool:
 		value = v
 	default:
 		b, err := json.Marshal(v)

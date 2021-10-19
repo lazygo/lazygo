@@ -6,14 +6,10 @@ import (
 	"strconv"
 )
 
-// 转换为字符串
+// ToString 转换为字符串
 // 如果value不能转换为字符串，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为空字符串""
 func ToString(value interface{}, defVal ...string) string {
-	if len(defVal) > 1 {
-		panic("too many arguments")
-	}
-
 	var str string
 	switch value.(type) {
 	case string:
@@ -38,15 +34,11 @@ func ToString(value interface{}, defVal ...string) string {
 	return str
 }
 
-// 转换为int64类型
+// ToInt64 转换为int64类型
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
 func ToInt64(value interface{}, defVal ...int64) int64 {
-	if len(defVal) > 1 {
-		panic("too many arguments")
-	}
-
 	val := reflect.ValueOf(value)
 	var d int64
 	var err error
@@ -73,15 +65,42 @@ func ToInt64(value interface{}, defVal ...int64) int64 {
 	return d
 }
 
-// 转换为int类型
+// ToUint64 转换为uint64类型
+// value 可以是数字、数字字符串
+// 如果value不能转换为数字，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为0
+func ToUint64(value interface{}, defVal ...uint64) uint64 {
+	val := reflect.ValueOf(value)
+	var d uint64
+	var err error
+	switch value.(type) {
+	case int, int8, int16, int32, int64:
+		d = uint64(val.Int())
+	case uint, uint8, uint16, uint32, uint64:
+		d = val.Uint()
+	case float32, float64:
+		d = uint64(val.Float())
+	case string:
+		d, err = strconv.ParseUint(val.String(), 10, 64)
+	case []byte:
+		d, err = strconv.ParseUint(string(value.([]byte)), 10, 64)
+	default:
+		err = fmt.Errorf("ToUint64 need numeric not `%T`", value)
+	}
+	if err != nil {
+		d = 0
+	}
+	if d == 0 && len(defVal) == 1 {
+		return defVal[0]
+	}
+	return d
+}
+
+// ToInt 转换为int类型
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
 func ToInt(value interface{}, defVal ...int) int {
-	if len(defVal) > 1 {
-		panic("too many arguments")
-	}
-
 	val := reflect.ValueOf(value)
 	var d int
 	var err error
@@ -97,7 +116,7 @@ func ToInt(value interface{}, defVal ...int) int {
 	case []byte:
 		d, err = strconv.Atoi(string(value.([]byte)))
 	default:
-		err = fmt.Errorf("ToInt64 need numeric not `%T`", value)
+		err = fmt.Errorf("ToInt need numeric not `%T`", value)
 	}
 	if err != nil {
 		d = 0
@@ -109,10 +128,38 @@ func ToInt(value interface{}, defVal ...int) int {
 	return d
 }
 
-// Iif 模拟三元运算符
-func Iif(expr bool, trueVal interface{}, falseVal interface{}) interface{} {
-	if expr {
-		return trueVal
+// ToUint 转换为uint类型
+// value 可以是数字、数字字符串
+// 如果value不能转换为数字，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为0
+func ToUint(value interface{}, defVal ...uint) uint {
+	val := reflect.ValueOf(value)
+	var d uint
+	var err error
+	switch value.(type) {
+	case int, int8, int16, int32, int64:
+		d = uint(val.Int())
+	case uint, uint8, uint16, uint32, uint64:
+		d = uint(val.Uint())
+	case float32, float64:
+		d = uint(val.Float())
+	case string:
+		var d64 uint64
+		d64, err = strconv.ParseUint(val.String(), 10, 32)
+		d = uint(d64)
+	case []byte:
+		var d64 uint64
+		d64, err = strconv.ParseUint(string(value.([]byte)), 10, 32)
+		d = uint(d64)
+	default:
+		err = fmt.Errorf("ToUint need numeric not `%T`", value)
 	}
-	return falseVal
+	if err != nil {
+		d = 0
+	}
+	if d == 0 && len(defVal) == 1 {
+		return defVal[0]
+	}
+
+	return d
 }

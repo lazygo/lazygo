@@ -2,16 +2,18 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 )
 
 type DB struct {
 	*sql.DB
-	name      string // 数据库名称
-	prefix    string // 表前缀
-	slow      int // 慢查询时间
+	name   string // 数据库名称
+	prefix string // 表前缀
+	slow   int    // 慢查询时间
 }
 
-// 分页返回数据 - 返回结果定义
+// ResultData 分页返回数据 - 返回结果定义
 type ResultData struct {
 	List      []map[string]interface{} `json:"list"`
 	Count     int64                    `json:"count"`
@@ -52,6 +54,11 @@ func (d *DB) Table(table string) *builder {
 	return newBuilder(d, d.prefix+table)
 }
 
+// TableRaw 获取查询构建器
+func (d *DB) TableRaw(table string) *builder {
+	return newBuilder(d, table)
+}
+
 // Query 查询sql并返回结果集
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	// start := time.Now()
@@ -71,56 +78,60 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(query string, args ...interface{}) ([]map[string]interface{}, error) {
+func (d *DB) GetAll(result interface{}, query string, args ...interface{}) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	defer rows.Close()
-	outArr, err := parseData(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	return outArr, nil
-}
-
-// GetAllIn 直接执行sql原生语句并返回多行
-func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) error {
-	rows, err := d.Query(query, args...)
-	if err != nil {
-		return err
-	}
-	defer rows.Close()
-	err = parseDataIn(rows, result)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	defer func() {
+		_ = rows.Close()
+	}()
+	return parseData(rows, result)
 }
 
 // GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(query string, args ...interface{}) (map[string]interface{}, error) {
+func (d *DB) GetRow(result interface{}, query string, args ...interface{}) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
-		return nil, err
+		return 0, err
 	}
-	defer rows.Close()
-	outArr, err := parseRowData(rows)
-
-	return outArr, err
+	defer func() {
+		_ = rows.Close()
+	}()
+	return parseRowData(rows, result)
 }
 
-// GetRowIn 直接执行sql原生语句并返回1行
-func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) error {
-	rows, err := d.Query(query, args...)
+// Transaction 事务
+func (d *DB) Transaction(fn func() error) (err error) {
+	tx, err := d.Begin()
 	if err != nil {
+		if tx != nil {
+			rbErr := tx.Rollback()
+			if rbErr != nil {
+				return rbErr
+			}
+		}
 		return err
 	}
-	defer rows.Close()
-	err = parseRowDataIn(rows, result)
-	return err
+	defer func() {
+		e := recover()
+		if e != nil {
+			rbErr := tx.Rollback()
+			if rbErr != nil {
+				err = rbErr
+				return
+			}
+			err = errors.New(fmt.Sprint(e))
+		}
+	}()
+	err = fn()
+	if err != nil {
+		rbErr := tx.Rollback()
+		if rbErr != nil {
+			return rbErr
+		}
+	}
+	return tx.Commit()
 }
 
 // GetTablePrefix 获取表前缀

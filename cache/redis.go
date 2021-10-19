@@ -2,65 +2,95 @@ package cache
 
 import (
 	"errors"
+	"reflect"
+
+	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
-	"time"
 )
 
-type redisAdapter struct {
-	name string
-	conn *redis.Redis
+type redisCache struct {
+	name    string
+	prefix  string
+	handler *redis.Redis
 }
 
-// 初始化redis适配器
-func (r *redisAdapter) init(opt map[string]interface{}) error {
-	if _, ok := opt["name"]; !ok {
-		return errors.New("redis适配器参数错误")
+// newRedisCache 初始化redis适配器
+func newRedisCache(opt map[string]string) (Cache, error) {
+	name, ok := opt["name"]
+	if !ok || name == "" {
+		return nil, ErrInvalidRedisAdapterParams
 	}
-	r.name = toString(opt["name"])
-	p, err := redis.RedisPool(r.name)
-	if err != nil {
-		return err
+	prefix := opt["prefix"]
+
+	var err error
+	handler, err := redis.Pool(name)
+	a := &redisCache{
+		name:    name,
+		prefix:  prefix,
+		handler: handler,
 	}
-	r.conn = p
-	return nil
+	return a, err
 }
 
-func (r *redisAdapter) Remember(key string, value interface{}, ttl time.Duration) DataResult {
-	wp := &wrapper{}
-	err := r.conn.GetObject(key, wp)
+func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
+	key = r.prefix + key
+	err := r.handler.GetObject(key, ret)
 	if err == nil {
-		return wp
+		return true, nil
+	}
+	if err != redigo.ErrNil {
+		return false, err
 	}
 
 	// 穿透
-	err = wp.Pack(value)
-	CheckError(err)
-
-	err = r.conn.Set(key, wp, int64(ttl.Seconds()))
-	CheckError(err)
-	//return res
-	return wp
-}
-
-func (r *redisAdapter) Get(key string) (DataResult, error) {
-	wp := &wrapper{}
-	err := r.conn.GetObject(key, wp)
-	if err == nil {
-		return wp, nil
+	data, err := fn()
+	if err != nil {
+		return false, err
 	}
-	return nil, err
+	rRet := reflect.ValueOf(ret)
+	if rRet.Kind() != reflect.Ptr {
+		return false, errors.New("ret need a pointer")
+	}
+	rRet.Elem().Set(reflect.ValueOf(data))
+
+	err = r.handler.Set(key, data, ttl)
+
+	return false, err
 }
 
-func (r *redisAdapter) Has(key string) bool {
-	_, err := r.conn.Get(key)
-	return err != nil
+func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
+	key = r.prefix + key
+	err := r.handler.Set(key, val, ttl)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func (r *redisAdapter) Forget(key string) bool {
-	err := r.conn.Del(key)
-	return err == nil
+func (r *redisCache) Get(key string, ret interface{}) (bool, error) {
+	key = r.prefix + key
+	err := r.handler.GetObject(key, ret)
+	if err != nil && err != redigo.ErrNil {
+		return false, err
+	}
+
+	return true, nil
+}
+
+func (r *redisCache) Has(key string) (bool, error) {
+	key = r.prefix + key
+	ok, err := r.handler.Exists(key)
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
+}
+
+func (r *redisCache) Forget(key string) error {
+	key = r.prefix + key
+	return r.handler.Del(key)
 }
 
 func init() {
-	registry["redis"] = &redisAdapter{}
+	registry.add("redis", adapterFunc(newRedisCache))
 }

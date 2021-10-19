@@ -5,104 +5,153 @@ import (
 	"reflect"
 )
 
-// 解析结果集
-func parseData(rows *sql.Rows) ([]map[string]interface{}, error) {
-	data := make([]map[string]interface{}, 0, 20)
-
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
-
-	fCount := len(columns)
-	fieldPtr := make([]interface{}, fCount)
-	fieldArr := make([]sql.RawBytes, fCount)
-	fieldToID := make(map[string]int64, fCount)
-	for k, v := range columns {
-		fieldPtr[k] = &fieldArr[k]
-		fieldToID[v] = int64(k)
-	}
-
-	for rows.Next() {
-		err = rows.Scan(fieldPtr...)
-		if err != nil {
-			return nil, err
-		}
-
-		m := make(map[string]interface{}, fCount)
-
-		for k, v := range fieldToID {
-			if fieldArr[v] == nil {
-				m[k] = ""
-			} else {
-				m[k] = string(fieldArr[v])
-			}
-		}
-		data = append(data, m)
-	}
-
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
-	return data, nil
-}
-
-// 解析结果集
-func parseDataIn(rows *sql.Rows, result interface{}) error {
+// parseData 解析结果集
+func parseData(rows *sql.Rows, result interface{}) (int, error) {
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
-	if rspv.Kind() != reflect.Ptr {
-		return ErrInvalidPtr
+	if rspv.Kind() != reflect.Ptr || rspv.IsNil() {
+		return 0, ErrInvalidResultPtr
 	}
 
 	// row slice value
 	rsv := rspv.Elem()
 	if rsv.Kind() != reflect.Slice {
-		return ErrInvalidStructSlicePtr
+		return 0, ErrInvalidResultPtr
 	}
+	rsv.Set(reflect.MakeSlice(rsv.Type(), 0, rsv.Cap()))
 
 	// row type
 	rt := rsv.Type().Elem()
-	if rt.Kind() != reflect.Struct {
-		return ErrInvalidStructSlicePtr
+	if rt.Kind() == reflect.Struct {
+		// row value
+		rv := reflect.New(rt).Elem()
+
+		columns, err := rows.Columns()
+		if err != nil {
+			return 0, err
+		}
+
+		fieldPtr, err := getFieldPtr(columns, rv)
+		if err != nil {
+			return 0, err
+		}
+
+		for rows.Next() {
+			err = rows.Scan(fieldPtr...)
+			if err != nil {
+				return 0, err
+			}
+			rsv.Set(reflect.Append(rsv, rv))
+		}
+		return rsv.Len(), rows.Err()
+	}
+	if rt.Kind() == reflect.Map {
+		if err := checkMap(rt); err != nil {
+			return 0, err
+		}
+		// row value
+		columns, err := rows.Columns()
+		if err != nil {
+			return 0, err
+		}
+
+		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
+
+		for rows.Next() {
+			err = rows.Scan(fieldPtr...)
+			if err != nil {
+				return 0, err
+			}
+
+			rv := reflect.MakeMapWithSize(rt, len(columns))
+			for k, v := range fieldToID {
+				if fieldArr[v] == nil {
+					rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(""))
+				} else {
+					rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(string(fieldArr[v])))
+				}
+			}
+
+			rsv.Set(reflect.Append(rsv, rv))
+		}
+		return rsv.Len(), rows.Err()
+	}
+	return 0, ErrInvalidResultPtr
+
+}
+
+// parseRowData 解析单行结果集
+func parseRowData(rows *sql.Rows, result interface{}) (int, error) {
+	// result pointer value
+	rpv := reflect.ValueOf(result)
+	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
+		return 0, ErrInvalidResultPtr
 	}
 
-	// row value
-	rv := reflect.New(rt).Elem()
+	// result value
+	rv := rpv.Elem()
+	if rv.Kind() == reflect.Struct {
 
-	fieldPtr, err := getFieldPtr(rows, rv)
-	if err != nil {
-		return err
-	}
-
-	for rows.Next() {
+		columns, err := rows.Columns()
+		if err != nil {
+			return 0, err
+		}
+		fieldPtr, err := getFieldPtr(columns, rv)
+		if err != nil {
+			return 0, err
+		}
+		if !rows.Next() {
+			return 0, rows.Err()
+		}
 		err = rows.Scan(fieldPtr...)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		rsv.Set(reflect.Append(rsv, rv))
+		return 1, rows.Err()
 	}
-	err = rows.Err()
-	if err != nil {
-		return err
+	if rv.Kind() == reflect.Map && !rv.IsNil() {
+		if err := checkMap(rv.Type()); err != nil {
+			return 0, err
+		}
+		// row value
+		columns, err := rows.Columns()
+		if err != nil {
+			return 0, err
+		}
+		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
+		if !rows.Next() {
+			return 0, rows.Err()
+		}
+		err = rows.Scan(fieldPtr...)
+		if err != nil {
+			return 0, err
+		}
+
+		for k, v := range fieldToID {
+			if fieldArr[v] == nil {
+				rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(""))
+			} else {
+				rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(string(fieldArr[v])))
+			}
+		}
+		return 1, rows.Err()
+	}
+	return 0, ErrInvalidResultPtr
+}
+
+// checkMap 检查map类型
+func checkMap(rt reflect.Type) error {
+	if rt.Key().Kind() != reflect.String {
+		return ErrInvalidResultPtr
+	}
+	if rt.Elem().Kind() != reflect.Interface && rt.Elem().Kind() != reflect.String {
+		return ErrInvalidResultPtr
 	}
 	return nil
 }
 
-// 解析单行结果集
-func parseRowData(rows *sql.Rows) (map[string]interface{}, error) {
-	if !rows.Next() {
-		err := rows.Err()
-		if err != nil {
-			return nil, err
-		}
-		return map[string]interface{}{}, nil
-	}
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
+// getResultPtr 解析结果集
+func getResultPtr(columns []string) ([]interface{}, []sql.RawBytes, map[string]int64) {
 	fCount := len(columns)
 	fieldPtr := make([]interface{}, fCount)
 	fieldArr := make([]sql.RawBytes, fCount)
@@ -111,67 +160,11 @@ func parseRowData(rows *sql.Rows) (map[string]interface{}, error) {
 		fieldPtr[k] = &fieldArr[k]
 		fieldToID[v] = int64(k)
 	}
-
-	m := make(map[string]interface{}, fCount)
-	err = rows.Scan(fieldPtr...)
-	if err != nil {
-		return nil, err
-	}
-
-	for k, v := range fieldToID {
-		if fieldArr[v] == nil {
-			m[k] = ""
-		} else {
-			m[k] = string(fieldArr[v])
-		}
-	}
-	err = rows.Err()
-	if err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-// 解析单行结果集
-func parseRowDataIn(rows *sql.Rows, result interface{}) error {
-	if !rows.Next() {
-		return rows.Err()
-	}
-
-	// result pointer value
-	rpv := reflect.ValueOf(result)
-	if rpv.Kind() != reflect.Ptr {
-		return ErrInvalidPtr
-	}
-
-	// result value
-	rv := rpv.Elem()
-	if rv.Kind() != reflect.Struct {
-		return ErrInvalidStructPtr
-	}
-
-	fieldPtr, err := getFieldPtr(rows, rv)
-	if err != nil {
-		return err
-	}
-
-	err = rows.Scan(fieldPtr...)
-	if err != nil {
-		return err
-	}
-	err = rows.Err()
-	if err != nil {
-		return err
-	}
-	return nil
+	return fieldPtr, fieldArr, fieldToID
 }
 
 // getFieldPtr 获取结果集指针数组
-func getFieldPtr(rows *sql.Rows, rv reflect.Value) ([]interface{}, error) {
-	columns, err := rows.Columns()
-	if err != nil {
-		return nil, err
-	}
+func getFieldPtr(columns []string, rv reflect.Value) ([]interface{}, error) {
 	fCount := len(columns)
 
 	fieldPtr := make([]interface{}, fCount)
