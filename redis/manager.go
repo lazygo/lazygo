@@ -21,7 +21,6 @@ type Manager struct {
 	sync.Map
 }
 
-// 单例
 var manager = &Manager{}
 
 // init 初始化数据库连接
