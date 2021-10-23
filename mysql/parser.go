@@ -5,7 +5,7 @@ import (
 	"reflect"
 )
 
-// 解析结果集
+// parseData 解析结果集
 func parseData(rows *sql.Rows) ([]map[string]interface{}, error) {
 	data := make([]map[string]interface{}, 0, 20)
 
@@ -48,7 +48,7 @@ func parseData(rows *sql.Rows) ([]map[string]interface{}, error) {
 	return data, nil
 }
 
-// 解析结果集
+// parseDataIn 解析结果集
 func parseDataIn(rows *sql.Rows, result interface{}) error {
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
@@ -90,7 +90,7 @@ func parseDataIn(rows *sql.Rows, result interface{}) error {
 	return nil
 }
 
-// 解析单行结果集
+// parseRowData 解析单行结果集
 func parseRowData(rows *sql.Rows) (map[string]interface{}, error) {
 	if !rows.Next() {
 		err := rows.Err()
@@ -132,7 +132,7 @@ func parseRowData(rows *sql.Rows) (map[string]interface{}, error) {
 	return m, nil
 }
 
-// 解析单行结果集
+// parseRowDataIn 解析单行结果集
 func parseRowDataIn(rows *sql.Rows, result interface{}) error {
 	if !rows.Next() {
 		return rows.Err()
