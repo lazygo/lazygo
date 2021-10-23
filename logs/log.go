@@ -35,8 +35,8 @@ const levelLoggerImpl = -1
 
 // Name for adapter with beego official support
 const (
-	AdapterConsole   = "console"
-	AdapterFile      = "file"
+	AdapterConsole = "console"
+	AdapterFile    = "file"
 )
 
 type newLoggerFunc func() Logger

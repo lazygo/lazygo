@@ -90,7 +90,7 @@ func (c *consoleWriter) WriteMsg(when time.Time, data map[string]interface{}, le
 }
 
 func (c *consoleWriter) Destroy() {}
-func (c *consoleWriter) Flush() {}
+func (c *consoleWriter) Flush()   {}
 
 func init() {
 	Register(AdapterConsole, NewConsole)

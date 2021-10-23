@@ -7,7 +7,7 @@ import (
 	"path"
 )
 
-// WrapHandler wraps `http.Handler` into `echo.HandlerFunc`.
+// WrapHandler wraps `http.Handler` into `HandlerFunc`.
 func WrapHandler(h http.Handler) HandlerFunc {
 	return func(ctx Context) error {
 		h.ServeHTTP(ctx.ResponseWriter(), ctx.Request())
@@ -15,7 +15,7 @@ func WrapHandler(h http.Handler) HandlerFunc {
 	}
 }
 
-// WrapMiddleware wraps `func(http.Handler) http.Handler` into `echo.MiddlewareFunc`
+// WrapMiddleware wraps `func(http.Handler) http.Handler` into `MiddlewareFunc`
 func WrapMiddleware(m func(http.Handler) http.Handler) MiddlewareFunc {
 	return func(next HandlerFunc) HandlerFunc {
 		return func(ctx Context) (err error) {

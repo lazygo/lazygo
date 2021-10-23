@@ -60,11 +60,6 @@ type (
 		// GetRequestHeader 获取请求头
 		GetRequestHeader(name string) string
 
-		// 失败响应
-		ApiFail(code int, message string, data interface{}) error
-		// 成功响应
-		ApiSucc(data map[string]interface{}, message string) error
-
 		// JSON sends a JSON response with status code.
 		JSON(code int, i interface{}) error
 		// Blob sends a blob response with status code and content type.
@@ -261,29 +256,6 @@ func (c *context) SetResponseHeader(headerOptions map[string]string) *context {
 // GetRequestHeader 获取请求头
 func (c *context) GetRequestHeader(name string) string {
 	return c.request.Header.Get(name)
-}
-
-// 成功响应
-func (c *context) ApiSucc(data map[string]interface{}, message string) error {
-	if data == nil {
-		data = map[string]interface{}{}
-	}
-	result := map[string]interface{}{
-		"code":    200,
-		"message": message,
-		"data":    data,
-	}
-	return c.JSON(200, result)
-}
-
-// 失败响应
-func (c *context) ApiFail(code int, message string, data interface{}) error {
-	result := map[string]interface{}{
-		"code":    code,
-		"message": message,
-		"data":    data,
-	}
-	return c.JSON(200, result)
 }
 
 func (c *context) JSON(code int, i interface{}) error {

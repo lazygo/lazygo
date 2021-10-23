@@ -6,9 +6,9 @@ import (
 
 type DB struct {
 	*sql.DB
-	name      string // 数据库名称
-	prefix    string // 表前缀
-	slow      int // 慢查询时间
+	name   string // 数据库名称
+	prefix string // 表前缀
+	slow   int    // 慢查询时间
 }
 
 // 分页返回数据 - 返回结果定义

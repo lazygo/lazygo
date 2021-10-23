@@ -5,8 +5,8 @@ import (
 )
 
 type Config struct {
-	Name            string `json:"name" toml:"name"`
-	Capacity        uint64 `json:"capacity" toml:"capacity"`
+	Name     string `json:"name" toml:"name"`
+	Capacity uint64 `json:"capacity" toml:"capacity"`
 }
 
 type Manager struct {

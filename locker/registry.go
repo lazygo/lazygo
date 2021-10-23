@@ -1,9 +1,11 @@
-package cache
+package locker
 
-import "sync"
+import (
+	"sync"
+)
 
 type adapter interface {
-	Cache
+	Locker
 	init(map[string]string) error
 	initialized() bool
 }

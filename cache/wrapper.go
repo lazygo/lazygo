@@ -40,3 +40,11 @@ func (wp *wrapper) ToObject(val interface{}) error {
 	wp.Data.Meta = val
 	return wp.handler(wp)
 }
+
+func wrapperError(err error) *wrapper {
+	return &wrapper{
+		handler: func(wp *wrapper) error {
+			return err
+		},
+	}
+}

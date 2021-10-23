@@ -6,13 +6,12 @@ import (
 	"time"
 )
 
-
 type redisAdapter struct {
 	name string
 	conn *redis.Redis
 }
 
-// 初始化redis适配器
+// init 初始化redis适配器
 func (r *redisAdapter) init(opt map[string]string) error {
 	name, ok := opt["name"]
 	if !ok || name == "" {

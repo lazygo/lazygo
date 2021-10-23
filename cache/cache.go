@@ -18,15 +18,12 @@ type Cache interface {
 	Forget(key string) error
 }
 
-// Init 初始化设置
-// 在框架初始化时调用
-// adapterName 适配器名称
-// ext 选项
-func Init(conf []*Config) error {
-	return registry.init(conf)
+// Init 初始化设置，在框架初始化时调用
+func Init(conf []*Config, defaultAdapter string) error {
+	return registry.init(conf, defaultAdapter)
 }
 
-// Instance 设置缓存
+// Instance 获取缓存实例
 func Instance(name string) (Cache, error) {
 	a, err := registry.get(name)
 	if err != nil {
@@ -36,4 +33,44 @@ func Instance(name string) (Cache, error) {
 		return nil, ErrAdapterUninitialized
 	}
 	return a, nil
+}
+
+func Remember(key string, value func() (interface{}, error), ttl time.Duration) DataResult {
+	cache, err := Instance(registry.defaultAdapter)
+	if err != nil {
+		return wrapperError(err)
+	}
+	return cache.Remember(key, value, ttl)
+}
+
+func Get(key string) DataResult {
+	cache, err := Instance(registry.defaultAdapter)
+	if err != nil {
+		return wrapperError(err)
+	}
+	return cache.Get(key)
+}
+
+func Set(key string, value interface{}, ttl time.Duration) error {
+	cache, err := Instance(registry.defaultAdapter)
+	if err != nil {
+		return err
+	}
+	return cache.Set(key, value, ttl)
+}
+
+func Has(key string) (bool, error) {
+	cache, err := Instance(registry.defaultAdapter)
+	if err != nil {
+		return false, err
+	}
+	return cache.Has(key)
+}
+
+func Forget(key string) error {
+	cache, err := Instance(registry.defaultAdapter)
+	if err != nil {
+		return err
+	}
+	return cache.Forget(key)
 }
