@@ -18,7 +18,7 @@ var manager = &Manager{}
 // init 初始化数据库连接
 func (m *Manager) init(conf []*Config) error {
 	for _, item := range conf {
-		if _, ok := manager.Load(item.Name); ok {
+		if _, ok := m.Load(item.Name); ok {
 			continue
 		}
 		m.Store(item.Name, newLRUCache(item.Name, item.Capacity))

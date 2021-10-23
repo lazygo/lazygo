@@ -26,31 +26,17 @@ var manager = &Manager{}
 // init 初始化数据库连接
 func (m *Manager) init(conf []*Config) error {
 	for _, item := range conf {
-		if _, ok := manager.Load(item.Name); ok {
+		if _, ok := m.Load(item.Name); ok {
 			// 已连接的就不再次连接了
 			continue
 		}
-		pool, err := manager.open(item)
+		pool, err := m.open(item)
 		if err != nil {
 			return err
 		}
 		m.Store(item.Name, newRedis(item.Name, pool, item.Prefix))
 	}
 	return nil
-}
-
-// closeAll 关闭数据库连接
-func (m *Manager) closeAll() error {
-	var err error
-	m.Range(func(name, db interface{}) bool {
-		err = db.(*Redis).Close()
-		if err != nil {
-			return false
-		}
-		m.Delete(name)
-		return true
-	})
-	return err
 }
 
 // 连接redis
@@ -89,6 +75,20 @@ func (m *Manager) open(item *Config) (*redigo.Pool, error) {
 	}
 
 	return pool, nil
+}
+
+// closeAll 关闭数据库连接
+func (m *Manager) closeAll() error {
+	var err error
+	m.Range(func(name, db interface{}) bool {
+		err = db.(*Redis).Close()
+		if err != nil {
+			return false
+		}
+		m.Delete(name)
+		return true
+	})
+	return err
 }
 
 // Init 初始化数据库

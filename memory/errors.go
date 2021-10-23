@@ -3,5 +3,5 @@ package memory
 import "errors"
 
 var (
-	ErrLRUCacheNotExists = errors.New("条件不能为空")
+	ErrLRUCacheNotExists = errors.New("指定LRUCache不存在，或未初始化")
 )

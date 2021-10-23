@@ -89,7 +89,7 @@ func (r *Redis) GetBool(key string) (bool, error) {
 	return r.Bool(r.Get(key))
 }
 
-// GetObject 获取非基本类型stuct的键值。在实现上，使用json的Marshal和Unmarshal做序列化存取。
+// GetObject 获取非基本类型struct的键值。在实现上，使用json的Marshal和Unmarshal做序列化存取。
 func (r *Redis) GetObject(key string, val interface{}) error {
 	reply, err := r.Get(key)
 	return r.decode(reply, err, val)
@@ -115,7 +115,7 @@ func (r *Redis) Exists(key string) (bool, error) {
 	return r.Bool(r.Do("EXISTS", r.getKey(key)))
 }
 
-//Del 删除键
+// Del 删除键
 func (r *Redis) Del(key string) error {
 	_, err := r.Do("DEL", r.getKey(key))
 	return err

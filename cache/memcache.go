@@ -2,7 +2,6 @@ package cache
 
 import (
 	"encoding/json"
-	"errors"
 	"github.com/lazygo/lazygo/memcache"
 	"time"
 )
@@ -12,65 +11,115 @@ type mcAdapter struct {
 	conn *memcache.Memcache
 }
 
-func (m *mcAdapter) init(opt map[string]interface{}) error {
-	if _, ok := opt["name"]; !ok {
-		return errors.New("memcached适配器参数错误")
+// init 初始化memcache适配器
+func (m *mcAdapter) init(opt map[string]string) error {
+	name, ok := opt["name"]
+	if !ok || name == "" {
+		return ErrInvalidMemcacheAdapterParams
 	}
-	m.name = toString(opt["name"])
-	p, err := memcache.Mc(m.name)
+	m.name = name
+
+	var err error
+	m.conn, err = memcache.Client(m.name)
+	return err
+}
+
+// initialized 是否初始化
+func (m *mcAdapter) initialized() bool {
+	return m.conn != nil
+}
+
+func (m *mcAdapter) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+	wp := &wrapper{}
+	wp.handler = func(wp *wrapper) error {
+		item, err := m.conn.Conn().Get(key)
+		if err != nil {
+			return err
+		}
+		err = json.Unmarshal(item.Value, &wp.Data)
+		if err != nil {
+			return err
+		}
+
+		if wp.Data.Deadline >= time.Now().Unix() {
+			return nil
+		}
+
+		// 穿透
+		err = wp.PackFunc(fn, ttl)
+		if err != nil {
+			return err
+		}
+
+		value, err := json.Marshal(wp.Data)
+		if err != nil {
+			return err
+		}
+
+		err = m.conn.Set(key, value, int32(ttl.Seconds()))
+		if err != nil {
+			return err
+		}
+		return nil
+	}
+	return wp
+}
+
+func (m *mcAdapter) Set(key string, val interface{}, ttl time.Duration) error {
+	wp := &wrapper{}
+	err := wp.Pack(val, ttl)
 	if err != nil {
 		return err
 	}
-	m.conn = p
+	value, err := json.Marshal(wp.Data)
+	if err != nil {
+		return err
+	}
+	err = m.conn.Set(key, value, int32(ttl.Seconds()))
+	if err != nil {
+		return err
+	}
 	return nil
 }
 
-func (m *mcAdapter) Remember(key string, value interface{}, ttl time.Duration) DataResult {
-	item, err := m.conn.Conn().Get(key)
-	wrapper := &wrapper{}
+func (m *mcAdapter) Get(key string) DataResult {
+	wp := &wrapper{}
+	wp.handler = func(wp *wrapper) error {
 
-	if err == nil {
-		err := json.Unmarshal(item.Value, wrapper)
-		if err == nil {
-			return wrapper
+		item, err := m.conn.Conn().Get(key)
+		if err != nil {
+			return err
 		}
-	}
-
-	// 穿透
-	err = wrapper.Pack(value)
-	CheckError(err)
-
-	data, err := json.Marshal(wrapper)
-	CheckError(err)
-
-	m.conn.Set(key, data, int32(ttl.Seconds()))
-	//return res
-	return wrapper
-}
-
-func (m *mcAdapter) Get(key string) (DataResult, error) {
-	item, err := m.conn.Conn().Get(key)
-	wrapper := &wrapper{}
-
-	if err == nil {
-		err := json.Unmarshal(item.Value, wrapper)
-		if err == nil {
-			return wrapper, nil
+		err = json.Unmarshal(item.Value, &wp.Data)
+		if err != nil {
+			return err
 		}
+
+		if wp.Data.Deadline >= time.Now().Unix() {
+			return nil
+		}
+		return ErrEmptyKey
 	}
-	return nil, err
+	return wp
 }
 
-func (m *mcAdapter) Has(key string) bool {
-	_, err := m.conn.Conn().Get(key)
-	return err != nil
+func (m *mcAdapter) Has(key string) (bool, error) {
+	wp := &wrapper{}
+	item, err := m.conn.Conn().Get(key)
+	if err != nil {
+		return false, err
+	}
+	err = json.Unmarshal(item.Value, &wp.Data)
+	if err != nil {
+		return false, err
+	}
+	return wp.Data.Deadline >= time.Now().Unix(), nil
 }
 
-func (m *mcAdapter) Forget(key string) bool {
-	err := m.conn.Delete(key)
-	return err == nil
+func (m *mcAdapter) Forget(key string) error {
+	return m.conn.Delete(key)
 }
 
 func init() {
-	registry["memcached"] = &mcAdapter{}
+	registry.add("memcache", &mcAdapter{})
 }
