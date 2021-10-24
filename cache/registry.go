@@ -30,7 +30,7 @@ func (r *register) get(name string) (adapter, error) {
 }
 
 // init 初始化数据库连接
-func (r *register) init(conf []*Config, defaultAdapter string) error {
+func (r *register) init(conf []Config, defaultAdapter string) error {
 	for _, item := range conf {
 		a, err := r.get(item.Name)
 		if err != nil {

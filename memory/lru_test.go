@@ -12,7 +12,7 @@ func TestLRU(t *testing.T) {
 
 	assert := testify.New(t)
 
-	conf := []*Config{
+	conf := []Config{
 		{
 			Name:     "test",
 			Capacity: 20 * KB,

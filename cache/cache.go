@@ -19,7 +19,7 @@ type Cache interface {
 }
 
 // Init 初始化设置，在框架初始化时调用
-func Init(conf []*Config, defaultAdapter string) error {
+func Init(conf []Config, defaultAdapter string) error {
 	return registry.init(conf, defaultAdapter)
 }
 

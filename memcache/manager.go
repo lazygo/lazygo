@@ -24,7 +24,7 @@ type Manager struct {
 var manager = &Manager{}
 
 // init 初始化数据库连接
-func (m *Manager) init(conf []*Config) error {
+func (m *Manager) init(conf []Config) error {
 	for _, item := range conf {
 		if _, ok := m.Load(item.Name); ok {
 			// 已连接的就不再次连接了
@@ -40,7 +40,7 @@ func (m *Manager) init(conf []*Config) error {
 }
 
 // 连接memcache
-func (m *Manager) open(item *Config) (*memcache.Client, error) {
+func (m *Manager) open(item Config) (*memcache.Client, error) {
 	var serverList []string
 	for _, server := range item.Server {
 		serverList = append(serverList, fmt.Sprintf("%s:%d", server.Host, server.Port))
@@ -52,7 +52,7 @@ func (m *Manager) open(item *Config) (*memcache.Client, error) {
 }
 
 // Init 初始化数据库
-func Init(conf []*Config) error {
+func Init(conf []Config) error {
 	return manager.init(conf)
 }
 

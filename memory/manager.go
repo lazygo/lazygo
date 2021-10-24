@@ -16,7 +16,7 @@ type Manager struct {
 var manager = &Manager{}
 
 // init 初始化数据库连接
-func (m *Manager) init(conf []*Config) error {
+func (m *Manager) init(conf []Config) error {
 	for _, item := range conf {
 		if _, ok := m.Load(item.Name); ok {
 			continue
@@ -27,7 +27,7 @@ func (m *Manager) init(conf []*Config) error {
 }
 
 // Init 初始化数据库
-func Init(conf []*Config) error {
+func Init(conf []Config) error {
 	return manager.init(conf)
 }
 

@@ -18,7 +18,7 @@ type UserInfo struct {
 func TestDb(t *testing.T) {
 	assert := testify.New(t)
 
-	conf := []*Config{
+	conf := []Config{
 		{
 			Name:            "unit_test",
 			User:            "root",

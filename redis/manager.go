@@ -24,7 +24,7 @@ type Manager struct {
 var manager = &Manager{}
 
 // init 初始化数据库连接
-func (m *Manager) init(conf []*Config) error {
+func (m *Manager) init(conf []Config) error {
 	for _, item := range conf {
 		if _, ok := m.Load(item.Name); ok {
 			// 已连接的就不再次连接了
@@ -40,7 +40,7 @@ func (m *Manager) init(conf []*Config) error {
 }
 
 // 连接redis
-func (m *Manager) open(item *Config) (*redigo.Pool, error) {
+func (m *Manager) open(item Config) (*redigo.Pool, error) {
 
 	addr := fmt.Sprintf("%s:%d", item.Host, item.Port)
 
@@ -92,7 +92,7 @@ func (m *Manager) closeAll() error {
 }
 
 // Init 初始化数据库
-func Init(conf []*Config) error {
+func Init(conf []Config) error {
 	return manager.init(conf)
 }
 

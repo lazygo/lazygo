@@ -21,7 +21,7 @@ func (t TestController) TestResponseAction(ctx engine.Context) error {
 	cond := map[string]interface{}{
 		"id": 2,
 	}
-	data, err := db.Table("test").Where(cond).FetchRow("*", "id DESC", "", 0)
+	data, err := db.Table("test").Where(cond).FetchRow([]interface{}{"*"})
 	if err != nil {
 		fmt.Println(err)
 	}

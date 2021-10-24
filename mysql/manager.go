@@ -29,7 +29,7 @@ type Manager struct {
 var manager = &Manager{}
 
 // init 初始化数据库连接
-func (m *Manager) init(conf []*Config) error {
+func (m *Manager) init(conf []Config) error {
 	for _, item := range conf {
 		if _, ok := manager.Load(item.Name); ok {
 			// 已连接的就不再次连接了
@@ -59,7 +59,7 @@ func (m *Manager) closeAll() error {
 }
 
 // open 连接数据库
-func (m *Manager) open(item *Config) (*sql.DB, error) {
+func (m *Manager) open(item Config) (*sql.DB, error) {
 	dataSourceName := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
 		item.User,
@@ -82,7 +82,7 @@ func (m *Manager) open(item *Config) (*sql.DB, error) {
 }
 
 // Init 初始化数据库
-func Init(conf []*Config) error {
+func Init(conf []Config) error {
 	return manager.init(conf)
 }
 
