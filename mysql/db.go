@@ -11,7 +11,7 @@ type DB struct {
 	slow   int    // 慢查询时间
 }
 
-// 分页返回数据 - 返回结果定义
+// ResultData 分页返回数据 - 返回结果定义
 type ResultData struct {
 	List      []map[string]interface{} `json:"list"`
 	Count     int64                    `json:"count"`
@@ -71,27 +71,26 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(query string, args ...interface{}) ([]map[string]interface{}, error) {
+func (d *DB) GetAll(query string, args ...interface{}) (result []map[string]interface{}, err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	outArr, err := parseData(rows)
-	if err != nil {
-		return nil, err
-	}
-
-	return outArr, nil
+	defer func() {
+		err = rows.Close()
+	}()
+	return parseData(rows)
 }
 
 // GetAllIn 直接执行sql原生语句并返回多行
-func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) error {
+func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) (err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
+	defer func() {
+		err = rows.Close()
+	}()
 	err = parseDataIn(rows, result)
 	if err != nil {
 		return err
@@ -101,26 +100,27 @@ func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) err
 }
 
 // GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(query string, args ...interface{}) (map[string]interface{}, error) {
+func (d *DB) GetRow(query string, args ...interface{}) (result map[string]interface{}, err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
-	outArr, err := parseRowData(rows)
-
-	return outArr, err
+	defer func() {
+		err = rows.Close()
+	}()
+	return parseRowData(rows)
 }
 
 // GetRowIn 直接执行sql原生语句并返回1行
-func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) error {
+func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) (err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
 	}
-	defer rows.Close()
-	err = parseRowDataIn(rows, result)
-	return err
+	defer func() {
+		err = rows.Close()
+	}()
+	return parseRowDataIn(rows, result)
 }
 
 // GetTablePrefix 获取表前缀
