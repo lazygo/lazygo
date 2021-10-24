@@ -1,7 +1,6 @@
 package locker
 
 import (
-	"errors"
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
 	"strconv"
@@ -104,7 +103,7 @@ func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface
 	}
 
 	if !ok {
-		return nil, errors.New("获取锁超时")
+		return nil, ErrTimeout
 	}
 	defer func() {
 		err = lock.Release()
