@@ -91,12 +91,7 @@ func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) (er
 	defer func() {
 		err = rows.Close()
 	}()
-	err = parseDataIn(rows, result)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return parseDataIn(rows, result)
 }
 
 // GetRow 直接执行sql原生语句并返回1行
