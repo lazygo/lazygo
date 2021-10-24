@@ -30,7 +30,9 @@ func (r *Redis) Close() error {
 // Do 执行redis命令并返回结果。执行时从连接池获取连接并在执行完命令后关闭连接。
 func (r *Redis) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
 	conn := r.pool.Get()
-	defer conn.Close()
+	defer func() {
+		err = conn.Close()
+	}()
 	return conn.Do(commandName, args...)
 }
 
@@ -169,7 +171,9 @@ func (r *Redis) DecrBy(key string, amount int64) (val int64, err error) {
 // ```
 func (r *Redis) HMSet(key string, val interface{}, expire int) (err error) {
 	conn := r.pool.Get()
-	defer conn.Close()
+	defer func() {
+		err = conn.Close()
+	}()
 	err = conn.Send("HMSET", redigo.Args{}.Add(r.getKey(key)).AddFlat(val)...)
 	if err != nil {
 		return

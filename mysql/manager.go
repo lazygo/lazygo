@@ -14,7 +14,7 @@ type Config struct {
 	Passwd          string `json:"passwd" toml:"passwd"`
 	Host            string `json:"host" toml:"host"`
 	Port            int    `json:"port" toml:"port"`
-	DbName          string `json:"db_name" toml:"db_name"`
+	DbName          string `json:"dbname" toml:"dbname"`
 	Charset         string `json:"charset" toml:"charset"`
 	Prefix          string `json:"prefix" toml:"prefix"`
 	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
@@ -39,6 +39,10 @@ func (m *Manager) init(conf []Config) error {
 		if err != nil {
 			return err
 		}
+		err = db.Ping()
+		if err != nil {
+			return err
+		}
 		m.Store(item.Name, newDb(item.Name, db, item.Prefix))
 	}
 	return nil
@@ -60,7 +64,7 @@ func (m *Manager) closeAll() error {
 
 // open 连接数据库
 func (m *Manager) open(item Config) (*sql.DB, error) {
-	dataSourceName := fmt.Sprintf(
+	dsn := fmt.Sprintf(
 		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
 		item.User,
 		item.Passwd,
@@ -69,7 +73,7 @@ func (m *Manager) open(item Config) (*sql.DB, error) {
 		item.DbName,
 		item.Charset,
 	)
-	database, err := sql.Open("mysql", dataSourceName)
+	database, err := sql.Open("mysql", dsn)
 	if err != nil {
 		return nil, err
 	}

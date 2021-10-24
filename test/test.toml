@@ -1,18 +1,40 @@
 [[mysql]]
-name= "test"
-      user= "root"
-      passwd= "root"
-      host= "127.0.0.1"
-      port= 3306
-      dbname= "abc"
-      charset= "utf8mb4"
-      maxOpenConns= 1000
+    name = "test"
+    charset = "utf8mb4"
+    dbname = "abc"
+    host = "127.0.0.1"
+    max_open_conns = 1000
+    passwd = "root"
+    port = 3306
+    user = "root"
 [[mysql]]
-name= "test"
-      user= "root"
-      passwd= "root"
-      host= "127.0.0.1"
-      port= 3306
-      dbname= "abc"
-      charset= "utf8mb4"
-      maxOpenConns= 1000
+    name = "testw"
+    charset = "utf8mb4"
+    dbname = "abc"
+    host = "127.0.0.1"
+    max_open_conns = 1000
+    passwd = "root"
+    port = 3306
+    user = "root"
+
+[[redis]]
+    db = 1
+    host = "127.0.0.1"
+    name = "test1"
+    password = "2345678"
+    port = 6379
+    prefix = ""
+[[redis]]
+    db = 1
+    host = "127.0.0.1"
+    name = "test2"
+    password = "2345678"
+    port = 6379
+    prefix = ""
+
+[cache]
+    default = "test11"
+    [[cache.adapter]]
+        adapter = "mysql"
+        name = "test11"
+        option= {name= "test2"}
