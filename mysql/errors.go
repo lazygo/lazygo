@@ -8,6 +8,7 @@ var (
 	ErrEmptyCond             = errors.New("条件不能为空")
 	ErrEmptyValue            = errors.New("值不能为空")
 	ErrInvalidArguments      = errors.New("参数错误")
+	ErrInvalidCondArguments  = errors.New("条件参数错误")
 	ErrInvalidPtr            = errors.New("无效的指针")
 	ErrInvalidStructPtr      = errors.New("无效的结构体指针")
 	ErrInvalidStructSlicePtr = errors.New("无效的结构体数组指针")

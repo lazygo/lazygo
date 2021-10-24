@@ -5,8 +5,6 @@ import (
 	"math"
 	"strconv"
 	"strings"
-
-	"log"
 )
 
 type ReadBuilder interface {
@@ -35,7 +33,7 @@ type Builder interface {
 	WhereIn(k string, in []interface{}) Builder
 	WhereNotIn(k string, in []interface{}) Builder
 	ClearCond() Builder
-	GroupBy(k string) ReadBuilder
+	GroupBy(k string, ks ...string) ReadBuilder
 	OrderBy(k string, direct string) ReadBuilder
 	Offset(offset int64) ReadBuilder
 	Limit(limit int64) Builder
@@ -45,14 +43,15 @@ type Builder interface {
 
 // 查询构建器
 type builder struct {
-	handler *DB
-	table   string
-	cond    []string      // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
-	args    []interface{} // 预处理参数
-	orderBy []string
-	groupBy []string
-	offset  int64
-	limit   int64
+	handler   *DB
+	table     string
+	cond      []string      // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
+	args      []interface{} // 预处理参数
+	orderBy   []string
+	groupBy   []string
+	offset    int64
+	limit     int64
+	lastError error
 }
 
 type Raw string
@@ -83,13 +82,13 @@ func (b *builder) Where(cond ...interface{}) Builder {
 			// map拼接查询
 			return b.WhereMap(cond[0].(map[string]interface{}))
 		default:
-			log.Println("invalid arguments")
+			b.lastError = ErrInvalidCondArguments
 			return b
 		}
 	case 2:
 		k, ok := cond[0].(string)
 		if !ok {
-			log.Println("invalid cond")
+			b.lastError = ErrInvalidCondArguments
 			break
 		}
 		// in查询
@@ -112,7 +111,7 @@ func (b *builder) Where(cond ...interface{}) Builder {
 		return b.WhereRaw(build(k, op), cond[2])
 	default:
 	}
-	log.Println("invalid arguments")
+	b.lastError = ErrInvalidCondArguments
 	return b
 }
 
@@ -180,19 +179,33 @@ func (b *builder) Clear() Builder {
 	b.orderBy = []string{}
 	b.limit = 0
 	b.offset = 0
+	b.lastError = nil
 	return b
 }
 
-func (b *builder) GroupBy(k string) ReadBuilder {
+func (b *builder) GroupBy(k string, ks ...string) ReadBuilder {
+	b.groupBy = append(b.groupBy, buildK(k))
+	for _, k := range ks {
+		b.groupBy = append(b.groupBy, buildK(k))
+	}
 	return b
 }
 func (b *builder) OrderBy(k string, direct string) ReadBuilder {
+	direct = strings.ToUpper(direct)
+	if direct != "ASC" && direct != "DESC" {
+		// params error
+		b.lastError = ErrInvalidArguments
+		return b
+	}
+	b.orderBy = append(b.orderBy, buildK(k)+" "+direct)
 	return b
 }
+
 func (b *builder) Offset(offset int64) ReadBuilder {
 	b.offset = offset
 	return b
 }
+
 func (b *builder) Limit(limit int64) Builder {
 	b.limit = limit
 	return b
@@ -203,12 +216,12 @@ func (b *builder) Limit(limit int64) Builder {
 // buildCond调用之后会清空当期查询构建器中暂存的条件
 //（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) buildCond() (string, []interface{}) {
+	defer b.ClearCond()
 	if len(b.cond) == 0 {
 		return "", nil
 	}
 	result := strings.Join(b.cond, " AND ")
 	args := b.args
-	b.ClearCond()
 	return strings.TrimSpace(result), args
 }
 
@@ -278,9 +291,14 @@ func buildFields(fields []interface{}) string {
 
 // MakeQueryString 拼接查询语句字符串
 func (b *builder) MakeQueryString(fields []interface{}) (string, []interface{}, error) {
+	defer b.Clear()
 
 	if b.table == "" {
 		return "", nil, ErrEmptyTableName
+	}
+
+	if b.lastError != nil {
+		return "", nil, b.lastError
 	}
 
 	queryString := fmt.Sprintf("SELECT %s FROM %s", buildFields(fields), b.table)
@@ -304,7 +322,6 @@ func (b *builder) MakeQueryString(fields []interface{}) (string, []interface{}, 
 	} else if b.limit > 0 {
 		queryString += fmt.Sprintf(" LIMIT %d", b.limit)
 	}
-	b.Clear()
 	return queryString, args, nil
 }
 
@@ -461,6 +478,15 @@ func (b *builder) Insert(set map[string]interface{}) (int64, error) {
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
 func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error) {
+
+	// 构建where条件，先构建where条件，防止执行不到ClearCond
+	where, args := b.buildCond()
+	if where == "" {
+		// 防止在update、delete操作时，漏掉条件造成的严重后果
+		// 如果确实不需要条件，请将条件设置为 1=1
+		return 0, ErrEmptyCond
+	}
+
 	if len(limit) > 1 {
 		return 0, ErrInvalidArguments
 	}
@@ -469,12 +495,8 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 		return 0, ErrEmptyTableName
 	}
 
-	// 构建where条件
-	where, args := b.buildCond()
-	if where == "" {
-		// 防止在update、delete操作时，漏掉条件造成的严重后果
-		// 如果确实不需要条件，请将条件设置为 1=1
-		return 0, ErrEmptyCond
+	if b.lastError != nil {
+		return 0, b.lastError
 	}
 
 	if len(set) == 0 {
@@ -506,6 +528,14 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
 func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
+	// 构建where条件，先构建where条件，防止执行不到ClearCond
+	where, args := b.buildCond()
+	if where == "" {
+		// 防止在update、delete操作时，漏掉条件造成的严重后果
+		// 如果确实不需要条件，请将条件设置为 1=1
+		return 0, ErrEmptyCond
+	}
+
 	if len(limit) > 1 {
 		return 0, ErrInvalidArguments
 	}
@@ -514,12 +544,8 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 		return 0, ErrEmptyTableName
 	}
 
-	// 构建where条件
-	where, args := b.buildCond()
-	if where == "" {
-		// 防止在update、delete操作时，漏掉条件造成的严重后果
-		// 如果确实不需要条件，请将条件设置为 1=1
-		return 0, ErrEmptyCond
+	if b.lastError != nil {
+		return 0, b.lastError
 	}
 
 	if len(set) == 0 {
@@ -549,6 +575,14 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 // set map[string]interface{} （可选参数）自增同时update的字段
 // 返回影响的条数，错误信息
 func (b *builder) Increment(column string, amount int64, set ...map[string]interface{}) (int64, error) {
+	// 构建where条件，先构建where条件，防止执行不到ClearCond
+	where, args := b.buildCond()
+	if where == "" {
+		// 防止在update、delete操作时，漏掉条件造成的严重后果
+		// 如果确实不需要条件，请将条件设置为 1=1
+		return 0, ErrEmptyCond
+	}
+
 	if len(set) > 1 {
 		return 0, ErrInvalidArguments
 	}
@@ -556,12 +590,8 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]inter
 		return 0, ErrEmptyTableName
 	}
 
-	// 构建where条件
-	where, args := b.buildCond()
-	if where == "" {
-		// 防止在update、delete操作时，漏掉条件造成的严重后果
-		// 如果确实不需要条件，请将条件设置为 1=1
-		return 0, ErrEmptyCond
+	if b.lastError != nil {
+		return 0, b.lastError
 	}
 
 	column = buildK(column)
@@ -609,6 +639,14 @@ func (b *builder) Decrement(column string, amount int64, set ...map[string]inter
 
 // Delete 删除
 func (b *builder) Delete(limit ...int) (int64, error) {
+	// 构建where条件，先构建where条件，防止执行不到ClearCond
+	where, args := b.buildCond()
+	if where == "" {
+		// 防止在update、delete操作时，漏掉条件造成的严重后果
+		// 如果确实不需要条件，请将条件设置为 1=1
+		return 0, ErrEmptyCond
+	}
+
 	if len(limit) > 1 {
 		return 0, ErrInvalidArguments
 	}
@@ -617,12 +655,8 @@ func (b *builder) Delete(limit ...int) (int64, error) {
 		return 0, ErrEmptyTableName
 	}
 
-	// 构建where条件
-	where, args := b.buildCond()
-	if where == "" {
-		// 防止在update、delete操作时，漏掉条件造成的严重后果
-		// 如果确实不需要条件，请将条件设置为 1=1
-		return 0, ErrEmptyCond
+	if b.lastError != nil {
+		return 0, b.lastError
 	}
 
 	// 拼接删除语句
