@@ -3,14 +3,11 @@ package cache
 import "sync"
 
 type adapter interface {
-	Cache
-	init(map[string]string) error
-	initialized() bool
+	init(map[string]string) (Cache, error)
 }
 
 type register struct {
 	sync.Map
-	defaultAdapter string
 }
 
 var registry = register{}
@@ -29,23 +26,3 @@ func (r *register) get(name string) (adapter, error) {
 	return nil, ErrAdapterNotFound
 }
 
-// init 初始化数据库连接
-func (r *register) init(conf []Config, defaultAdapter string) error {
-	for _, item := range conf {
-		a, err := r.get(item.Name)
-		if err != nil {
-			return err
-		}
-		if a.initialized() {
-			continue
-		}
-		err = a.init(item.Option)
-		if err != nil {
-			return err
-		}
-		if defaultAdapter == item.Name {
-			r.defaultAdapter = defaultAdapter
-		}
-	}
-	return nil
-}

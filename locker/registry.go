@@ -5,14 +5,11 @@ import (
 )
 
 type adapter interface {
-	Locker
-	init(map[string]string) error
-	initialized() bool
+	init(map[string]string) (Locker, error)
 }
 
 type register struct {
 	sync.Map
-	defaultAdapter string
 }
 
 var registry = register{}
@@ -29,25 +26,4 @@ func (r *register) get(name string) (adapter, error) {
 		return a.(adapter), nil
 	}
 	return nil, ErrAdapterNotFound
-}
-
-// init 初始化数据库连接
-func (r *register) init(conf []Config, defaultAdapter string) error {
-	for _, item := range conf {
-		a, err := r.get(item.Name)
-		if err != nil {
-			return err
-		}
-		if a.initialized() {
-			continue
-		}
-		err = a.init(item.Option)
-		if err != nil {
-			return err
-		}
-		if defaultAdapter == item.Name {
-			r.defaultAdapter = defaultAdapter
-		}
-	}
-	return nil
 }

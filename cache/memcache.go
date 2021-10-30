@@ -6,27 +6,27 @@ import (
 	"time"
 )
 
+type mcInitiator struct {}
+
 type mcAdapter struct {
 	name string
 	conn *memcache.Memcache
 }
 
 // init 初始化memcache适配器
-func (m *mcAdapter) init(opt map[string]string) error {
+func (m *mcInitiator) init(opt map[string]string) (Cache, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
-		return ErrInvalidMemcacheAdapterParams
+		return nil, ErrInvalidMemcacheAdapterParams
 	}
-	m.name = name
 
 	var err error
-	m.conn, err = memcache.Client(m.name)
-	return err
-}
-
-// initialized 是否初始化
-func (m *mcAdapter) initialized() bool {
-	return m.conn != nil
+	conn, err := memcache.Client(name)
+	a := &mcAdapter{
+		name:          name,
+		conn:          conn,
+	}
+	return a, err
 }
 
 func (m *mcAdapter) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
@@ -121,5 +121,5 @@ func (m *mcAdapter) Forget(key string) error {
 }
 
 func init() {
-	registry.add("memcache", &mcAdapter{})
+	registry.add("memcache", &mcInitiator{})
 }

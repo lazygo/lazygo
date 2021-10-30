@@ -1,5 +1,7 @@
 package locker
 
+import "sync"
+
 // 分布式锁
 
 type Config struct {
@@ -38,25 +40,56 @@ type releaseFunc func() error
 
 func (r releaseFunc) Release() error { return r() }
 
+type Manager struct {
+	sync.Map
+	defaultName string
+}
+
+var manager = &Manager{}
+
+// init 初始化数据库连接
+func (m *Manager) init(conf []Config, defaultName string) error {
+	for _, item := range conf {
+		if _, ok := m.Load(item.Name); ok {
+			continue
+		}
+
+		a, err := registry.get(item.Adapter)
+		if err != nil {
+			return err
+		}
+		lock, err := a.init(item.Option)
+		if err != nil {
+			return err
+		}
+		m.Store(item.Name, lock)
+
+		if defaultName == item.Name {
+			m.defaultName = defaultName
+		}
+	}
+	if m.defaultName == "" {
+		return ErrInvalidDefaultAdapter
+	}
+	return nil
+}
+
 // Init 初始化设置，在框架初始化时调用
 func Init(conf []Config, defaultAdapter string) error {
-	return registry.init(conf, defaultAdapter)
+	return manager.init(conf, defaultAdapter)
 }
 
 // Instance 获取分布式锁实例
 func Instance(name string) (Locker, error) {
-	a, err := registry.get(name)
-	if err != nil {
-		return nil, err
-	}
-	if !a.initialized() {
+	a, ok := manager.Load(name)
+	if !ok {
 		return nil, ErrAdapterUninitialized
 	}
-	return a, nil
+	return a.(Locker), nil
 }
 
 func Lock(resource string, ttl uint64) (Releaser, bool, error) {
-	lock, err := Instance(registry.defaultAdapter)
+	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -68,7 +101,7 @@ func Lock(resource string, ttl uint64) (Releaser, bool, error) {
 // ttl 生存时间 (秒)
 // retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
 func TryLock(resource string, ttl uint64, retry uint64) (Releaser, bool, error) {
-	lock, err := Instance(registry.defaultAdapter)
+	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, false, err
 	}
@@ -81,7 +114,7 @@ func TryLock(resource string, ttl uint64, retry uint64) (Releaser, bool, error) 
 // f 返回interface{} 的函数
 // 在获取锁失败或超时的情况下，f不会被执行
 func LockFunc(resource string, ttl uint64, fn func() interface{}) (interface{}, error) {
-	lock, err := Instance(registry.defaultAdapter)
+	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, err
 	}

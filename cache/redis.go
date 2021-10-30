@@ -6,27 +6,27 @@ import (
 	"time"
 )
 
+type redisInitiator struct {}
+
 type redisAdapter struct {
 	name string
 	conn *redis.Redis
 }
 
 // init 初始化redis适配器
-func (r *redisAdapter) init(opt map[string]string) error {
+func (r *redisInitiator) init(opt map[string]string) (Cache, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
-		return ErrInvalidRedisAdapterParams
+		return nil, ErrInvalidRedisAdapterParams
 	}
-	r.name = name
 
 	var err error
-	r.conn, err = redis.Pool(r.name)
-	return err
-}
-
-// initialized 是否初始化
-func (r *redisAdapter) initialized() bool {
-	return r.conn != nil
+	conn, err := redis.Pool(name)
+	a := &redisAdapter{
+		name:          name,
+		conn:          conn,
+	}
+	return a, err
 }
 
 func (r *redisAdapter) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
@@ -103,5 +103,5 @@ func (r *redisAdapter) Forget(key string) error {
 }
 
 func init() {
-	registry.add("redis", &redisAdapter{})
+	registry.add("redis", &redisInitiator{})
 }

@@ -4,6 +4,7 @@ import "errors"
 
 var (
 	ErrInvalidRedisAdapterParams = errors.New("无效的redis适配器参数")
+	ErrInvalidDefaultAdapter        = errors.New("无效的默认适配器")
 
 	ErrAdapterNotFound      = errors.New("找不到适配器")
 	ErrAdapterUninitialized = errors.New("适配器未初始化")

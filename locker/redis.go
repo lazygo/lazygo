@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+type redisInitiator struct {}
+
 // redis适配器
 type redisAdapter struct {
 	name          string
@@ -24,30 +26,29 @@ const script = `
     `
 
 // init 初始化redis适配器
-func (r *redisAdapter) init(opt map[string]string) error {
+func (r *redisInitiator) init(opt map[string]string) (Locker, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
-		return ErrInvalidRedisAdapterParams
+		return nil, ErrInvalidRedisAdapterParams
 	}
-	r.name = name
 
 	var err error
-	r.conn, err = redis.Pool(r.name)
+	conn, err := redis.Pool(name)
 	if err != nil {
-		return err
+		return nil, err
+	}
+	a := &redisAdapter{
+		name:          name,
+		conn:          conn,
+		retryInterval: 100, // 默认100毫秒重试间隔（毫秒）
 	}
 	if retryInterval, ok := opt["retry_interval"]; ok {
-		r.retryInterval, err = strconv.ParseUint(retryInterval, 10, 64)
+		a.retryInterval, err = strconv.ParseUint(retryInterval, 10, 64)
 		if err != nil {
-			return err
+			return nil, err
 		}
 	}
-	return nil
-}
-
-// initialized 是否初始化
-func (r *redisAdapter) initialized() bool {
-	return r.conn != nil
+	return a, nil
 }
 
 // lock 获取锁
@@ -113,7 +114,5 @@ func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface
 
 func init() {
 	// 注册适配器
-	registry.add("redis", &redisAdapter{
-		retryInterval: 100, // 默认100毫秒重试间隔（毫秒）
-	})
+	registry.add("redis", &redisInitiator{})
 }

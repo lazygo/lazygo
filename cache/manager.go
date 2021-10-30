@@ -1,6 +1,7 @@
 package cache
 
 import (
+	"sync"
 	"time"
 )
 
@@ -18,25 +19,55 @@ type Cache interface {
 	Forget(key string) error
 }
 
+type Manager struct {
+	sync.Map
+	defaultName string
+}
+
+var manager = &Manager{}
+
+
+// init 初始化数据库连接
+func (m *Manager) init(conf []Config, defaultName string) error {
+	for _, item := range conf {
+		if _, ok := m.Load(item.Name); ok {
+			continue
+		}
+		a, err := registry.get(item.Adapter)
+		if err != nil {
+			return err
+		}
+		cache, err := a.init(item.Option)
+		if err != nil {
+			return err
+		}
+		m.Store(item.Name, cache)
+		if defaultName == item.Name {
+			m.defaultName = defaultName
+		}
+	}
+	if m.defaultName == "" {
+		return ErrInvalidDefaultAdapter
+	}
+	return nil
+}
+
 // Init 初始化设置，在框架初始化时调用
 func Init(conf []Config, defaultAdapter string) error {
-	return registry.init(conf, defaultAdapter)
+	return manager.init(conf, defaultAdapter)
 }
 
 // Instance 获取缓存实例
 func Instance(name string) (Cache, error) {
-	a, err := registry.get(name)
-	if err != nil {
-		return nil, err
-	}
-	if !a.initialized() {
+	a, ok := manager.Load(name)
+	if !ok {
 		return nil, ErrAdapterUninitialized
 	}
-	return a, nil
+	return a.(Cache), nil
 }
 
 func Remember(key string, value func() (interface{}, error), ttl time.Duration) DataResult {
-	cache, err := Instance(registry.defaultAdapter)
+	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return wrapperError(err)
 	}
@@ -44,7 +75,7 @@ func Remember(key string, value func() (interface{}, error), ttl time.Duration) 
 }
 
 func Get(key string) DataResult {
-	cache, err := Instance(registry.defaultAdapter)
+	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return wrapperError(err)
 	}
@@ -52,7 +83,7 @@ func Get(key string) DataResult {
 }
 
 func Set(key string, value interface{}, ttl time.Duration) error {
-	cache, err := Instance(registry.defaultAdapter)
+	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return err
 	}
@@ -60,7 +91,7 @@ func Set(key string, value interface{}, ttl time.Duration) error {
 }
 
 func Has(key string) (bool, error) {
-	cache, err := Instance(registry.defaultAdapter)
+	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return false, err
 	}
@@ -68,7 +99,7 @@ func Has(key string) (bool, error) {
 }
 
 func Forget(key string) error {
-	cache, err := Instance(registry.defaultAdapter)
+	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return err
 	}
