@@ -6,6 +6,12 @@ type adapter interface {
 	init(map[string]string) (Cache, error)
 }
 
+type adapterFunc func(map[string]string) (Cache, error)
+
+func (fn adapterFunc) init(opt map[string]string) (Cache, error) {
+	return fn(opt)
+}
+
 type register struct {
 	sync.Map
 }
@@ -25,4 +31,3 @@ func (r *register) get(name string) (adapter, error) {
 	}
 	return nil, ErrAdapterNotFound
 }
-

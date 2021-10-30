@@ -7,8 +7,6 @@ import (
 	"time"
 )
 
-type redisInitiator struct {}
-
 // redis适配器
 type redisAdapter struct {
 	name          string
@@ -25,8 +23,8 @@ const script = `
         end
     `
 
-// init 初始化redis适配器
-func (r *redisInitiator) init(opt map[string]string) (Locker, error) {
+// newRedisAdapter 初始化redis适配器
+func newRedisAdapter(opt map[string]string) (Locker, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidRedisAdapterParams
@@ -114,5 +112,5 @@ func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface
 
 func init() {
 	// 注册适配器
-	registry.add("redis", &redisInitiator{})
+	registry.add("redis", adapterFunc(newRedisAdapter))
 }

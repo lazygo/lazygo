@@ -6,15 +6,13 @@ import (
 	"time"
 )
 
-type mcInitiator struct {}
-
 type mcAdapter struct {
 	name string
 	conn *memcache.Memcache
 }
 
-// init 初始化memcache适配器
-func (m *mcInitiator) init(opt map[string]string) (Cache, error) {
+// newMcAdapter 初始化memcache适配器
+func newMcAdapter(opt map[string]string) (Cache, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidMemcacheAdapterParams
@@ -23,8 +21,8 @@ func (m *mcInitiator) init(opt map[string]string) (Cache, error) {
 	var err error
 	conn, err := memcache.Client(name)
 	a := &mcAdapter{
-		name:          name,
-		conn:          conn,
+		name: name,
+		conn: conn,
 	}
 	return a, err
 }
@@ -121,5 +119,5 @@ func (m *mcAdapter) Forget(key string) error {
 }
 
 func init() {
-	registry.add("memcache", &mcInitiator{})
+	registry.add("memcache", adapterFunc(newMcAdapter))
 }

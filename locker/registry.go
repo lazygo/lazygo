@@ -8,6 +8,12 @@ type adapter interface {
 	init(map[string]string) (Locker, error)
 }
 
+type adapterFunc func(map[string]string) (Locker, error)
+
+func (fn adapterFunc) init(opt map[string]string) (Locker, error) {
+	return fn(opt)
+}
+
 type register struct {
 	sync.Map
 }
