@@ -22,12 +22,12 @@ type Config struct {
 	Memcache []memcache.Config `json:"memcache" toml:"memcache"`
 	Memory   []memory.Config   `json:"memory" toml:"memory"`
 	Cache    struct {
-		DefaultAdapter string         `json:"default" toml:"default"`
-		Adapter        []cache.Config `json:"adapter" toml:"adapter"`
+		DefaultName string         `json:"default" toml:"default"`
+		Adapter     []cache.Config `json:"adapter" toml:"adapter"`
 	} `json:"cache" toml:"cache"`
 	Locker struct {
-		DefaultAdapter string          `json:"default" toml:"default"`
-		Adapter        []locker.Config `json:"adapter" toml:"adapter"`
+		DefaultName string          `json:"default" toml:"default"`
+		Adapter     []locker.Config `json:"adapter" toml:"adapter"`
 	} `json:"locker" toml:"locker"`
 }
 
@@ -56,10 +56,10 @@ func main() {
 	err = memory.Init(config.Memory)
 	utils.CheckError(err)
 
-	err = locker.Init(config.Locker.Adapter, config.Locker.DefaultAdapter)
+	err = locker.Init(config.Locker.Adapter, config.Locker.DefaultName)
 	utils.CheckError(err)
 
-	err = cache.Init(config.Cache.Adapter, config.Cache.DefaultAdapter)
+	err = cache.Init(config.Cache.Adapter, config.Cache.DefaultName)
 	utils.CheckError(err)
 
 	e.Start("127.0.0.1:1234")

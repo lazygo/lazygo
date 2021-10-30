@@ -69,7 +69,7 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 		}
 	}
 	if m.defaultName == "" {
-		return ErrInvalidDefaultAdapter
+		return ErrInvalidDefaultName
 	}
 	return nil
 }
