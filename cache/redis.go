@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-type redisAdapter struct {
+type redisCache struct {
 	name string
 	conn *redis.Redis
 }
 
-// newRedisAdapter 初始化redis适配器
-func newRedisAdapter(opt map[string]string) (Cache, error) {
+// newRedisCache 初始化redis适配器
+func newRedisCache(opt map[string]string) (Cache, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidRedisAdapterParams
@@ -20,14 +20,14 @@ func newRedisAdapter(opt map[string]string) (Cache, error) {
 
 	var err error
 	conn, err := redis.Pool(name)
-	a := &redisAdapter{
+	a := &redisCache{
 		name: name,
 		conn: conn,
 	}
 	return a, err
 }
 
-func (r *redisAdapter) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 		err := r.conn.GetObject(key, &wp.Data)
@@ -54,7 +54,7 @@ func (r *redisAdapter) Remember(key string, fn func() (interface{}, error), ttl 
 	return wp
 }
 
-func (r *redisAdapter) Set(key string, val interface{}, ttl time.Duration) error {
+func (r *redisCache) Set(key string, val interface{}, ttl time.Duration) error {
 	wp := &wrapper{}
 	err := wp.Pack(val, ttl)
 	if err != nil {
@@ -67,7 +67,7 @@ func (r *redisAdapter) Set(key string, val interface{}, ttl time.Duration) error
 	return nil
 }
 
-func (r *redisAdapter) Get(key string) DataResult {
+func (r *redisCache) Get(key string) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 		err := r.conn.GetObject(key, &wp.Data)
@@ -84,7 +84,7 @@ func (r *redisAdapter) Get(key string) DataResult {
 	return wp
 }
 
-func (r *redisAdapter) Has(key string) (bool, error) {
+func (r *redisCache) Has(key string) (bool, error) {
 	wp := &wrapper{}
 	err := r.conn.GetObject(key, &wp.Data)
 	if err == redigo.ErrNil {
@@ -96,10 +96,10 @@ func (r *redisAdapter) Has(key string) (bool, error) {
 	return wp.Data.Deadline >= time.Now().Unix(), nil
 }
 
-func (r *redisAdapter) Forget(key string) error {
+func (r *redisCache) Forget(key string) error {
 	return r.conn.Del(key)
 }
 
 func init() {
-	registry.add("redis", adapterFunc(newRedisAdapter))
+	registry.add("redis", adapterFunc(newRedisCache))
 }

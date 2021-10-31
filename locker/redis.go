@@ -23,8 +23,8 @@ const script = `
         end
     `
 
-// newRedisAdapter 初始化redis适配器
-func newRedisAdapter(opt map[string]string) (Locker, error) {
+// newRedisLocker 初始化redis适配器
+func newRedisLocker(opt map[string]string) (Locker, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidRedisAdapterParams
@@ -112,5 +112,5 @@ func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface
 
 func init() {
 	// 注册适配器
-	registry.add("redis", adapterFunc(newRedisAdapter))
+	registry.add("redis", adapterFunc(newRedisLocker))
 }

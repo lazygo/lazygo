@@ -22,7 +22,7 @@ type (
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
 
-	// 控制器
+	// Controller 控制器
 	Controller struct{}
 )
 

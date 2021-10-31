@@ -397,31 +397,28 @@ func (r *Router) GetList() []*pair {
 		if l <= 0 {
 			break
 		}
-		snd := stack[l-1] // 取栈最后一个node
-		csnd := snd.current()
+		sn := stack[l-1] // 取栈最后一个node
+		csn := sn.current()
 
-		if snd.childs == nil {
-			// 出栈
+		if sn.childs == nil {
 			stack = stack[0 : l-1]
 		} else {
-			if csnd.children != nil {
-				childs := csnd.children
-				// 压栈
+			if csn.children != nil {
+				childs := csn.children
 				stack = append(stack, &sNode{
 					childs,
 					0,
 				})
 			}
 
-			// 父级指针后移
-			snd.curr++
-			if snd.curr >= len(snd.childs) {
+			sn.curr++
+			if sn.curr >= len(sn.childs) {
 				// last
-				snd.childs = nil
+				sn.childs = nil
 			}
 
 			// 获取路由
-			if pr, ok := r.fetchPath(csnd); ok {
+			if pr, ok := r.fetchPath(csn); ok {
 				list = append(list, pr...)
 			}
 			//
@@ -432,24 +429,24 @@ func (r *Router) GetList() []*pair {
 }
 
 // fetchPath 获取有效node的path
-func (r *Router) fetchPath(csnd *node) (list []*pair, ok bool) {
+func (r *Router) fetchPath(csn *node) (list []*pair, ok bool) {
 	ok = false
-	if csnd.kind != 0 {
+	if csn.kind != 0 {
 		list = nil
 		return
 	}
-	if csnd.methodHandler == nil {
+	if csn.methodHandler == nil {
 		list = nil
 		return
 	}
-	t := reflect.TypeOf(*csnd.methodHandler)
-	v := reflect.ValueOf(*csnd.methodHandler)
+	t := reflect.TypeOf(*csn.methodHandler)
+	v := reflect.ValueOf(*csn.methodHandler)
 	for k := 0; k < t.NumField(); k++ {
 		if v.Field(k).IsNil() {
 			continue
 		}
 		method := strings.ToUpper(t.Field(k).Name)
-		list = append(list, &pair{method, csnd.ppath})
+		list = append(list, &pair{method, csn.ppath})
 		ok = true
 	}
 	return

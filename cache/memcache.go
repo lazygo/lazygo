@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-type mcAdapter struct {
+type mcCache struct {
 	name string
 	conn *memcache.Memcache
 }
 
-// newMcAdapter 初始化memcache适配器
-func newMcAdapter(opt map[string]string) (Cache, error) {
+// newMcCache 初始化memcache适配器
+func newMcCache(opt map[string]string) (Cache, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidMemcacheAdapterParams
@@ -20,14 +20,14 @@ func newMcAdapter(opt map[string]string) (Cache, error) {
 
 	var err error
 	conn, err := memcache.Client(name)
-	a := &mcAdapter{
+	a := &mcCache{
 		name: name,
 		conn: conn,
 	}
 	return a, err
 }
 
-func (m *mcAdapter) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 		item, err := m.conn.Conn().Get(key)
@@ -63,7 +63,7 @@ func (m *mcAdapter) Remember(key string, fn func() (interface{}, error), ttl tim
 	return wp
 }
 
-func (m *mcAdapter) Set(key string, val interface{}, ttl time.Duration) error {
+func (m *mcCache) Set(key string, val interface{}, ttl time.Duration) error {
 	wp := &wrapper{}
 	err := wp.Pack(val, ttl)
 	if err != nil {
@@ -80,7 +80,7 @@ func (m *mcAdapter) Set(key string, val interface{}, ttl time.Duration) error {
 	return nil
 }
 
-func (m *mcAdapter) Get(key string) DataResult {
+func (m *mcCache) Get(key string) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 
@@ -101,7 +101,7 @@ func (m *mcAdapter) Get(key string) DataResult {
 	return wp
 }
 
-func (m *mcAdapter) Has(key string) (bool, error) {
+func (m *mcCache) Has(key string) (bool, error) {
 	wp := &wrapper{}
 	item, err := m.conn.Conn().Get(key)
 	if err != nil {
@@ -114,10 +114,10 @@ func (m *mcAdapter) Has(key string) (bool, error) {
 	return wp.Data.Deadline >= time.Now().Unix(), nil
 }
 
-func (m *mcAdapter) Forget(key string) error {
+func (m *mcCache) Forget(key string) error {
 	return m.conn.Delete(key)
 }
 
 func init() {
-	registry.add("memcache", adapterFunc(newMcAdapter))
+	registry.add("memcache", adapterFunc(newMcCache))
 }
