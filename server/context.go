@@ -1,4 +1,4 @@
-package engine
+package server
 
 import (
 	"encoding/json"
@@ -104,7 +104,7 @@ type (
 		query          url.Values
 		handler        HandlerFunc
 		store          Map
-		engine         *Engine
+		server         *Server
 		lock           sync.RWMutex
 	}
 )
@@ -142,7 +142,7 @@ func (c *context) GetRoutePath() string {
 	return c.path
 }
 
-// 路由参数
+// Param 路由参数
 func (c *context) Param(name string) string {
 	for i, n := range c.pnames {
 		if i < len(c.pvalues) {
@@ -154,37 +154,37 @@ func (c *context) Param(name string) string {
 	return ""
 }
 
-// 路由参数
+// ParamValues 路由参数
 func (c *context) ParamValues() []string {
 	return c.pvalues[:len(c.pnames)]
 }
 
-// 获取Get字符串变量
+// GetString 获取Get字符串变量
 func (c *context) GetString(name string, defVal ...string) string {
 	return utils.ToString(c.QueryParam(name), defVal...)
 }
 
-// 获取Get整型变量
+// GetInt 获取Get整型变量
 func (c *context) GetInt(name string, defVal ...int) int {
 	return utils.ToInt(c.QueryParam(name), defVal...)
 }
 
-// 获取Get整型变量
+// GetInt64 获取Get整型变量
 func (c *context) GetInt64(name string, defVal ...int64) int64 {
 	return utils.ToInt64(c.QueryParam(name), defVal...)
 }
 
-// 获取Post字符串变量
+// PostString 获取Post字符串变量
 func (c *context) PostString(name string, defVal ...string) string {
 	return utils.ToString(c.FormValue(name), defVal...)
 }
 
-// 获取Post整型变量
+// PostInt 获取Post整型变量
 func (c *context) PostInt(name string, defVal ...int) int {
 	return utils.ToInt(c.FormValue(name), defVal...)
 }
 
-// 获取Post整型变量
+// PostInt64 获取Post整型变量
 func (c *context) PostInt64(name string, defVal ...int64) int64 {
 	return utils.ToInt64(c.FormValue(name), defVal...)
 }
@@ -338,7 +338,7 @@ func (c *context) Redirect(code int, url string) error {
 }
 
 func (c *context) Error(err error) {
-	c.engine.HTTPErrorHandler(err, c)
+	c.server.HTTPErrorHandler(err, c)
 }
 
 func (c *context) Handler() HandlerFunc {
@@ -346,8 +346,8 @@ func (c *context) Handler() HandlerFunc {
 }
 
 // Reset resets the context after request completes. It must be called along
-// with `Engine#AcquireContext()` and `Engine#ReleaseContext()`.
-// See `Engine#ServeHTTP()`
+// with `Server#AcquireContext()` and `Server#ReleaseContext()`.
+// See `Server#ServeHTTP()`
 func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	c.request = r
 	c.responseWriter.reset(w)
@@ -357,7 +357,7 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	c.pnames = nil
 	c.query = nil
 	// NOTE: Don't reset because it has to have length c.engine.maxParam at all times
-	for i := 0; i < *c.engine.maxParam; i++ {
+	for i := 0; i < *c.server.maxParam; i++ {
 		c.pvalues[i] = ""
 	}
 }

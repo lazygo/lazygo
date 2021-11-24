@@ -7,8 +7,8 @@ import (
 )
 
 type redisCache struct {
-	name string
-	conn *redis.Redis
+	name    string
+	handler *redis.Redis
 }
 
 // newRedisCache 初始化redis适配器
@@ -19,10 +19,10 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	}
 
 	var err error
-	conn, err := redis.Pool(name)
+	handler, err := redis.Pool(name)
 	a := &redisCache{
-		name: name,
-		conn: conn,
+		name:    name,
+		handler: handler,
 	}
 	return a, err
 }
@@ -30,7 +30,7 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
-		err := r.conn.GetObject(key, &wp.Data)
+		err := r.handler.GetObject(key, &wp.Data)
 		if err != nil && err != redigo.ErrNil {
 			return err
 		}
@@ -45,11 +45,7 @@ func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl ti
 			return err
 		}
 
-		err = r.conn.Set(key, wp.Data, int64(ttl.Seconds()))
-		if err != nil {
-			return err
-		}
-		return nil
+		return r.handler.Set(key, wp.Data, int64(ttl.Seconds()))
 	}
 	return wp
 }
@@ -60,7 +56,7 @@ func (r *redisCache) Set(key string, val interface{}, ttl time.Duration) error {
 	if err != nil {
 		return err
 	}
-	err = r.conn.Set(key, wp, int64(ttl.Seconds()))
+	err = r.handler.Set(key, wp, int64(ttl.Seconds()))
 	if err != nil {
 		return err
 	}
@@ -70,7 +66,7 @@ func (r *redisCache) Set(key string, val interface{}, ttl time.Duration) error {
 func (r *redisCache) Get(key string) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
-		err := r.conn.GetObject(key, &wp.Data)
+		err := r.handler.GetObject(key, &wp.Data)
 		if err != nil && err != redigo.ErrNil {
 			return err
 		}
@@ -86,7 +82,7 @@ func (r *redisCache) Get(key string) DataResult {
 
 func (r *redisCache) Has(key string) (bool, error) {
 	wp := &wrapper{}
-	err := r.conn.GetObject(key, &wp.Data)
+	err := r.handler.GetObject(key, &wp.Data)
 	if err == redigo.ErrNil {
 		return false, nil
 	}
@@ -97,7 +93,7 @@ func (r *redisCache) Has(key string) (bool, error) {
 }
 
 func (r *redisCache) Forget(key string) error {
-	return r.conn.Del(key)
+	return r.handler.Del(key)
 }
 
 func init() {

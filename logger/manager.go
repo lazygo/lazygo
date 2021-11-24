@@ -6,8 +6,6 @@ import (
 	"time"
 )
 
-// 分布式锁
-
 type Config struct {
 	Name    string            `json:"name" toml:"name"`
 	Adapter string            `json:"adapter" toml:"adapter"`
@@ -19,7 +17,7 @@ type Config struct {
 type logWriter interface {
 	Writeln([]byte, time.Time) (int, error)
 	Close() error
-	Flush()
+	Flush() error
 }
 
 type Writer interface {
@@ -67,7 +65,7 @@ type Manager struct {
 
 var manager = &Manager{}
 
-// init 初始化数据库连接
+// init 初始化日志记录器
 func (m *Manager) init(conf []Config, defaultName string) error {
 	for _, item := range conf {
 		if _, ok := m.Load(item.Name); ok {
@@ -99,7 +97,7 @@ func Init(conf []Config, defaultAdapter string) error {
 	return manager.init(conf, defaultAdapter)
 }
 
-// Instance 获取分布式锁实例
+// Instance 获取日志记录器实例
 func Instance(name string) (Writer, error) {
 	a, ok := manager.Load(name)
 	if !ok {

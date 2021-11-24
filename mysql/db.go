@@ -2,6 +2,8 @@ package mysql
 
 import (
 	"database/sql"
+	"errors"
+	"fmt"
 )
 
 type DB struct {
@@ -116,6 +118,39 @@ func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) (er
 		err = rows.Close()
 	}()
 	return parseRowDataIn(rows, result)
+}
+
+// Transaction 事务
+func (d *DB) Transaction(fn func() error) (err error) {
+	tx, err := d.Begin()
+	if err != nil {
+		if tx != nil {
+			rbErr := tx.Rollback()
+			if rbErr != nil {
+				return rbErr
+			}
+		}
+		return err
+	}
+	defer func() {
+		e := recover()
+		if e != nil {
+			rbErr := tx.Rollback()
+			if rbErr != nil {
+				err = rbErr
+				return
+			}
+			err =  errors.New(fmt.Sprint(e))
+		}
+	}()
+	err = fn()
+	if err != nil {
+		rbErr := tx.Rollback()
+		if rbErr != nil {
+			return rbErr
+		}
+	}
+	return tx.Commit()
 }
 
 // GetTablePrefix 获取表前缀

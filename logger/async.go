@@ -26,6 +26,7 @@ type asyncWriter struct {
 	wg         sync.WaitGroup
 }
 
+// newAsync 异步写入
 func newAsync(lw logWriter, chanLens uint64) *asyncWriter {
 	a := &asyncWriter{
 		lw:         lw,

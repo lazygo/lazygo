@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/lazygo/lazygo/cache"
-	"github.com/lazygo/lazygo/engine"
 	"github.com/lazygo/lazygo/locker"
 	"github.com/lazygo/lazygo/memcache"
 	"github.com/lazygo/lazygo/memory"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
+	"github.com/lazygo/lazygo/server"
 	"github.com/lazygo/lazygo/test/app"
 	"github.com/lazygo/lazygo/utils"
 	"runtime"
@@ -33,7 +33,7 @@ type Config struct {
 
 func main() {
 	runtime.GOMAXPROCS(runtime.NumCPU())
-	e := engine.New()
+	e := server.New()
 	e.Get("/ab/:xxx/cd.json", app.TestController{}.TestResponseAction)
 
 	config := Config{}

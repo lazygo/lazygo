@@ -2,7 +2,6 @@ package logger
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -56,16 +55,6 @@ type fileLogWriter struct {
 }
 
 // newFileLogWriter create a FileLogWriter returning as LoggerInterface.
-// jsonConfig like:
-//  {
-//  "filename":"logs/beego.log",
-//  "maxLines":10000,
-//  "maxsize":1024,
-//  "daily":true,
-//  "maxDays":15,
-//  "rotate":true,
-//      "perm":"0600"
-//  }
 func newFileLogWriter(opt map[string]string) (logWriter, error) {
 	fl := &fileLogWriter{
 		Filename: opt["filename"],
@@ -83,7 +72,7 @@ func newFileLogWriter(opt map[string]string) (logWriter, error) {
 	}
 
 	if fl.Filename == "" {
-		return nil, errors.New("文件名错误")
+		return nil, ErrInvalidFilename
 	}
 	fl.suffix = filepath.Ext(fl.Filename)
 	fl.fileNameOnly = strings.TrimSuffix(fl.Filename, fl.suffix)
@@ -156,8 +145,8 @@ func (fl *fileLogWriter) Close() error {
 // Flush flush file logger.
 // there are no buffering messages in file logger in memory.
 // flush file means sync file from disk.
-func (fl *fileLogWriter) Flush() {
-	fl.w.Sync()
+func (fl *fileLogWriter) Flush() error {
+	return fl.w.Sync()
 }
 
 func (fl *fileLogWriter) needRotateDaily(size int, day int) bool {

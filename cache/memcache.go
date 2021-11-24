@@ -7,8 +7,8 @@ import (
 )
 
 type mcCache struct {
-	name string
-	conn *memcache.Memcache
+	name    string
+	handler *memcache.Memcache
 }
 
 // newMcCache 初始化memcache适配器
@@ -19,10 +19,10 @@ func newMcCache(opt map[string]string) (Cache, error) {
 	}
 
 	var err error
-	conn, err := memcache.Client(name)
+	handler, err := memcache.Client(name)
 	a := &mcCache{
-		name: name,
-		conn: conn,
+		name:    name,
+		handler: handler,
 	}
 	return a, err
 }
@@ -30,7 +30,7 @@ func newMcCache(opt map[string]string) (Cache, error) {
 func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
-		item, err := m.conn.Conn().Get(key)
+		item, err := m.handler.Conn().Get(key)
 		if err != nil {
 			return err
 		}
@@ -54,11 +54,7 @@ func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl time.
 			return err
 		}
 
-		err = m.conn.Set(key, value, int32(ttl.Seconds()))
-		if err != nil {
-			return err
-		}
-		return nil
+		return m.handler.Set(key, value, int32(ttl.Seconds()))
 	}
 	return wp
 }
@@ -73,7 +69,7 @@ func (m *mcCache) Set(key string, val interface{}, ttl time.Duration) error {
 	if err != nil {
 		return err
 	}
-	err = m.conn.Set(key, value, int32(ttl.Seconds()))
+	err = m.handler.Set(key, value, int32(ttl.Seconds()))
 	if err != nil {
 		return err
 	}
@@ -84,7 +80,7 @@ func (m *mcCache) Get(key string) DataResult {
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 
-		item, err := m.conn.Conn().Get(key)
+		item, err := m.handler.Conn().Get(key)
 		if err != nil {
 			return err
 		}
@@ -103,7 +99,7 @@ func (m *mcCache) Get(key string) DataResult {
 
 func (m *mcCache) Has(key string) (bool, error) {
 	wp := &wrapper{}
-	item, err := m.conn.Conn().Get(key)
+	item, err := m.handler.Conn().Get(key)
 	if err != nil {
 		return false, err
 	}
@@ -115,7 +111,7 @@ func (m *mcCache) Has(key string) (bool, error) {
 }
 
 func (m *mcCache) Forget(key string) error {
-	return m.conn.Delete(key)
+	return m.handler.Delete(key)
 }
 
 func init() {

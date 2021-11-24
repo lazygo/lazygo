@@ -6,7 +6,7 @@ import (
 	"strconv"
 )
 
-// 转换为字符串
+// ToString 转换为字符串
 // 如果value不能转换为字符串，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为空字符串""
 func ToString(value interface{}, defVal ...string) string {
@@ -38,7 +38,7 @@ func ToString(value interface{}, defVal ...string) string {
 	return str
 }
 
-// 转换为int64类型
+// ToInt64 转换为int64类型
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
@@ -73,7 +73,7 @@ func ToInt64(value interface{}, defVal ...int64) int64 {
 	return d
 }
 
-// 转换为int类型
+// ToInt 转换为int类型
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0

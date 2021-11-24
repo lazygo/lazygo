@@ -1,4 +1,4 @@
-package engine
+package server
 
 import (
 	"reflect"
@@ -6,11 +6,11 @@ import (
 )
 
 type (
-	// Router is the registry of all registered routes for an `Engine` instance for
+	// Router is the registry of all registered routes for an `Server` instance for
 	// request matching and URL path parameter parsing.
 	Router struct {
 		tree   *node
-		engine *Engine
+		server *Server
 	}
 	kind          uint8
 	methodHandler struct {
@@ -40,12 +40,12 @@ const (
 )
 
 // NewRouter returns a new Router instance.
-func NewRouter(e *Engine) *Router {
+func NewRouter(s *Server) *Router {
 	return &Router{
 		tree: &node{
 			methodHandler: new(methodHandler),
 		},
-		engine: e,
+		server: s,
 	}
 }
 
@@ -91,8 +91,8 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string, pnames []string) {
 	// Adjust max param
 	l := len(pnames)
-	if *r.engine.maxParam < l {
-		*r.engine.maxParam = l
+	if *r.server.maxParam < l {
+		*r.server.maxParam = l
 	}
 
 	cn := r.tree // Current node as root
@@ -187,9 +187,9 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 //
 // For performance:
 //
-// - Get context from `Engine#AcquireContext()`
+// - Get context from `Server#AcquireContext()`
 // - Reset it `Context#Reset()`
-// - Return it `Engine#ReleaseContext()`.
+// - Return it `Server#ReleaseContext()`.
 func (r *Router) Find(method, path string, c Context) {
 	ctx := c.(*context)
 	ctx.path = path
@@ -354,7 +354,6 @@ func (r *Router) Find(method, path string, c Context) {
 		ctx.handler = cn.checkMethodNotAllowed()
 
 		// Dig further for any, might have an empty value for *, e.g.
-		// serving a directory. Issue #207.
 		if cn = cn.findChildByKind(akind); cn == nil {
 			return
 		}

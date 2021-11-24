@@ -7,4 +7,5 @@ var (
 
 	ErrAdapterNotFound      = errors.New("找不到适配器")
 	ErrAdapterUninitialized = errors.New("适配器未初始化")
+	ErrInvalidFilename = errors.New("文件名错误")
 )

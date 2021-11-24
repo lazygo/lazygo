@@ -1,4 +1,4 @@
-package engine
+package server
 
 import (
 	"net/http"
@@ -7,60 +7,60 @@ import (
 	"path/filepath"
 )
 
-// Common struct for Engine & Group.
+// Common struct for Server & Group.
 type common struct {
 	add func(method, path string, handler HandlerFunc, middleware ...MiddlewareFunc)
 }
 
-// CONNECT registers a new CONNECT route for a path with matching handler in the
+// Connect registers a new CONNECT route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Connect(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodConnect, path, h, m...)
 }
 
-// DELETE registers a new DELETE route for a path with matching handler in the router
+// Delete registers a new DELETE route for a path with matching handler in the router
 // with optional route-level middleware.
 func (cm *common) Delete(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodDelete, path, h, m...)
 }
 
-// GET registers a new GET route for a path with matching handler in the router
+// Get registers a new GET route for a path with matching handler in the router
 // with optional route-level middleware.
 func (cm *common) Get(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodGet, path, h, m...)
 }
 
-// HEAD registers a new HEAD route for a path with matching handler in the
+// Head registers a new HEAD route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Head(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodHead, path, h, m...)
 }
 
-// OPTIONS registers a new OPTIONS route for a path with matching handler in the
+// Options registers a new OPTIONS route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Options(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodOptions, path, h, m...)
 }
 
-// PATCH registers a new PATCH route for a path with matching handler in the
+// Patch registers a new PATCH route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Patch(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodPatch, path, h, m...)
 }
 
-// POST registers a new POST route for a path with matching handler in the
+// Post registers a new POST route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Post(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodPost, path, h, m...)
 }
 
-// PUT registers a new PUT route for a path with matching handler in the
+// Put registers a new PUT route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Put(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodPut, path, h, m...)
 }
 
-// TRACE registers a new TRACE route for a path with matching handler in the
+// Trace registers a new TRACE route for a path with matching handler in the
 // router with optional route-level middleware.
 func (cm *common) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodTrace, path, h, m...)

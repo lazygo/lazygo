@@ -1,4 +1,4 @@
-package engine
+package server
 
 import (
 	"bufio"
@@ -10,7 +10,6 @@ import (
 type (
 	// ResponseWriter wraps an http.ResponseWriter and implements its interface to be used
 	// by an HTTP handler to construct an HTTP response.
-	// See: https://golang.org/pkg/net/http/#ResponseWriter
 	ResponseWriter struct {
 		beforeFuncs []func()
 		afterFuncs  []func()
@@ -31,7 +30,6 @@ func NewResponseWriter(w http.ResponseWriter) (r *ResponseWriter) {
 // no effect unless the modified headers were declared as trailers by setting
 // the "Trailer" header before the call to WriteHeader (see example)
 // To suppress implicit response headers, set their value to nil.
-// Example: https://golang.org/pkg/net/http/#example_ResponseWriter_trailers
 func (r *ResponseWriter) Header() http.Header {
 	return r.Writer.Header()
 }
@@ -82,14 +80,12 @@ func (r *ResponseWriter) Write(b []byte) (n int, err error) {
 
 // Flush implements the http.Flusher interface to allow an HTTP handler to flush
 // buffered data to the client.
-// See [http.Flusher](https://golang.org/pkg/net/http/#Flusher)
 func (r *ResponseWriter) Flush() {
 	r.Writer.(http.Flusher).Flush()
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
 // take over the connection.
-// See [http.Hijacker](https://golang.org/pkg/net/http/#Hijacker)
 func (r *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return r.Writer.(http.Hijacker).Hijack()
 }

@@ -11,7 +11,7 @@ const MB = 1 << 20
 
 type LRU interface {
 	Get(key string) (v Value, ok bool)
-	Set(key string, val []byte, ttl time.Duration)
+	Set(key string, val []byte, expiration int32) error
 	Delete(key string) bool
 	Flush()
 	Size() uint64
@@ -60,11 +60,15 @@ func (lru *LRUImpl) checkCapacity() {
 }
 
 // addNew 添加缓存
-func (lru *LRUImpl) addNew(key string, value Value, ttl time.Duration) {
+func (lru *LRUImpl) addNew(key string, value Value, ttl time.Duration) error {
+	size := len(value)
+	if uint64(size) > lru.capacity {
+		return ErrSizeOverflow
+	}
 	newItem := &item{
 		key:          key,
 		value:        value,
-		size:         len(value),
+		size:         size,
 		timeAccessed: time.Now(),
 		deadline:     time.Now().Add(ttl),
 	}
@@ -72,11 +76,15 @@ func (lru *LRUImpl) addNew(key string, value Value, ttl time.Duration) {
 	lru.table[key] = element
 	lru.size += uint64(newItem.size)
 	lru.checkCapacity()
+	return nil
 }
 
 // updateInplace 更新缓存
-func (lru *LRUImpl) updateInplace(element *list.Element, value Value) {
+func (lru *LRUImpl) updateInplace(element *list.Element, value Value) error {
 	valueSize := len(value)
+	if uint64(valueSize) > lru.capacity {
+		return ErrSizeOverflow
+	}
 	sizeDiff := valueSize - element.Value.(*item).size
 	element.Value.(*item).value = value
 	element.Value.(*item).size = valueSize
@@ -84,6 +92,7 @@ func (lru *LRUImpl) updateInplace(element *list.Element, value Value) {
 	lru.list.MoveToFront(element)
 	element.Value.(*item).timeAccessed = time.Now()
 	lru.checkCapacity()
+	return nil
 }
 
 // Get 获取缓存
@@ -109,17 +118,16 @@ func (lru *LRUImpl) Get(key string) (v Value, ok bool) {
 }
 
 // Set 设置缓存
-func (lru *LRUImpl) Set(key string, val []byte, ttl time.Duration) {
+func (lru *LRUImpl) Set(key string, val []byte, expiration int32) error {
 	value := Value(val)
 
 	lru.mu.Lock()
 	defer lru.mu.Unlock()
 
 	if element := lru.table[key]; element != nil {
-		lru.updateInplace(element, value)
-	} else {
-		lru.addNew(key, value, ttl)
+		return lru.updateInplace(element, value)
 	}
+	return lru.addNew(key, value, time.Duration(expiration) *  time.Second)
 }
 
 // Delete 删除缓存
