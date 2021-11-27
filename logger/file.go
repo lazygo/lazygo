@@ -14,19 +14,18 @@ import (
 )
 
 // fileLogWriter implements LogWriter Interface.
-// It writes messages by lines limit, file size limit, or time frequency.
 type fileLogWriter struct {
 	sync.RWMutex // write log order by order and  atomic incr maxLinesCurLines and maxSizeCurSize
 
 	// The opened file
 	Filename string `json:"filename"`
-	w        *os.File
+	writer   *os.File
 
 	// Rotate at line
-	MaxLines         int `json:"maxlines"`
+	MaxLines         int `json:"max_lines"`
 	maxLinesCurLines int
 
-	MaxFiles         int `json:"maxfiles"`
+	MaxFiles         int `json:"max_files"`
 	MaxFilesCurFiles int
 
 	// Rotate at size
@@ -35,13 +34,13 @@ type fileLogWriter struct {
 
 	// Rotate daily
 	Daily         bool  `json:"daily"`
-	MaxDays       int64 `json:"maxdays"`
+	MaxDays       int64 `json:"max_days"`
 	dailyOpenDate int
 	dailyOpenTime time.Time
 
 	// Rotate hourly
 	Hourly         bool  `json:"hourly"`
-	MaxHours       int64 `json:"maxhours"`
+	MaxHours       int64 `json:"max_hours"`
 	hourlyOpenDate int
 	hourlyOpenTime time.Time
 
@@ -49,7 +48,7 @@ type fileLogWriter struct {
 
 	Perm string `json:"perm"`
 
-	RotatePerm string `json:"rotateperm"`
+	RotatePerm string `json:"rotate_perm"`
 
 	fileNameOnly, suffix string // like "project.log", project is fileNameOnly and .log is suffix
 }
@@ -57,18 +56,22 @@ type fileLogWriter struct {
 // newFileLogWriter create a FileLogWriter returning as LoggerInterface.
 func newFileLogWriter(opt map[string]string) (logWriter, error) {
 	fl := &fileLogWriter{
-		Filename: opt["filename"],
-
-		Daily:      true,
-		MaxDays:    7,
-		Hourly:     false,
-		MaxHours:   168,
-		Rotate:     true,
-		RotatePerm: "0440",
+		Filename:   opt["filename"],
+		Daily:      toBool(opt["daily"], false),
+		MaxDays:    toInt64(opt["max_days"], 7),
+		Hourly:     toBool(opt["hourly"], true),
+		MaxHours:   toInt64(opt["max_hours"], 24*7),
+		MaxLines:   toInt(opt["max_lines"], 10000000),
+		MaxFiles:   toInt(opt["max_files"], 999),
+		MaxSize:    toInt(opt["max_size"], 1<<28),
 		Perm:       "0660",
-		MaxLines:   10000000,
-		MaxFiles:   999,
-		MaxSize:    1 << 28,
+		RotatePerm: "0440",
+	}
+	if opt["perm"] != "" {
+		fl.Perm = opt["perm"]
+	}
+	if opt["rotate_perm"] != "" {
+		fl.RotatePerm = opt["rotate_perm"]
 	}
 
 	if fl.Filename == "" {
@@ -89,45 +92,41 @@ func (fl *fileLogWriter) startLogger() error {
 	if err != nil {
 		return err
 	}
-	if fl.w != nil {
-		fl.w.Close()
+	if fl.writer != nil {
+		fl.writer.Close()
 	}
-	fl.w = file
+	fl.writer = file
 	return fl.initFd()
 }
 
 // Writeln write logger message into file.
 func (fl *fileLogWriter) Writeln(b []byte, t time.Time) (int, error) {
 	hd, d, h := formatTimeHeader(t)
-	b = append(hd, b...)
-	if fl.Rotate {
-		l := len(b)
-		fl.RLock()
-		if fl.needRotateHourly(l, h) {
-			fl.RUnlock()
-			fl.Lock()
-			if fl.needRotateHourly(l, h) {
-				if err := fl.doRotate(t); err != nil {
-					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
-				}
+	fl.RLock()
+	if fl.needRotateHourly(h) {
+		fl.RUnlock()
+		fl.Lock()
+		if fl.needRotateHourly(h) {
+			if err := fl.doRotate(t); err != nil {
+				fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
 			}
-			fl.Unlock()
-		} else if fl.needRotateDaily(l, d) {
-			fl.RUnlock()
-			fl.Lock()
-			if fl.needRotateDaily(l, d) {
-				if err := fl.doRotate(t); err != nil {
-					fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
-				}
-			}
-			fl.Unlock()
-		} else {
-			fl.RUnlock()
 		}
+		fl.Unlock()
+	} else if fl.needRotateDaily(d) {
+		fl.RUnlock()
+		fl.Lock()
+		if fl.needRotateDaily(d) {
+			if err := fl.doRotate(t); err != nil {
+				fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
+			}
+		}
+		fl.Unlock()
+	} else {
+		fl.RUnlock()
 	}
 
 	fl.Lock()
-	n, err := fl.w.Write(b)
+	n, err := fl.writer.Write(append(append(hd, b...), '\n'))
 	if err == nil {
 		fl.maxLinesCurLines++
 		fl.maxSizeCurSize += n
@@ -139,23 +138,23 @@ func (fl *fileLogWriter) Writeln(b []byte, t time.Time) (int, error) {
 // Close 关闭文件
 func (fl *fileLogWriter) Close() error {
 	fl.Flush()
-	return fl.w.Close()
+	return fl.writer.Close()
 }
 
 // Flush flush file logger.
 // there are no buffering messages in file logger in memory.
 // flush file means sync file from disk.
 func (fl *fileLogWriter) Flush() error {
-	return fl.w.Sync()
+	return fl.writer.Sync()
 }
 
-func (fl *fileLogWriter) needRotateDaily(size int, day int) bool {
+func (fl *fileLogWriter) needRotateDaily(day int) bool {
 	return (fl.MaxLines > 0 && fl.maxLinesCurLines >= fl.MaxLines) ||
 		(fl.MaxSize > 0 && fl.maxSizeCurSize >= fl.MaxSize) ||
 		(fl.Daily && day != fl.dailyOpenDate)
 }
 
-func (fl *fileLogWriter) needRotateHourly(size int, hour int) bool {
+func (fl *fileLogWriter) needRotateHourly(hour int) bool {
 	return (fl.MaxLines > 0 && fl.maxLinesCurLines >= fl.MaxLines) ||
 		(fl.MaxSize > 0 && fl.maxSizeCurSize >= fl.MaxSize) ||
 		(fl.Hourly && hour != fl.hourlyOpenDate)
@@ -187,7 +186,7 @@ func (fl *fileLogWriter) createLogFile() (*os.File, error) {
 }
 
 func (fl *fileLogWriter) initFd() error {
-	f := fl.w
+	f := fl.writer
 	fInfo, err := f.Stat()
 	if err != nil {
 		return fmt.Errorf("get stat err: %s", err)
@@ -219,7 +218,7 @@ func (fl *fileLogWriter) dailyRotate(openTime time.Time) {
 	tm := time.NewTimer(time.Duration(nextDay.UnixNano() - openTime.UnixNano() + 100))
 	<-tm.C
 	fl.Lock()
-	if fl.needRotateDaily(0, time.Now().Day()) {
+	if fl.needRotateDaily(time.Now().Day()) {
 		if err := fl.doRotate(time.Now()); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
 		}
@@ -228,13 +227,14 @@ func (fl *fileLogWriter) dailyRotate(openTime time.Time) {
 }
 
 func (fl *fileLogWriter) hourlyRotate(openTime time.Time) {
-	y, m, d := openTime.Add(1 * time.Hour).Date()
-	h, _, _ := openTime.Add(1 * time.Hour).Clock()
+	nextTime := openTime.Add(1 * time.Hour)
+	y, m, d := nextTime.Date()
+	h, _, _ := nextTime.Clock()
 	nextHour := time.Date(y, m, d, h, 0, 0, 0, openTime.Location())
 	tm := time.NewTimer(time.Duration(nextHour.UnixNano() - openTime.UnixNano() + 100))
 	<-tm.C
 	fl.Lock()
-	if fl.needRotateHourly(0, time.Now().Hour()) {
+	if fl.needRotateHourly(time.Now().Hour()) {
 		if err := fl.doRotate(time.Now()); err != nil {
 			fmt.Fprintf(os.Stderr, "FileLogWriter(%q): %s\n", fl.Filename, err)
 		}
@@ -315,7 +315,7 @@ func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 	}
 
 	// close fileWriter before rename
-	fl.w.Close()
+	fl.writer.Close()
 
 	// Rename the file to its new found name
 	// even if occurs error,we MUST guarantee to  restart new logger

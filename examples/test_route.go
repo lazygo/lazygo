@@ -5,15 +5,17 @@ import (
 	"fmt"
 	"github.com/BurntSushi/toml"
 	"github.com/lazygo/lazygo/cache"
+	"github.com/lazygo/lazygo/examples/app"
 	"github.com/lazygo/lazygo/locker"
+	"github.com/lazygo/lazygo/logger"
 	"github.com/lazygo/lazygo/memcache"
 	"github.com/lazygo/lazygo/memory"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
 	"github.com/lazygo/lazygo/server"
-	"github.com/lazygo/lazygo/test/app"
 	"github.com/lazygo/lazygo/utils"
 	"runtime"
+	"time"
 )
 
 type Config struct {
@@ -29,6 +31,10 @@ type Config struct {
 		DefaultName string          `json:"default" toml:"default"`
 		Adapter     []locker.Config `json:"adapter" toml:"adapter"`
 	} `json:"locker" toml:"locker"`
+	Logger struct {
+		DefaultName string          `json:"default" toml:"default"`
+		Adapter     []logger.Config `json:"adapter" toml:"adapter"`
+	} `json:"logger" toml:"logger"`
 }
 
 func main() {
@@ -61,6 +67,20 @@ func main() {
 
 	err = cache.Init(config.Cache.Adapter, config.Cache.DefaultName)
 	utils.CheckError(err)
+
+	err = logger.Init(config.Logger.Adapter, config.Logger.DefaultName)
+
+	tm := time.Tick(time.Second)
+
+	for range tm{
+		fl, err := logger.Instance("file-log")
+		utils.CheckError(err)
+		cl, err := logger.Instance("console-log")
+		utils.CheckError(err)
+
+		fl.Write([]byte("aaaa bbb ccccccccc dddddddddddd rrrrrrrrrr"))
+		cl.Write([]byte("aaaa bbb ccccccccc dddddddddddd rrrrrrrrrr"))
+	}
 
 	e.Start("127.0.0.1:1234")
 }

@@ -1,3 +1,6 @@
+[server]
+    host = "127.0.0.1"
+    port = 8080
 [[mysql]]
     name = "test"
     host = "127.0.0.1"
@@ -63,11 +66,25 @@
     [[cache.adapter]]
         name = "test11"
         adapter = "redis"
-        option= {name= "test2"}
+        option= {name = "test2"}
 
 [locker]
     default = "test11"
     [[locker.adapter]]
         name = "test11"
         adapter = "redis"
-        option= {name= "test2"}
+        option= {name = "test2"}
+
+[logger]
+    default = "file-log"
+    [[logger.adapter]]
+        name = "file-log"
+        adapter = "file"
+        async = true
+        Level = 0
+        option= {filename = "logs/app.log", Hourly = "true", MaxHours = "168"}
+    [[logger.adapter]]
+        name = "console-log"
+        adapter = "console"
+        async = true
+        Level = 0

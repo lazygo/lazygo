@@ -1,6 +1,10 @@
 package logger
 
-import "time"
+import (
+	"strconv"
+	"strings"
+	"time"
+)
 
 const (
 	y1  = `0123456789`
@@ -55,4 +59,40 @@ func formatTimeHeader(when time.Time) ([]byte, int, int) {
 	buf[23] = ' '
 
 	return buf[0:], d, h
+}
+
+func toBool(val string, defVal bool) bool {
+	val = strings.TrimSpace(val)
+	if val == "true" {
+		return true
+	}
+	if val == "false" {
+		return false
+	}
+
+	return defVal
+}
+
+func toInt(val string, defVal int) int {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return defVal
+	}
+	if v, err := strconv.Atoi(val); err != nil {
+		return v
+	}
+
+	return defVal
+}
+
+func toInt64(val string, defVal int64) int64 {
+	val = strings.TrimSpace(val)
+	if val == "" {
+		return defVal
+	}
+	if v, err := strconv.ParseInt(val, 10, 64); err != nil {
+		return v
+	}
+
+	return defVal
 }
