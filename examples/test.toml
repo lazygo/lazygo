@@ -87,4 +87,4 @@
         name = "console-log"
         adapter = "console"
         async = true
-        Level = 0
+        level = 0
