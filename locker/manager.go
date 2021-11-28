@@ -16,13 +16,13 @@ type Locker interface {
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
 	// retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
-	Lock(resource string, ttl uint64) (Releaser, bool, error)
+	Lock(resource string, ttl uint64) (Releaser, error)
 
 	// TryLock 尝试获取锁
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
 	// retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
-	TryLock(resource string, ttl uint64, retry uint64) (Releaser, bool, error)
+	TryLock(resource string, ttl uint64) (Releaser, bool, error)
 
 	// LockFunc 启用分布式锁执行func
 	// resource 资源标识，相同的资源标识会互斥
@@ -88,24 +88,24 @@ func Instance(name string) (Locker, error) {
 	return a.(Locker), nil
 }
 
-func Lock(resource string, ttl uint64) (Releaser, bool, error) {
+// Lock 分布式自旋锁
+func Lock(resource string, ttl uint64) (Releaser, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
-		return nil, false, err
+		return nil, err
 	}
 	return lock.Lock(resource, ttl)
 }
 
-// TryLock 尝试获取锁
+// TryLock 尝试``1123获取锁
 // resource 资源标识，相同的资源标识会互斥
 // ttl 生存时间 (秒)
-// retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
-func TryLock(resource string, ttl uint64, retry uint64) (Releaser, bool, error) {
+func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, false, err
 	}
-	return lock.TryLock(resource, ttl, retry)
+	return lock.TryLock(resource, ttl)
 }
 
 // LockFunc 启用分布式锁执行func
