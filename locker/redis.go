@@ -13,6 +13,7 @@ type redisAdapter struct {
 	local sync.Map
 	name  string
 	conn  *redis.Redis
+	retry int
 }
 
 // 释放锁脚本
@@ -39,6 +40,7 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 	a := &redisAdapter{
 		name: name,
 		conn: conn,
+		retry: 5,
 	}
 	return a, nil
 }
@@ -51,15 +53,20 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 	mu.Lock()
 
 	token := strconv.FormatUint(randomToken(), 10)
+	retry := r.retry
 	for {
 		_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
 		if err == redigo.ErrNil {
 			// key 已存在，获取锁失败
 			runtime.Gosched()
+			continue
 		}
 		if err != nil {
+			if retry > 0 {
+				retry--
+				continue
+			}
 			mu.Unlock()
-			r.local.Delete(resource)
 			return nil, err
 		}
 		break
@@ -99,7 +106,7 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	// 获取锁成功，返回释放锁的方法
 	handleRelease := func() error {
 		var err error
-		for retry := 5; retry > 0; retry-- {
+		for retry := r.retry; retry > 0; retry-- {
 			_, err = r.conn.Do("EVAL", script, 1, resource, token)
 			if err == nil {
 				return nil

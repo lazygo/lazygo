@@ -12,23 +12,21 @@ type Config struct {
 
 type Locker interface {
 
-	// Lock 尝试获取锁，会自动自旋一定时间
+	// Lock 分布式自旋锁
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
-	// retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
 	Lock(resource string, ttl uint64) (Releaser, error)
 
 	// TryLock 尝试获取锁
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
-	// retry 重试次数 * 重试时间间隔(200ms) 建议大于 超时时间
 	TryLock(resource string, ttl uint64) (Releaser, bool, error)
 
-	// LockFunc 启用分布式锁执行func
+	// LockFunc 分布式自旋锁执行fn
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
 	// f 返回interface{} 的函数
-	// 在获取锁失败或超时的情况下，f不会被执行
+	// 在获取锁失败或超时的情况下，fn不会被执行
 	LockFunc(resource string, ttl uint64, fn func() interface{}) (interface{}, error)
 }
 
@@ -47,7 +45,7 @@ type Manager struct {
 
 var manager = &Manager{}
 
-// init 初始化数据库连接
+// init 初始化分布式锁
 func (m *Manager) init(conf []Config, defaultName string) error {
 	for _, item := range conf {
 		if _, ok := m.Load(item.Name); ok {
@@ -97,7 +95,7 @@ func Lock(resource string, ttl uint64) (Releaser, error) {
 	return lock.Lock(resource, ttl)
 }
 
-// TryLock 尝试``1123获取锁
+// TryLock 尝试获取锁
 // resource 资源标识，相同的资源标识会互斥
 // ttl 生存时间 (秒)
 func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
@@ -108,11 +106,11 @@ func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 	return lock.TryLock(resource, ttl)
 }
 
-// LockFunc 启用分布式锁执行func
+// LockFunc 启用分布式锁执行fn
 // resource 资源标识，相同的资源标识会互斥
 // ttl 生存时间 (秒)
 // f 返回interface{} 的函数
-// 在获取锁失败或超时的情况下，f不会被执行
+// 在获取锁失败或超时的情况下，fn不会被执行
 func LockFunc(resource string, ttl uint64, fn func() interface{}) (interface{}, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {

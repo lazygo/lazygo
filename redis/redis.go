@@ -112,6 +112,17 @@ func (r *Redis) Set(key string, val interface{}, expire int64) error {
 	return err
 }
 
+// SetExNx 不存在则设置有效时长。时长的单位为秒。
+// 基础类型直接保存，其他用json.Marshal后转成string保存。
+func (r *Redis) SetExNx(key string, val interface{}, expire int64) error {
+	value, err := r.encode(val)
+	if err != nil {
+		return err
+	}
+	_, err = r.Do("SET", key, value, "EX", expire, "NX")
+	return err
+}
+
 // Exists 检查键是否存在
 func (r *Redis) Exists(key string) (bool, error) {
 	return r.Bool(r.Do("EXISTS", r.getKey(key)))
