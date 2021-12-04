@@ -43,8 +43,8 @@ func newAsync(lw logWriter, chanLens uint64) *asyncWriter {
 	return a
 }
 
-func (a *asyncWriter) Writeln(b []byte, t time.Time) (int, error) {
-	return a.lw.Writeln(b, t)
+func (a *asyncWriter) Write(b []byte, t time.Time) (int, error) {
+	return a.lw.Write(b, t)
 }
 
 func (a *asyncWriter) Close() {
@@ -62,7 +62,7 @@ func (a *asyncWriter) start() {
 		}
 		select {
 		case msg := <-a.msgChan:
-			_, _ = a.lw.Writeln(msg.b, msg.t)
+			_, _ = a.lw.Write(msg.b, msg.t)
 			msgPool.Put(msg)
 		case sg := <-a.signalChan:
 			a.flush()
@@ -80,7 +80,7 @@ func (a *asyncWriter) flush() {
 	for {
 		if len(a.msgChan) > 0 {
 			msg := <-a.msgChan
-			a.lw.Writeln(msg.b, msg.t)
+			a.lw.Write(msg.b, msg.t)
 			msgPool.Put(msg)
 			continue
 		}

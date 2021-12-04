@@ -43,11 +43,11 @@ func newConsoleLogWriter(opt map[string]string) (logWriter, error) {
 	return cl, nil
 }
 
-func (cl *consoleLogWriter) Writeln(b []byte, t time.Time) (int, error) {
+func (cl *consoleLogWriter) Write(b []byte, t time.Time) (int, error) {
 	cl.Lock()
 	defer cl.Unlock()
 	hd, _, _ := formatTimeHeader(t)
-	return cl.writer.Write(append(append(hd, b...), '\n'))
+	return cl.writer.Write(append(hd, b...))
 }
 
 func (cl *consoleLogWriter) Close() error {
