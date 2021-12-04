@@ -5,14 +5,15 @@ import (
 	"time"
 )
 
-type msg struct {
-	b []byte
-	t time.Time
+type logMsg struct {
+	b      []byte
+	t      time.Time
+	prefix string
 }
 
 var msgPool = &sync.Pool{
 	New: func() interface{} {
-		return &msg{}
+		return &logMsg{}
 	},
 }
 
@@ -21,7 +22,7 @@ const defaultAsyncMsgLen = 1e3
 type asyncWriter struct {
 	lw         logWriter
 	msgChanLen int64
-	msgChan    chan *msg
+	msgChan    chan *logMsg
 	signalChan chan string
 	wg         sync.WaitGroup
 }
@@ -37,14 +38,19 @@ func newAsync(lw logWriter, chanLens uint64) *asyncWriter {
 		chanLens = defaultAsyncMsgLen
 	}
 
-	a.msgChan = make(chan *msg, chanLens)
+	a.msgChan = make(chan *logMsg, chanLens)
 	a.wg.Add(1)
 	go a.start()
 	return a
 }
 
-func (a *asyncWriter) Write(b []byte, t time.Time) (int, error) {
-	return a.lw.Write(b, t)
+func (a *asyncWriter) Write(b []byte, t time.Time, prefix string) (int, error) {
+	msg := msgPool.Get().(*logMsg)
+	msg.b = b
+	msg.t = t
+	msg.prefix = prefix
+	a.msgChan <- msg
+	return len(b), nil
 }
 
 func (a *asyncWriter) Close() {
@@ -62,7 +68,7 @@ func (a *asyncWriter) start() {
 		}
 		select {
 		case msg := <-a.msgChan:
-			_, _ = a.lw.Write(msg.b, msg.t)
+			_, _ = a.lw.Write(msg.b, msg.t, msg.prefix)
 			msgPool.Put(msg)
 		case sg := <-a.signalChan:
 			a.flush()
@@ -80,7 +86,7 @@ func (a *asyncWriter) flush() {
 	for {
 		if len(a.msgChan) > 0 {
 			msg := <-a.msgChan
-			a.lw.Write(msg.b, msg.t)
+			a.lw.Write(msg.b, msg.t, msg.prefix)
 			msgPool.Put(msg)
 			continue
 		}
