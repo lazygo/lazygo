@@ -100,7 +100,7 @@ func (fl *fileLogWriter) startLogger() error {
 }
 
 // Write write logger message into file.
-func (fl *fileLogWriter) Write(b []byte, t time.Time, prefix string) (int, error) {
+func (fl *fileLogWriter) Write(b []byte, t time.Time) (int, error) {
 	hd, d, h := formatTimeHeader(t)
 	fl.RLock()
 	if fl.needRotateHourly(h) {
@@ -127,9 +127,6 @@ func (fl *fileLogWriter) Write(b []byte, t time.Time, prefix string) (int, error
 
 	fl.Lock()
 	b = append(hd, b...)
-	if prefix != "" {
-		b = append([]byte(prefix + " "), b...)
-	}
 	n, err := fl.writer.Write(b)
 	if err == nil {
 		fl.maxLinesCurLines++

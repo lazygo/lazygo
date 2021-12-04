@@ -20,7 +20,7 @@ type Config struct {
 }
 
 type logWriter interface {
-	Write([]byte, time.Time, string) (int, error)
+	Write([]byte, time.Time) (int, error)
 	Close() error
 	Flush() error
 }
@@ -64,9 +64,9 @@ func (w *writer) Write(b []byte) (int, error) {
 		b = append([]byte(filename), b...)
 	}
 	if w.async != nil {
-		return w.async.Write(b, t, "pref")
+		return w.async.Write(b, t)
 	}
-	return w.lw.Write(b, t, "pref")
+	return w.lw.Write(b, t)
 }
 
 func (w *writer) Close() error {

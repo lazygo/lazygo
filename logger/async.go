@@ -6,9 +6,8 @@ import (
 )
 
 type logMsg struct {
-	b      []byte
-	t      time.Time
-	prefix string
+	b []byte
+	t time.Time
 }
 
 var msgPool = &sync.Pool{
@@ -44,11 +43,10 @@ func newAsync(lw logWriter, chanLens uint64) *asyncWriter {
 	return a
 }
 
-func (a *asyncWriter) Write(b []byte, t time.Time, prefix string) (int, error) {
+func (a *asyncWriter) Write(b []byte, t time.Time) (int, error) {
 	msg := msgPool.Get().(*logMsg)
 	msg.b = b
 	msg.t = t
-	msg.prefix = prefix
 	a.msgChan <- msg
 	return len(b), nil
 }
@@ -68,7 +66,7 @@ func (a *asyncWriter) start() {
 		}
 		select {
 		case msg := <-a.msgChan:
-			_, _ = a.lw.Write(msg.b, msg.t, msg.prefix)
+			_, _ = a.lw.Write(msg.b, msg.t)
 			msgPool.Put(msg)
 		case sg := <-a.signalChan:
 			a.flush()
@@ -86,7 +84,7 @@ func (a *asyncWriter) flush() {
 	for {
 		if len(a.msgChan) > 0 {
 			msg := <-a.msgChan
-			a.lw.Write(msg.b, msg.t, msg.prefix)
+			a.lw.Write(msg.b, msg.t)
 			msgPool.Put(msg)
 			continue
 		}
