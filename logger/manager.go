@@ -14,6 +14,7 @@ type Config struct {
 	Adapter   string            `json:"adapter" toml:"adapter"`
 	Async     bool              `json:"async" toml:"async"`
 	Level     uint8             `json:"level" toml:"level"`
+	Caller    bool              `json:"caller" toml:"caller"`
 	CallDepth int               `json:"call_depth" toml:"call_depth"`
 	Option    map[string]string `json:"option" toml:"option"`
 }
@@ -32,6 +33,7 @@ type writer struct {
 	async     *asyncWriter
 	lw        logWriter
 	level     uint8
+	caller    bool
 	callDepth int
 }
 
@@ -39,6 +41,7 @@ func newWriter(lw logWriter, config Config) Writer {
 	w := &writer{
 		lw:        lw,
 		level:     config.Level,
+		caller:    config.Caller,
 		callDepth: config.CallDepth,
 	}
 	if config.Async {
@@ -50,8 +53,8 @@ func newWriter(lw logWriter, config Config) Writer {
 func (w *writer) Write(b []byte) (int, error) {
 	t := time.Now()
 
-	if w.callDepth > 0 {
-		_, file, line, ok := runtime.Caller(w.callDepth)
+	if w.caller {
+		_, file, line, ok := runtime.Caller(w.callDepth + 1)
 		if !ok {
 			file = "???"
 			line = 0
