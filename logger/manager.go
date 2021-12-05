@@ -10,6 +10,27 @@ import (
 	"time"
 )
 
+// RFC5424 log message levels.
+const (
+	LevelEmergency     = iota // 0
+	LevelAlert                // 1
+	LevelCritical             // 2
+	LevelError                // 3
+	LevelWarning              // 4
+	LevelNotice               // 5
+	LevelInformational        // 6
+	LevelDebug                // 7
+)
+
+// Legacy log level constants to ensure backwards compatibility.
+const (
+	LevelWarn  = LevelWarning       // 4
+	LevelInfo  = LevelInformational // 6
+	LevelTrace = LevelDebug         // 7
+)
+
+var levelPrefix = [LevelDebug + 1]string{"[EMERGENCY]", "[ALERT]", "[CRITICAL]", "[ERROR]", "[WARNING]", "[NOTICE]", "[INFO]", "[DEBUG]"}
+
 type Config struct {
 	Name      string            `json:"name" toml:"name"`
 	Adapter   string            `json:"adapter" toml:"adapter"`
@@ -28,6 +49,44 @@ type logWriter interface {
 
 type Writer interface {
 	io.WriteCloser
+
+	Println(v ...interface{})
+
+	// Emergency Log EMERGENCY level message.
+	Emergency(v ...interface{})
+
+	// Alert Log ALERT level message.
+	Alert(v ...interface{})
+
+	// Critical Log CRITICAL level message.
+	Critical(v ...interface{})
+
+	// Error Log ERROR level message.
+	Error(v ...interface{})
+
+	// Warning Log WARNING level message.
+	Warning(v ...interface{})
+
+	// Notice Log NOTICE level message.
+	Notice(v ...interface{})
+
+	// Informational Log INFORMATIONAL level message.
+	Informational(v ...interface{})
+
+	// Debug Log DEBUG level message.
+	Debug(v ...interface{})
+
+	// Warn Log WARN level message.
+	// compatibility alias for Warning()
+	Warn(v ...interface{})
+
+	// Info Log INFO level message.
+	// compatibility alias for Informational()
+	Info(v ...interface{})
+
+	// Trace Log TRACE level message.
+	// compatibility alias for Debug()
+	Trace(v ...interface{})
 }
 
 type writer struct {
@@ -51,10 +110,6 @@ func newWriter(lw logWriter, config Config) Writer {
 	return w
 }
 
-func (w *writer) Write(b []byte) (int, error) {
-	return w.write(b, "[info]", w.callDepth+1)
-}
-
 func (w *writer) write(b []byte, prefix string, callDepth int) (int, error) {
 	t := time.Now()
 
@@ -74,6 +129,10 @@ func (w *writer) write(b []byte, prefix string, callDepth int) (int, error) {
 	return w.lw.Write(b, t, prefix)
 }
 
+func (w *writer) Write(b []byte) (int, error) {
+	return w.write(b, "[info]", w.callDepth+1)
+}
+
 func (w *writer) Close() error {
 	if w.async != nil {
 		w.async.Close()
@@ -84,6 +143,108 @@ func (w *writer) Close() error {
 
 func (w *writer) Println(v ...interface{}) {
 	w.write(str2bytes(fmt.Sprintln(v...)), "[info]", w.callDepth+1)
+}
+
+// Emergency Log EMERGENCY level message.
+func (w *writer) Emergency(v ...interface{}) {
+	if LevelEmergency > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelEmergency]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Alert Log ALERT level message.
+func (w *writer) Alert(v ...interface{}) {
+	if LevelAlert > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelAlert]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Critical Log CRITICAL level message.
+func (w *writer) Critical(v ...interface{}) {
+	if LevelCritical > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelCritical]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Error Log ERROR level message.
+func (w *writer) Error(v ...interface{}) {
+	if LevelError > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelError]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Warning Log WARNING level message.
+func (w *writer) Warning(v ...interface{}) {
+	if LevelWarn > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelWarn]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Notice Log NOTICE level message.
+func (w *writer) Notice(v ...interface{}) {
+	if LevelNotice > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelNotice]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Informational Log INFORMATIONAL level message.
+func (w *writer) Informational(v ...interface{}) {
+	if LevelInfo > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelInfo]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Debug Log DEBUG level message.
+func (w *writer) Debug(v ...interface{}) {
+	if LevelDebug > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelDebug]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Warn Log WARN level message.
+// compatibility alias for Warning()
+func (w *writer) Warn(v ...interface{}) {
+	if LevelWarn > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelWarn]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Info Log INFO level message.
+// compatibility alias for Informational()
+func (w *writer) Info(v ...interface{}) {
+	if LevelInfo > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelInfo]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
+}
+
+// Trace Log TRACE level message.
+// compatibility alias for Debug()
+func (w *writer) Trace(v ...interface{}) {
+	if LevelDebug > w.level {
+		return
+	}
+	prefix := levelPrefix[LevelDebug]
+	w.write(str2bytes(fmt.Sprintln(v...)), prefix, w.callDepth+1)
 }
 
 type Manager struct {
