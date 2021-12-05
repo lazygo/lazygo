@@ -40,7 +40,7 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 	a := &redisAdapter{
 		name:  name,
 		conn:  conn,
-		retry: 5,
+		retry: 3,
 	}
 	return a, nil
 }
@@ -61,7 +61,7 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 			r.local.Delete(resource)
 		}()
 		var err error
-		for retry := r.retry; retry > 0; retry-- {
+		for retry := r.retry; retry >= 0; retry-- {
 			_, err = r.conn.Do("EVAL", script, 1, resource, token)
 			if err == nil {
 				return nil
@@ -79,7 +79,7 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 			continue
 		}
 		if err != nil {
-			if retry > 0 {
+			if retry >= 0 {
 				retry--
 				continue
 			}
