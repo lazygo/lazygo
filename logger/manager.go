@@ -1,6 +1,7 @@
 package logger
 
 import (
+	"fmt"
 	"io"
 	"path"
 	"runtime"
@@ -20,7 +21,7 @@ type Config struct {
 }
 
 type logWriter interface {
-	Write([]byte, time.Time) (int, error)
+	Write([]byte, time.Time, string) (int, error)
 	Close() error
 	Flush() error
 }
@@ -51,10 +52,14 @@ func newWriter(lw logWriter, config Config) Writer {
 }
 
 func (w *writer) Write(b []byte) (int, error) {
+	return w.write(b, "[info]", w.callDepth+1)
+}
+
+func (w *writer) write(b []byte, prefix string, callDepth int) (int, error) {
 	t := time.Now()
 
 	if w.caller {
-		_, file, line, ok := runtime.Caller(w.callDepth + 1)
+		_, file, line, ok := runtime.Caller(callDepth + 1)
 		if !ok {
 			file = "???"
 			line = 0
@@ -64,9 +69,9 @@ func (w *writer) Write(b []byte) (int, error) {
 		b = append([]byte(filename), b...)
 	}
 	if w.async != nil {
-		return w.async.Write(b, t)
+		return w.async.Write(b, t, prefix)
 	}
-	return w.lw.Write(b, t)
+	return w.lw.Write(b, t, prefix)
 }
 
 func (w *writer) Close() error {
@@ -75,6 +80,10 @@ func (w *writer) Close() error {
 		return nil
 	}
 	return w.lw.Close()
+}
+
+func (w *writer) Println(v ...interface{}) {
+	w.write(str2bytes(fmt.Sprintln(v...)), "[info]", w.callDepth+1)
 }
 
 type Manager struct {
