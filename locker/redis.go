@@ -38,8 +38,8 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 		return nil, err
 	}
 	a := &redisAdapter{
-		name: name,
-		conn: conn,
+		name:  name,
+		conn:  conn,
 		retry: 5,
 	}
 	return a, nil
@@ -53,24 +53,6 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 	mu.Lock()
 
 	token := strconv.FormatUint(randomToken(), 10)
-	retry := r.retry
-	for {
-		_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
-		if err == redigo.ErrNil {
-			// key 已存在，获取锁失败
-			runtime.Gosched()
-			continue
-		}
-		if err != nil {
-			if retry > 0 {
-				retry--
-				continue
-			}
-			mu.Unlock()
-			return nil, err
-		}
-		break
-	}
 
 	// 获取锁成功，返回释放锁的方法
 	handleRelease := func() error {
@@ -86,6 +68,26 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 			}
 		}
 		return err
+	}
+
+	retry := r.retry
+	for {
+		_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
+		if err == redigo.ErrNil {
+			// key 已存在，获取锁失败
+			runtime.Gosched()
+			continue
+		}
+		if err != nil {
+			if retry > 0 {
+				retry--
+				continue
+			}
+			_ = handleRelease()
+			mu.Unlock()
+			return nil, err
+		}
+		break
 	}
 
 	return releaseFunc(handleRelease), nil
