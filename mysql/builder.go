@@ -10,10 +10,8 @@ import (
 type ReadBuilder interface {
 	MakeQueryString(fields []interface{}) (string, []interface{}, error)
 	Count() (int64, error)
-	Fetch(fields []interface{}) ([]map[string]interface{}, error)
-	FetchIn(fields []interface{}, result interface{}) error
-	FetchRow(fields []interface{}) (map[string]interface{}, error)
-	FetchRowIn(fields []interface{}, result interface{}) error
+	Fetch(fields []interface{}, result interface{}) error
+	FetchRow(fields []interface{}, result interface{}) error
 	FetchOne(field string) (string, error)
 	FetchWithPage(fields []interface{}, page int64, pageSize int64) (*ResultData, error)
 }
@@ -350,7 +348,7 @@ func (b *builder) Count() (int64, error) {
 		Num int64 `json:"num"`
 	}{}
 
-	err := b.FetchRowIn([]interface{}{Raw("COUNT(*) AS num")}, result)
+	err := b.FetchRow([]interface{}{Raw("COUNT(*) AS num")}, result)
 	if err != nil {
 		return 0, err
 	}
@@ -360,26 +358,14 @@ func (b *builder) Count() (int64, error) {
 
 // Fetch 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Fetch(fields []interface{}) ([]map[string]interface{}, error) {
-
-	queryString, args, err := b.MakeQueryString(fields)
-	if err != nil {
-		return nil, err
-	}
-
-	return b.handler.GetAll(queryString, args...)
-}
-
-// FetchIn 查询并返回多条记录
-// field string 返回的字段 示例："*"
-func (b *builder) FetchIn(fields []interface{}, result interface{}) error {
+func (b *builder) Fetch(fields []interface{}, result interface{}) error {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
 		return err
 	}
 
-	return b.handler.GetAllIn(result, queryString, args...)
+	return b.handler.GetAll(result, queryString, args...)
 }
 
 // FetchWithPage 查询并返回多条记录，且包含分页信息
@@ -394,32 +380,20 @@ func (b *builder) FetchWithPage(fields []interface{}, page int64, pageSize int64
 	}
 
 	data := Multi(count, page, pageSize)
-	data.List, err = b.ClearCond().WhereRaw(cond, args...).Limit(data.PageSize).Offset(data.Start).Fetch(fields)
+	err = b.ClearCond().WhereRaw(cond, args...).Limit(data.PageSize).Offset(data.Start).Fetch(fields, &data.List)
 	return &data, err
 }
 
 // FetchRow 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) FetchRow(fields []interface{}) (map[string]interface{}, error) {
-
-	queryString, args, err := b.MakeQueryString(fields)
-	if err != nil {
-		return nil, err
-	}
-
-	return b.handler.GetRow(queryString, args...)
-}
-
-// FetchRowIn 查询并返回单条记录
-// field string 返回的字段 示例："*"
-func (b *builder) FetchRowIn(fields []interface{}, result interface{}) error {
+func (b *builder) FetchRow(fields []interface{}, result interface{}) error {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
 		return err
 	}
 
-	return b.handler.GetRowIn(result, queryString, args...)
+	return b.handler.GetRow(result, queryString, args...)
 }
 
 // FetchOne 查询并返回单个字段
@@ -431,12 +405,12 @@ func (b *builder) FetchOne(field string) (string, error) {
 		return "", err
 	}
 
-	item, err := b.handler.GetRow(queryString, args...)
+	item := map[string]string{}
+	err = b.handler.GetRow(&item, queryString, args...)
 	if err != nil {
 		return "", err
 	}
-
-	return toString(item[field]), nil
+	return item[field], nil
 }
 
 // Insert 单条插入

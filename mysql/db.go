@@ -73,19 +73,7 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(query string, args ...interface{}) (result []map[string]interface{}, err error) {
-	rows, err := d.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = rows.Close()
-	}()
-	return parseData(rows)
-}
-
-// GetAllIn 直接执行sql原生语句并返回多行
-func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) (err error) {
+func (d *DB) GetAll(result interface{}, query string, args ...interface{}) (err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
@@ -93,23 +81,11 @@ func (d *DB) GetAllIn(result interface{}, query string, args ...interface{}) (er
 	defer func() {
 		err = rows.Close()
 	}()
-	return parseDataIn(rows, result)
+	return parseData(rows, result)
 }
 
 // GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(query string, args ...interface{}) (result map[string]interface{}, err error) {
-	rows, err := d.Query(query, args...)
-	if err != nil {
-		return nil, err
-	}
-	defer func() {
-		err = rows.Close()
-	}()
-	return parseRowData(rows)
-}
-
-// GetRowIn 直接执行sql原生语句并返回1行
-func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) (err error) {
+func (d *DB) GetRow(result interface{}, query string, args ...interface{}) (err error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
@@ -117,7 +93,7 @@ func (d *DB) GetRowIn(result interface{}, query string, args ...interface{}) (er
 	defer func() {
 		err = rows.Close()
 	}()
-	return parseRowDataIn(rows, result)
+	return parseRowData(rows, result)
 }
 
 // Transaction 事务
@@ -140,7 +116,7 @@ func (d *DB) Transaction(fn func() error) (err error) {
 				err = rbErr
 				return
 			}
-			err =  errors.New(fmt.Sprint(e))
+			err = errors.New(fmt.Sprint(e))
 		}
 	}()
 	err = fn()
