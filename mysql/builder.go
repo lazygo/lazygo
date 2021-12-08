@@ -273,18 +273,19 @@ func buildK(k string) string {
 }
 
 // buildFields 构造查询fields
-func buildFields(fields []interface{}) string {
+func buildFields(fields []interface{}) (string, error) {
 	arr := make([]string, len(fields), cap(fields))
 	for i, v := range fields {
-		str := toString(v)
 		switch v.(type) {
 		case Raw:
-			arr[i] = str
+			arr[i] = string(v.(Raw))
+		case string:
+			arr[i] = buildK(v.(string))
 		default:
-			arr[i] = buildK(strings.TrimSpace(str))
+			return "", ErrInvalidColumnsArguments
 		}
 	}
-	return strings.Join(arr, ", ")
+	return strings.Join(arr, ", "), nil
 }
 
 // MakeQueryString 拼接查询语句字符串
@@ -299,7 +300,12 @@ func (b *builder) MakeQueryString(fields []interface{}) (string, []interface{}, 
 		return "", nil, b.lastError
 	}
 
-	queryString := fmt.Sprintf("SELECT %s FROM %s", buildFields(fields), b.table)
+	fieldsStr, err := buildFields(fields)
+	if err != nil {
+		return "", nil, err
+	}
+
+	queryString := fmt.Sprintf("SELECT %s FROM %s", fieldsStr, b.table)
 
 	// 构建where条件
 	cond, args := b.buildCond()
@@ -455,6 +461,9 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
+	if b.lastError != nil {
+		return 0, b.lastError
+	}
 	if where == "" {
 		// 防止在update、delete操作时，漏掉条件造成的严重后果
 		// 如果确实不需要条件，请将条件设置为 1=1
@@ -469,9 +478,6 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 		return 0, ErrEmptyTableName
 	}
 
-	if b.lastError != nil {
-		return 0, b.lastError
-	}
 
 	if len(set) == 0 {
 		return 0, ErrEmptyValue
@@ -504,6 +510,11 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
+
+	if b.lastError != nil {
+		return 0, b.lastError
+	}
+
 	if where == "" {
 		// 防止在update、delete操作时，漏掉条件造成的严重后果
 		// 如果确实不需要条件，请将条件设置为 1=1
@@ -518,9 +529,6 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 		return 0, ErrEmptyTableName
 	}
 
-	if b.lastError != nil {
-		return 0, b.lastError
-	}
 
 	if len(set) == 0 {
 		return 0, ErrEmptyValue

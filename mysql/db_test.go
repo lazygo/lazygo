@@ -284,6 +284,52 @@ func TestDb(t *testing.T) {
 	// test GetTablePrefix
 	prefix := db.GetTablePrefix()
 	assert.Equal(prefix, conf[0].Prefix)
+
+	// test error
+	err = db.Table(tableName).Where("id", ">", id).FetchRow([]interface{}{1, "name"}, &result)
+	assert.Equal(err, ErrInvalidColumnsArguments)
+
+	// test error
+	n, err = db.Table(tableName).Update(map[string]interface{}{"name1": 1})
+	assert.Equal(err, ErrEmptyCond)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Delete(1)
+	assert.Equal(err, ErrEmptyCond)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Where("1=1").Update(map[string]interface{}{})
+	assert.Equal(err, ErrEmptyValue)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Where("1=1").UpdateRaw("")
+	assert.Equal(err, ErrEmptyValue)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Where(1, 2, 3).UpdateRaw("132")
+	assert.Equal(err, ErrInvalidCondArguments)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Insert(map[string]interface{}{})
+	assert.Equal(err, ErrEmptyValue)
+	assert.Equal(n, int64(0))
+
+	n, err = db.Table(tableName).Where("1, 2, 3").UpdateRaw("132", 12, 21)
+	assert.Equal(err, ErrInvalidArguments)
+	assert.Equal(n, int64(0))
+
+	x, err := db.Table(tableName).Where("1=1").OrderBy("1", "2").FetchOne("a")
+	assert.Equal(err, ErrInvalidArguments)
+	assert.Equal(x, "")
+
+	x, err = db.Table(tableName).Where("1=1").GroupBy("id").FetchOne("id")
+	assert.Equal(err, nil)
+	assert.Equal(x, "2")
+
+	n, err = db.Table(tableName).Where("1, 2, 3").Increment("132", 12, map[string]interface{}{}, map[string]interface{}{})
+	assert.Equal(err, ErrInvalidArguments)
+	assert.Equal(n, int64(0))
+
 }
 
 func CheckTable(db *DB, table string) (bool, error) {
