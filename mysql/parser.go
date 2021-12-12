@@ -7,11 +7,6 @@ import (
 
 // parseData 解析结果集
 func parseData(rows *sql.Rows, result interface{}) error {
-	columns, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
 	if rspv.Kind() != reflect.Ptr || rspv.IsNil() {
@@ -31,6 +26,11 @@ func parseData(rows *sql.Rows, result interface{}) error {
 		// row value
 		rv := reflect.New(rt).Elem()
 
+		columns, err := rows.Columns()
+		if err != nil {
+			return err
+		}
+
 		fieldPtr, err := getFieldPtr(columns, rv)
 		if err != nil {
 			return err
@@ -46,10 +46,15 @@ func parseData(rows *sql.Rows, result interface{}) error {
 		return rows.Err()
 	}
 	if rt.Kind() == reflect.Map {
-		if err = checkMap(rt); err != nil {
+		if err := checkMap(rt); err != nil {
 			return err
 		}
 		// row value
+		columns, err := rows.Columns()
+		if err != nil {
+			return err
+		}
+
 		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
 
 		for rows.Next() {
