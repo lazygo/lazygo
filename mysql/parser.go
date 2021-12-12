@@ -15,14 +15,15 @@ func parseData(rows *sql.Rows, result interface{}) error {
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
 	if rspv.Kind() != reflect.Ptr || rspv.IsNil() {
-		return ErrInvalidPtr
+		return ErrInvalidResultPtr
 	}
 
 	// row slice value
 	rsv := rspv.Elem()
 	if rsv.Kind() != reflect.Slice {
-		return ErrInvalidSlicePtr
+		return ErrInvalidResultPtr
 	}
+	rsv.Set(reflect.MakeSlice(rsv.Type(), 0, rsv.Cap()))
 
 	// row type
 	rt := rsv.Type().Elem()
@@ -76,41 +77,46 @@ func parseData(rows *sql.Rows, result interface{}) error {
 
 // parseRowData 解析单行结果集
 func parseRowData(rows *sql.Rows, result interface{}) error {
-	columns, err := rows.Columns()
-	if err != nil {
-		return err
-	}
-
-	if !rows.Next() {
-		return rows.Err()
-	}
-
 	// result pointer value
 	rpv := reflect.ValueOf(result)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
-		return ErrInvalidPtr
+		return ErrInvalidResultPtr
 	}
 
 	// result value
 	rv := rpv.Elem()
 	if rv.Kind() == reflect.Struct {
+
+		columns, err := rows.Columns()
+		if err != nil {
+			return err
+		}
 		fieldPtr, err := getFieldPtr(columns, rv)
 		if err != nil {
 			return err
 		}
-
+		if !rows.Next() {
+			return rows.Err()
+		}
 		err = rows.Scan(fieldPtr...)
 		if err != nil {
 			return err
 		}
 		return rows.Err()
 	}
-	if rv.Kind() == reflect.Map {
-		if err = checkMap(rv.Type()); err != nil {
+	if rv.Kind() == reflect.Map && !rv.IsNil() {
+		if err := checkMap(rv.Type()); err != nil {
 			return err
 		}
 		// row value
+		columns, err := rows.Columns()
+		if err != nil {
+			return err
+		}
 		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
+		if !rows.Next() {
+			return rows.Err()
+		}
 		err = rows.Scan(fieldPtr...)
 		if err != nil {
 			return err
@@ -131,10 +137,10 @@ func parseRowData(rows *sql.Rows, result interface{}) error {
 // checkMap 检查map类型
 func checkMap(rt reflect.Type) error {
 	if rt.Key().Kind() != reflect.String {
-		return ErrInvalidMapPtr
+		return ErrInvalidResultPtr
 	}
 	if rt.Elem().Kind() != reflect.Interface && rt.Elem().Kind() != reflect.String {
-		return ErrInvalidMapPtr
+		return ErrInvalidResultPtr
 	}
 	return nil
 }

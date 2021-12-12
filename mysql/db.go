@@ -73,25 +73,25 @@ func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
 }
 
 // GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(result interface{}, query string, args ...interface{}) (err error) {
+func (d *DB) GetAll(result interface{}, query string, args ...interface{}) error {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = rows.Close()
+		_ = rows.Close()
 	}()
 	return parseData(rows, result)
 }
 
 // GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(result interface{}, query string, args ...interface{}) (err error) {
+func (d *DB) GetRow(result interface{}, query string, args ...interface{}) error {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		err = rows.Close()
+		_ = rows.Close()
 	}()
 	return parseRowData(rows, result)
 }

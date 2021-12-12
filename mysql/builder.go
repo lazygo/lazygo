@@ -478,7 +478,6 @@ func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error
 		return 0, ErrEmptyTableName
 	}
 
-
 	if len(set) == 0 {
 		return 0, ErrEmptyValue
 	}
@@ -528,7 +527,6 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	if b.table == "" {
 		return 0, ErrEmptyTableName
 	}
-
 
 	if len(set) == 0 {
 		return 0, ErrEmptyValue
