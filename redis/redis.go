@@ -28,10 +28,10 @@ func (r *Redis) Close() error {
 }
 
 // Do 执行redis命令并返回结果。执行时从连接池获取连接并在执行完命令后关闭连接。
-func (r *Redis) Do(commandName string, args ...interface{}) (reply interface{}, err error) {
+func (r *Redis) Do(commandName string, args ...interface{}) (interface{}, error) {
 	conn := r.pool.Get()
 	defer func() {
-		err = conn.Close()
+		_ = conn.Close()
 	}()
 	return conn.Do(commandName, args...)
 }
@@ -180,24 +180,24 @@ func (r *Redis) DecrBy(key string, amount int64) (val int64, err error) {
 // m["age"] = 23
 // err := r.HMSet("user", m, 10)
 // ```
-func (r *Redis) HMSet(key string, val interface{}, expire int) (err error) {
+func (r *Redis) HMSet(key string, val interface{}, expire int) error {
 	conn := r.pool.Get()
 	defer func() {
-		err = conn.Close()
+		_ = conn.Close()
 	}()
-	err = conn.Send("HMSET", redigo.Args{}.Add(r.getKey(key)).AddFlat(val)...)
+	err := conn.Send("HMSET", redigo.Args{}.Add(r.getKey(key)).AddFlat(val)...)
 	if err != nil {
-		return
+		return err
 	}
 	if expire > 0 {
 		err = conn.Send("EXPIRE", r.getKey(key), int64(expire))
 	}
 	if err != nil {
-		return
+		return err
 	}
 	conn.Flush()
 	_, err = conn.Receive()
-	return
+	return err
 }
 
 /** Redis hash 是一个string类型的field和value的映射表，hash特别适合用于存储对象。 **/
