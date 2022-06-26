@@ -10,8 +10,8 @@ import (
 type ReadBuilder interface {
 	MakeQueryString(fields []interface{}) (string, []interface{}, error)
 	Count() (int64, error)
-	Fetch(fields []interface{}, result interface{}) error
-	FetchRow(fields []interface{}, result interface{}) error
+	Fetch(fields []interface{}, result interface{}) (int, error)
+	FetchRow(fields []interface{}, result interface{}) (int, error)
 	FetchOne(field string) (string, error)
 	FetchWithPage(fields []interface{}, page int64, pageSize int64) (*ResultData, error)
 }
@@ -354,7 +354,7 @@ func (b *builder) Count() (int64, error) {
 		Num int64 `json:"num"`
 	}{}
 
-	err := b.FetchRow([]interface{}{Raw("COUNT(*) AS num")}, result)
+	_, err := b.FetchRow([]interface{}{Raw("COUNT(*) AS num")}, result)
 	if err != nil {
 		return 0, err
 	}
@@ -364,11 +364,11 @@ func (b *builder) Count() (int64, error) {
 
 // Fetch 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Fetch(fields []interface{}, result interface{}) error {
+func (b *builder) Fetch(fields []interface{}, result interface{}) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	return b.handler.GetAll(result, queryString, args...)
@@ -386,17 +386,17 @@ func (b *builder) FetchWithPage(fields []interface{}, page int64, pageSize int64
 	}
 
 	data := Multi(count, page, pageSize)
-	err = b.ClearCond().WhereRaw(cond, args...).Limit(data.PageSize).Offset(data.Start).Fetch(fields, &data.List)
+	_, err = b.ClearCond().WhereRaw(cond, args...).Limit(data.PageSize).Offset(data.Start).Fetch(fields, &data.List)
 	return &data, err
 }
 
 // FetchRow 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) FetchRow(fields []interface{}, result interface{}) error {
+func (b *builder) FetchRow(fields []interface{}, result interface{}) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
-		return err
+		return 0, err
 	}
 
 	return b.handler.GetRow(result, queryString, args...)
@@ -412,7 +412,7 @@ func (b *builder) FetchOne(field string) (string, error) {
 	}
 
 	item := map[string]string{}
-	err = b.handler.GetRow(&item, queryString, args...)
+	_, err = b.handler.GetRow(&item, queryString, args...)
 	if err != nil {
 		return "", err
 	}

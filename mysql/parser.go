@@ -6,17 +6,17 @@ import (
 )
 
 // parseData 解析结果集
-func parseData(rows *sql.Rows, result interface{}) error {
+func parseData(rows *sql.Rows, result interface{}) (int, error) {
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
 	if rspv.Kind() != reflect.Ptr || rspv.IsNil() {
-		return ErrInvalidResultPtr
+		return 0, ErrInvalidResultPtr
 	}
 
 	// row slice value
 	rsv := rspv.Elem()
 	if rsv.Kind() != reflect.Slice {
-		return ErrInvalidResultPtr
+		return 0, ErrInvalidResultPtr
 	}
 	rsv.Set(reflect.MakeSlice(rsv.Type(), 0, rsv.Cap()))
 
@@ -28,31 +28,31 @@ func parseData(rows *sql.Rows, result interface{}) error {
 
 		columns, err := rows.Columns()
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		fieldPtr, err := getFieldPtr(columns, rv)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		for rows.Next() {
 			err = rows.Scan(fieldPtr...)
 			if err != nil {
-				return err
+				return 0, err
 			}
 			rsv.Set(reflect.Append(rsv, rv))
 		}
-		return rows.Err()
+		return rsv.Len(), rows.Err()
 	}
 	if rt.Kind() == reflect.Map {
 		if err := checkMap(rt); err != nil {
-			return err
+			return 0, err
 		}
 		// row value
 		columns, err := rows.Columns()
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
@@ -60,7 +60,7 @@ func parseData(rows *sql.Rows, result interface{}) error {
 		for rows.Next() {
 			err = rows.Scan(fieldPtr...)
 			if err != nil {
-				return err
+				return 0, err
 			}
 
 			rv := reflect.MakeMapWithSize(rt, len(columns))
@@ -74,18 +74,18 @@ func parseData(rows *sql.Rows, result interface{}) error {
 
 			rsv.Set(reflect.Append(rsv, rv))
 		}
-		return rows.Err()
+		return rsv.Len(), rows.Err()
 	}
-	return ErrInvalidResultPtr
+	return 0, ErrInvalidResultPtr
 
 }
 
 // parseRowData 解析单行结果集
-func parseRowData(rows *sql.Rows, result interface{}) error {
+func parseRowData(rows *sql.Rows, result interface{}) (int, error) {
 	// result pointer value
 	rpv := reflect.ValueOf(result)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
-		return ErrInvalidResultPtr
+		return 0, ErrInvalidResultPtr
 	}
 
 	// result value
@@ -94,37 +94,37 @@ func parseRowData(rows *sql.Rows, result interface{}) error {
 
 		columns, err := rows.Columns()
 		if err != nil {
-			return err
+			return 0, err
 		}
 		fieldPtr, err := getFieldPtr(columns, rv)
 		if err != nil {
-			return err
+			return 0, err
 		}
 		if !rows.Next() {
-			return rows.Err()
+			return 0, rows.Err()
 		}
 		err = rows.Scan(fieldPtr...)
 		if err != nil {
-			return err
+			return 0, err
 		}
-		return rows.Err()
+		return 1, rows.Err()
 	}
 	if rv.Kind() == reflect.Map && !rv.IsNil() {
 		if err := checkMap(rv.Type()); err != nil {
-			return err
+			return 0, err
 		}
 		// row value
 		columns, err := rows.Columns()
 		if err != nil {
-			return err
+			return 0, err
 		}
 		fieldPtr, fieldArr, fieldToID := getResultPtr(columns)
 		if !rows.Next() {
-			return rows.Err()
+			return 0, rows.Err()
 		}
 		err = rows.Scan(fieldPtr...)
 		if err != nil {
-			return err
+			return 0, err
 		}
 
 		for k, v := range fieldToID {
@@ -134,9 +134,9 @@ func parseRowData(rows *sql.Rows, result interface{}) error {
 				rv.SetMapIndex(reflect.ValueOf(k), reflect.ValueOf(string(fieldArr[v])))
 			}
 		}
-		return rows.Err()
+		return 1, rows.Err()
 	}
-	return ErrInvalidResultPtr
+	return 0, ErrInvalidResultPtr
 }
 
 // checkMap 检查map类型
