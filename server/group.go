@@ -1,5 +1,7 @@
 package server
 
+import "strings"
+
 type (
 	// Group is a set of sub-routes for a specified route. It can be used for inner
 	// routes that share a common middleware or functionality that should be separate
@@ -38,7 +40,7 @@ func (g *Group) Add(method, path string, handler HandlerFunc, middleware ...Midd
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	g.server.Add(method, g.prefix+path, handler, m...)
+	g.server.Add(method, g.concat(g.prefix, path), handler, m...)
 }
 
 // Group creates a new sub-group with prefix and optional sub-group-level middleware.
@@ -46,5 +48,15 @@ func (g *Group) Group(prefix string, middleware ...MiddlewareFunc) *Group {
 	m := make([]MiddlewareFunc, 0, len(g.middleware)+len(middleware))
 	m = append(m, g.middleware...)
 	m = append(m, middleware...)
-	return g.server.Group(g.prefix+prefix, m...)
+	return g.server.Group(g.concat(g.prefix, prefix), m...)
+}
+
+func (g *Group) concat(a, b string) string {
+	if a == "" {
+		return b
+	}
+	if b == "" {
+		return a
+	}
+	return strings.TrimRight(a, "/\\") + "/" + strings.TrimLeft(b, "/\\")
 }
