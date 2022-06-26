@@ -48,6 +48,8 @@ type fileLogWriter struct {
 
 	Perm string `json:"perm"`
 
+	DirPerm string `json:"dir_perm"`
+
 	RotatePerm string `json:"rotate_perm"`
 
 	fileNameOnly, suffix string // like "project.log", project is fileNameOnly and .log is suffix
@@ -65,6 +67,7 @@ func newFileLogWriter(opt map[string]string) (logWriter, error) {
 		MaxFiles:   toInt(opt["max_files"], 999),
 		MaxSize:    toInt(opt["max_size"], 1<<28),
 		Perm:       "0660",
+		DirPerm:    "0770",
 		RotatePerm: "0440",
 	}
 	if opt["perm"] != "" {
@@ -128,7 +131,7 @@ func (fl *fileLogWriter) Write(b []byte, t time.Time, prefix string) (int, error
 	fl.Lock()
 	b = append(hd, b...)
 	if prefix != "" {
-		b = append([]byte(prefix + " "), b...)
+		b = append([]byte(prefix+" "), b...)
 	}
 	n, err := fl.writer.Write(b)
 	if err == nil {
@@ -172,9 +175,13 @@ func (fl *fileLogWriter) createLogFile() (*os.File, error) {
 	if err != nil {
 		return nil, err
 	}
+	dirPerm, err := strconv.ParseInt(fl.DirPerm, 8, 64)
+	if err != nil {
+		return nil, err
+	}
 
 	dir := path.Dir(fl.Filename)
-	err = os.MkdirAll(dir, os.FileMode(perm))
+	err = os.MkdirAll(dir, os.FileMode(dirPerm))
 	if err != nil {
 		return nil, err
 	}
