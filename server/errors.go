@@ -56,7 +56,7 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 	case 1:
 		he.Message = message[0]
 	case 2:
-		he.Code = utils.ToInt(message[0], -1)
+		he.Errno = utils.ToInt(message[0], -1)
 		he.Message = message[1]
 	default:
 		he.Message = message[0]
