@@ -17,6 +17,7 @@ type ReadBuilder interface {
 }
 
 type WriteBuilder interface {
+	Insert(set map[string]interface{}) (int64, error)
 	Update(set map[string]interface{}, limit ...int) (int64, error)
 	UpdateRaw(set string, limit ...int) (int64, error)
 	Increment(column string, amount int64, set ...map[string]interface{}) (int64, error)
