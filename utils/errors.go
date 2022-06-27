@@ -12,10 +12,3 @@ func CheckError(err error) {
 		fmt.Println(err)
 	}
 }
-
-// CheckFatal 如果err != nil 记录日志并panic
-func CheckFatal(err error) {
-	if err != nil {
-		panic(err)
-	}
-}

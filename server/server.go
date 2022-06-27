@@ -106,6 +106,7 @@ func (s *Server) DefaultHTTPErrorHandler(err error, c Context) {
 	} else {
 		he = &HTTPError{
 			Code:    http.StatusInternalServerError,
+			Errno:   http.StatusInternalServerError,
 			Message: http.StatusText(http.StatusInternalServerError),
 		}
 	}

@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+
+	"github.com/lazygo/lazygo/utils"
 )
 
 // Errors
@@ -41,14 +43,22 @@ var (
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError struct {
 	Code     int         `json:"code"`
+	Errno    int         `json:"errno"`
 	Message  interface{} `json:"message"`
 	Internal error       `json:"-"` // Stores the error returned by an external dependency
 }
 
 // NewHTTPError creates a new HTTPError instance.
 func NewHTTPError(code int, message ...interface{}) *HTTPError {
-	he := &HTTPError{Code: code, Message: http.StatusText(code)}
-	if len(message) > 0 {
+	he := &HTTPError{Code: code, Errno: code, Message: http.StatusText(code)}
+	switch len(message) {
+	case 0:
+	case 1:
+		he.Message = message[0]
+	case 2:
+		he.Code = utils.ToInt(message[0], -1)
+		he.Message = message[1]
+	default:
 		he.Message = message[0]
 	}
 	return he
@@ -57,9 +67,9 @@ func NewHTTPError(code int, message ...interface{}) *HTTPError {
 // Error makes it compatible with `error` interface.
 func (he *HTTPError) Error() string {
 	if he.Internal == nil {
-		return fmt.Sprintf("code=%d, message=%v", he.Code, he.Message)
+		return fmt.Sprintf("code=%d, errno=%d, message=%v", he.Code, he.Errno, he.Message)
 	}
-	return fmt.Sprintf("code=%d, message=%v, internal=%v", he.Code, he.Message, he.Internal)
+	return fmt.Sprintf("code=%d, errno=%d, message=%v, internal=%v", he.Code, he.Errno, he.Message, he.Internal)
 }
 
 // SetInternal sets error to HTTPError.Internal
