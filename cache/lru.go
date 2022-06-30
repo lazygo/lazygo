@@ -8,6 +8,7 @@ import (
 
 type lruCache struct {
 	name    string
+	prefix  string
 	handler memory.LRU
 }
 
@@ -17,17 +18,20 @@ func newLruCache(opt map[string]string) (Cache, error) {
 	if !ok || name == "" {
 		return nil, ErrInvalidLruAdapterParams
 	}
+	prefix := opt["prefix"]
 
 	var err error
 	lru, err := memory.LRUCache(name)
 	l := &lruCache{
 		name:    name,
+		prefix:  prefix,
 		handler: lru,
 	}
 	return l, err
 }
 
 func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+	key = l.prefix + key
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 		item, ok := l.handler.Get(key)
@@ -58,6 +62,7 @@ func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time
 }
 
 func (l *lruCache) Set(key string, val interface{}, ttl time.Duration) error {
+	key = l.prefix + key
 	wp := &wrapper{}
 	err := wp.Pack(val, ttl)
 	if err != nil {
@@ -75,6 +80,7 @@ func (l *lruCache) Set(key string, val interface{}, ttl time.Duration) error {
 }
 
 func (l *lruCache) Get(key string) DataResult {
+	key = l.prefix + key
 	wp := &wrapper{}
 	wp.handler = func(wp *wrapper) error {
 		if item, ok := l.handler.Get(key); ok {
@@ -93,6 +99,7 @@ func (l *lruCache) Get(key string) DataResult {
 }
 
 func (l *lruCache) Has(key string) (bool, error) {
+	key = l.prefix + key
 	wp := &wrapper{}
 
 	if item, ok := l.handler.Get(key); ok {
@@ -107,6 +114,7 @@ func (l *lruCache) Has(key string) (bool, error) {
 }
 
 func (l *lruCache) Forget(key string) error {
+	key = l.prefix + key
 	l.handler.Delete(key)
 	return nil
 }
