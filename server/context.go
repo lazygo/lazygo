@@ -3,18 +3,26 @@ package server
 import (
 	"encoding/json"
 	"fmt"
-	"github.com/lazygo/lazygo/utils"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/url"
 	"os"
 	"path/filepath"
+	"reflect"
+	"strconv"
 	"strings"
 	"sync"
+
+	"github.com/lazygo/lazygo/utils"
 )
 
 type (
+	File struct {
+		File       multipart.File
+		FileHeader *multipart.FileHeader
+	}
+
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
@@ -28,6 +36,8 @@ type (
 
 		// GetRoutePath route info
 		GetRoutePath() string
+
+		Bind(interface{}) error
 
 		// Param returns path parameter by name.
 		Param(name string) string
@@ -140,6 +150,81 @@ func (c *context) SetResponseWriter(w *ResponseWriter) {
 
 func (c *context) GetRoutePath() string {
 	return c.path
+}
+
+func (c *context) Bind(v interface{}) error {
+	// result pointer value
+	rpv := reflect.ValueOf(v)
+	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
+		c.server.Logger.Println("[error][msg: bind value not a pointer]")
+		return ErrInternalServerError
+	}
+
+	// result value
+	rv := rpv.Elem()
+	if rv.Kind() != reflect.Struct {
+		c.server.Logger.Println("[error][msg: bind value not a struct pointer]")
+		return ErrInternalServerError
+	}
+
+	req := c.Request()
+
+	contentType, jsonData, err := parseBody(req)
+	if err != nil {
+		return ErrBadRequest
+	}
+
+	for i := 0; i < rv.NumField(); i++ {
+		tField := rv.Type().Field(i)
+		field := tField.Tag.Get("json")
+		if field == "" {
+			continue
+		}
+		typeName := tField.Type.Name()
+
+		// 绑定文件
+		if typeName == "File" && contentType == MIMEMultipartForm {
+			file, fileHeader, err := req.FormFile(field)
+			if err != nil {
+				return ErrBadRequest
+			}
+			rv.Field(i).Set(reflect.ValueOf(File{file, fileHeader}))
+			continue
+		}
+		binds := strings.Split(tField.Tag.Get("bind"), ",")
+		var val interface{}
+		for _, bind := range binds {
+			switch bind {
+			case "var":
+				val = c.GetVar(field)
+			case "header":
+				val = c.GetRequestHeader(field)
+			case "param":
+				val = c.Param(field)
+			case "query":
+				val = c.QueryParam(field)
+			case "form":
+				if contentType == MIMEApplicationForm || contentType == MIMEMultipartForm {
+					val = c.FormValue(field)
+				}
+			case "json":
+				if contentType == MIMEApplicationJSON {
+					val = jsonData[field]
+				}
+			default:
+				continue
+			}
+			if val != "" {
+				break
+			}
+		}
+		procList := strings.Split(tField.Tag.Get("process"), ",")
+		if to, ok := toType(val, typeName, procList); ok {
+			rv.Field(i).Set(reflect.ValueOf(to))
+		}
+
+	}
+	return nil
 }
 
 // Param 路由参数
@@ -360,4 +445,182 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	for i := 0; i < *c.server.maxParam; i++ {
 		c.pvalues[i] = ""
 	}
+}
+
+func parseBody(req *http.Request) (string, Map, error) {
+	var jsonData Map
+	var contentType string
+	if req.ContentLength > 0 {
+		ctype := req.Header.Get(HeaderContentType)
+		switch {
+		case strings.HasPrefix(ctype, MIMEApplicationJSON):
+			if err := json.NewDecoder(req.Body).Decode(&jsonData); err != nil {
+				return contentType, jsonData, err
+			}
+			contentType = MIMEApplicationJSON
+		case strings.HasPrefix(ctype, MIMEApplicationForm):
+			contentType = MIMEApplicationForm
+		case strings.HasPrefix(ctype, MIMEMultipartForm):
+			contentType = MIMEMultipartForm
+		default:
+		}
+	}
+	return contentType, jsonData, nil
+}
+
+func toType(val interface{}, typeName string, procList []string) (interface{}, bool) {
+	switch typeName {
+	case "int":
+		return utils.ToInt(val), true
+	case "[]int":
+		returnVal := make([]int, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, utils.ToInt(str))
+		}
+		return returnVal, true
+	case "int8":
+		return int8(utils.ToInt(val)), true
+	case "[]int8":
+		returnVal := make([]int8, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, int8(utils.ToInt(str)))
+		}
+		return returnVal, true
+	case "int16":
+		return int16(utils.ToInt(val)), true
+	case "[]int16":
+		returnVal := make([]int16, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, int16(utils.ToInt(str)))
+		}
+		return returnVal, true
+	case "int32":
+		return int32(utils.ToInt(val)), true
+	case "[]int32":
+		returnVal := make([]int32, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, int32(utils.ToInt(str)))
+		}
+		return returnVal, true
+	case "int64":
+		return utils.ToInt64(val), true
+	case "[]int64":
+		returnVal := make([]int64, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, utils.ToInt64(str))
+		}
+		return returnVal, true
+	case "uint":
+		return utils.ToUint(val), true
+	case "[]uint":
+		returnVal := make([]uint, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, utils.ToUint(str))
+		}
+		return returnVal, true
+	case "uint8":
+		return uint8(utils.ToUint(val)), true
+	case "[]uint8":
+		returnVal := make([]uint8, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, uint8(utils.ToUint(str)))
+		}
+		return returnVal, true
+	case "uint16":
+		return uint16(utils.ToUint(val)), true
+	case "[]uint16":
+		returnVal := make([]uint16, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, uint16(utils.ToUint(str)))
+		}
+		return returnVal, true
+	case "uint32":
+		return uint32(utils.ToUint(val)), true
+	case "[]uint32":
+		returnVal := make([]uint32, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, uint32(utils.ToUint(str)))
+		}
+		return returnVal, true
+	case "uint64":
+		return utils.ToUint64(val), true
+	case "[]uint64":
+		returnVal := make([]uint64, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, utils.ToUint64(str))
+		}
+		return returnVal, true
+	case "string":
+		return process(utils.ToString(val), procList), true
+	case "[]string":
+		returnVal := make([]string, 0)
+		strVal := utils.ToString(val)
+		if len(strVal) == 0 {
+			return returnVal, true
+		}
+		for _, str := range strings.Split(strVal, ",") {
+			returnVal = append(returnVal, process(utils.ToString(str), procList))
+		}
+		return returnVal, true
+	default:
+		return nil, false
+	}
+}
+
+func process(str string, procList []string) string {
+	for _, proc := range procList {
+		switch {
+		case strings.HasPrefix(proc, "trim"):
+			str = strings.TrimSpace(str)
+		case strings.HasPrefix(proc, "tolower"):
+			str = strings.ToLower(str)
+		case strings.HasPrefix(proc, "toupper"):
+			str = strings.ToUpper(str)
+		case strings.HasPrefix(proc, "cut("):
+			if n, err := strconv.Atoi(proc[4 : len(proc)-1]); err != nil {
+				str = utils.CutRune(str, n)
+			}
+		}
+	}
+	return str
 }

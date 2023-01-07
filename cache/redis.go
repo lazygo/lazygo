@@ -1,9 +1,10 @@
 package cache
 
 import (
+	"time"
+
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
-	"time"
 )
 
 type redisCache struct {

@@ -3,8 +3,9 @@ package redis
 import (
 	"encoding/json"
 	"fmt"
-	redigo "github.com/gomodule/redigo/redis"
 	"time"
+
+	redigo "github.com/gomodule/redigo/redis"
 )
 
 type Redis struct {

@@ -1,11 +1,12 @@
 package locker
 
 import (
-	redigo "github.com/gomodule/redigo/redis"
-	"github.com/lazygo/lazygo/redis"
 	"runtime"
 	"strconv"
 	"sync"
+
+	redigo "github.com/gomodule/redigo/redis"
+	"github.com/lazygo/lazygo/redis"
 )
 
 // redis适配器

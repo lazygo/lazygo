@@ -54,6 +54,11 @@ func (d *DB) Table(table string) *builder {
 	return newBuilder(d, d.prefix+table)
 }
 
+// TableRaw 获取查询构建器
+func (d *DB) TableRaw(table string) *builder {
+	return newBuilder(d, table)
+}
+
 // Query 查询sql并返回结果集
 func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 	// start := time.Now()

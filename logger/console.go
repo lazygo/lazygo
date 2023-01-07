@@ -1,11 +1,12 @@
 package logger
 
 import (
-	"github.com/shiena/ansicolor"
 	"io"
 	"os"
 	"sync"
 	"time"
+
+	"github.com/shiena/ansicolor"
 )
 
 // brush is a color join function
@@ -49,7 +50,7 @@ func (cl *consoleLogWriter) Write(b []byte, t time.Time, prefix string) (int, er
 	hd, _, _ := formatTimeHeader(t)
 	b = append(hd, b...)
 	if prefix != "" {
-		b = append([]byte(prefix + " "), b...)
+		b = append([]byte(prefix+" "), b...)
 	}
 	return cl.writer.Write(b)
 }

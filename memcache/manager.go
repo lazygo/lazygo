@@ -2,9 +2,10 @@ package memcache
 
 import (
 	"fmt"
-	"github.com/bradfitz/gomemcache/memcache"
 	"sync"
 	"time"
+
+	"github.com/bradfitz/gomemcache/memcache"
 )
 
 type ServerConfig struct {

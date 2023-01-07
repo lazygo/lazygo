@@ -17,7 +17,6 @@ type ReadBuilder interface {
 }
 
 type WriteBuilder interface {
-	Insert(set map[string]interface{}) (int64, error)
 	Update(set map[string]interface{}, limit ...int) (int64, error)
 	UpdateRaw(set string, limit ...int) (int64, error)
 	Increment(column string, amount int64, set ...map[string]interface{}) (int64, error)
@@ -25,19 +24,28 @@ type WriteBuilder interface {
 	Delete(limit ...int) (int64, error)
 }
 
-type Builder interface {
-	Where(cond ...interface{}) Builder
-	WhereMap(cond map[string]interface{}) Builder
-	WhereRaw(cond string, args ...interface{}) Builder
-	WhereIn(k string, in []interface{}) Builder
-	WhereNotIn(k string, in []interface{}) Builder
-	ClearCond() Builder
-	GroupBy(k string, ks ...string) ReadBuilder
-	OrderBy(k string, direct string) ReadBuilder
-	Offset(offset int64) ReadBuilder
-	Limit(limit int64) Builder
+type InsertBuilder interface {
+	Insert(set map[string]interface{}) (int64, error)
+}
+
+type CondBuilder interface {
+	Where(cond ...interface{}) CondBuilder
+	WhereMap(cond map[string]interface{}) CondBuilder
+	WhereRaw(cond string, args ...interface{}) CondBuilder
+	WhereIn(k string, in []interface{}) CondBuilder
+	WhereNotIn(k string, in []interface{}) CondBuilder
+	ClearCond() CondBuilder
+	GroupBy(k string, ks ...string) CondBuilder
+	OrderBy(k string, direct string) CondBuilder
+	Offset(offset int64) CondBuilder
+	Limit(limit int64) CondBuilder
 	ReadBuilder
 	WriteBuilder
+}
+
+type Builder interface {
+	CondBuilder
+	InsertBuilder
 }
 
 // 查询构建器
@@ -70,7 +78,7 @@ func newBuilder(handler *DB, table string) *builder {
 // cond string, []interface{} In查询条件，同WhereIn
 // cond string, []anytype In查询条件，同WhereIn
 // cond field string, op string value interface{}，同WhereIn
-func (b *builder) Where(cond ...interface{}) Builder {
+func (b *builder) Where(cond ...interface{}) CondBuilder {
 	switch len(cond) {
 	case 1:
 		switch cond[0].(type) {
@@ -117,7 +125,7 @@ func (b *builder) Where(cond ...interface{}) Builder {
 // WhereMap Map查询
 // 会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
-func (b *builder) WhereMap(cond map[string]interface{}) Builder {
+func (b *builder) WhereMap(cond map[string]interface{}) CondBuilder {
 	for k, v := range cond {
 		if vv, ok := CreateAnyTypeSlice(v); ok {
 			b.WhereIn(k, vv)
@@ -130,7 +138,7 @@ func (b *builder) WhereMap(cond map[string]interface{}) Builder {
 }
 
 // WhereRaw 子句查询
-func (b *builder) WhereRaw(cond string, args ...interface{}) Builder {
+func (b *builder) WhereRaw(cond string, args ...interface{}) CondBuilder {
 	cond = strings.Trim(cond, " ")
 	if cond != "" {
 		b.cond = append(b.cond, cond)
@@ -140,7 +148,7 @@ func (b *builder) WhereRaw(cond string, args ...interface{}) Builder {
 }
 
 // WhereIn IN查询
-func (b *builder) WhereIn(k string, in []interface{}) Builder {
+func (b *builder) WhereIn(k string, in []interface{}) CondBuilder {
 	var arr []string
 	for range in {
 		arr = append(arr, "?")
@@ -152,7 +160,7 @@ func (b *builder) WhereIn(k string, in []interface{}) Builder {
 }
 
 // WhereNotIn NOT IN查询
-func (b *builder) WhereNotIn(k string, in []interface{}) Builder {
+func (b *builder) WhereNotIn(k string, in []interface{}) CondBuilder {
 	var arr []string
 	for range in {
 		arr = append(arr, "?")
@@ -165,7 +173,7 @@ func (b *builder) WhereNotIn(k string, in []interface{}) Builder {
 
 // ClearCond 清空当前where
 //（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
-func (b *builder) ClearCond() Builder {
+func (b *builder) ClearCond() CondBuilder {
 	b.cond = []string{}
 	b.args = []interface{}{}
 	return b
@@ -182,14 +190,14 @@ func (b *builder) Clear() Builder {
 	return b
 }
 
-func (b *builder) GroupBy(k string, ks ...string) ReadBuilder {
+func (b *builder) GroupBy(k string, ks ...string) CondBuilder {
 	b.groupBy = append(b.groupBy, buildK(k))
 	for _, k := range ks {
 		b.groupBy = append(b.groupBy, buildK(k))
 	}
 	return b
 }
-func (b *builder) OrderBy(k string, direct string) ReadBuilder {
+func (b *builder) OrderBy(k string, direct string) CondBuilder {
 	direct = strings.ToUpper(direct)
 	if direct != "ASC" && direct != "DESC" {
 		// params error
@@ -200,12 +208,12 @@ func (b *builder) OrderBy(k string, direct string) ReadBuilder {
 	return b
 }
 
-func (b *builder) Offset(offset int64) ReadBuilder {
+func (b *builder) Offset(offset int64) CondBuilder {
 	b.offset = offset
 	return b
 }
 
-func (b *builder) Limit(limit int64) Builder {
+func (b *builder) Limit(limit int64) CondBuilder {
 	b.limit = limit
 	return b
 }

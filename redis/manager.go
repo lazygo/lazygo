@@ -2,10 +2,11 @@ package redis
 
 import (
 	"fmt"
-	redigo "github.com/gomodule/redigo/redis"
 	"runtime"
 	"sync"
 	"time"
+
+	redigo "github.com/gomodule/redigo/redis"
 )
 
 type Config struct {
@@ -81,10 +82,7 @@ func (m *Manager) open(item Config) (*redigo.Pool, error) {
 func (m *Manager) closeAll() error {
 	var err error
 	m.Range(func(name, db interface{}) bool {
-		err = db.(*Redis).Close()
-		if err != nil {
-			return false
-		}
+		_ = db.(*Redis).Close()
 		m.Delete(name)
 		return true
 	})

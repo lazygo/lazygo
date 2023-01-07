@@ -2,8 +2,9 @@ package cache
 
 import (
 	"encoding/json"
-	"github.com/lazygo/lazygo/memory"
 	"time"
+
+	"github.com/lazygo/lazygo/memory"
 )
 
 type lruCache struct {

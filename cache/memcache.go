@@ -2,8 +2,9 @@ package cache
 
 import (
 	"encoding/json"
-	"github.com/lazygo/lazygo/memcache"
 	"time"
+
+	"github.com/lazygo/lazygo/memcache"
 )
 
 type mcCache struct {
