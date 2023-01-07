@@ -171,7 +171,7 @@ func (c *context) Bind(v interface{}) error {
 
 	contentType, jsonData, err := parseBody(req)
 	if err != nil {
-		return ErrBadRequest
+		return err
 	}
 
 	for i := 0; i < rv.NumField(); i++ {
@@ -186,7 +186,7 @@ func (c *context) Bind(v interface{}) error {
 		if typeName == "File" && contentType == MIMEMultipartForm {
 			file, fileHeader, err := req.FormFile(field)
 			if err != nil {
-				return ErrBadRequest
+				return err
 			}
 			rv.Field(i).Set(reflect.ValueOf(File{file, fileHeader}))
 			continue
