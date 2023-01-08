@@ -221,6 +221,10 @@ func (c *context) Bind(v interface{}) error {
 		procList := strings.Split(tField.Tag.Get("process"), ",")
 		if to, ok := toType(val, typeName, procList); ok {
 			rv.Field(i).Set(reflect.ValueOf(to))
+		} else {
+			if tField.Type.String() == "interface {}" {
+				rv.Field(i).Set(reflect.ValueOf(to))
+			}
 		}
 
 	}
@@ -603,7 +607,7 @@ func toType(val interface{}, typeName string, procList []string) (interface{}, b
 		}
 		return returnVal, true
 	default:
-		return nil, false
+		return val, false
 	}
 }
 
