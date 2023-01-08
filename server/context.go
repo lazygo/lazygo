@@ -160,18 +160,20 @@ func (c *context) Bind(v interface{}) error {
 		return ErrInternalServerError
 	}
 
+	req := c.Request()
+	ctype := req.Header.Get(HeaderContentType)
+	if strings.HasPrefix(ctype, MIMEApplicationJSON) && req.ContentLength > 0 {
+		err := json.NewDecoder(req.Body).Decode(v)
+		if err != nil {
+			return err
+		}
+	}
+
 	// result value
 	rv := rpv.Elem()
 	if rv.Kind() != reflect.Struct {
 		c.server.Logger.Println("[error][msg: bind value not a struct pointer]")
 		return ErrInternalServerError
-	}
-
-	req := c.Request()
-
-	contentType, jsonData, err := parseBody(req)
-	if err != nil {
-		return err
 	}
 
 	for i := 0; i < rv.NumField(); i++ {
@@ -183,7 +185,7 @@ func (c *context) Bind(v interface{}) error {
 		typeName := tField.Type.Name()
 
 		// 绑定文件
-		if typeName == "File" && contentType == MIMEMultipartForm {
+		if typeName == "File" && strings.HasPrefix(ctype, MIMEMultipartForm) {
 			file, fileHeader, err := req.FormFile(field)
 			if err != nil {
 				return err
@@ -204,12 +206,21 @@ func (c *context) Bind(v interface{}) error {
 			case "query":
 				val = c.QueryParam(field)
 			case "form":
-				if contentType == MIMEApplicationForm || contentType == MIMEMultipartForm {
+				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
 					val = c.FormValue(field)
 				}
 			case "json":
-				if contentType == MIMEApplicationJSON {
-					val = jsonData[field]
+				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
+					data := reflect.New(rv.Field(i).Type())
+					err := json.Unmarshal([]byte(c.FormValue(field)), data.Addr().Interface())
+					if err != nil {
+						val = ""
+						continue
+					}
+					val = data
+				}
+				if strings.HasPrefix(ctype, MIMEApplicationJSON) {
+					val = ""
 				}
 			default:
 				continue
@@ -221,12 +232,7 @@ func (c *context) Bind(v interface{}) error {
 		procList := strings.Split(tField.Tag.Get("process"), ",")
 		if to, ok := toType(val, typeName, procList); ok {
 			rv.Field(i).Set(reflect.ValueOf(to))
-		} else {
-			if tField.Type.String() == "interface {}" {
-				rv.Field(i).Set(reflect.ValueOf(to))
-			}
 		}
-
 	}
 	return nil
 }
@@ -451,27 +457,6 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	}
 }
 
-func parseBody(req *http.Request) (string, Map, error) {
-	var jsonData Map
-	var contentType string
-	if req.ContentLength > 0 {
-		ctype := req.Header.Get(HeaderContentType)
-		switch {
-		case strings.HasPrefix(ctype, MIMEApplicationJSON):
-			if err := json.NewDecoder(req.Body).Decode(&jsonData); err != nil {
-				return contentType, jsonData, err
-			}
-			contentType = MIMEApplicationJSON
-		case strings.HasPrefix(ctype, MIMEApplicationForm):
-			contentType = MIMEApplicationForm
-		case strings.HasPrefix(ctype, MIMEMultipartForm):
-			contentType = MIMEMultipartForm
-		default:
-		}
-	}
-	return contentType, jsonData, nil
-}
-
 func toType(val interface{}, typeName string, procList []string) (interface{}, bool) {
 	switch typeName {
 	case "int":
@@ -605,10 +590,12 @@ func toType(val interface{}, typeName string, procList []string) (interface{}, b
 		for _, str := range strings.Split(strVal, ",") {
 			returnVal = append(returnVal, process(utils.ToString(str), procList))
 		}
-		return returnVal, true
 	default:
-		return val, false
+		if reflect.TypeOf(val).Name() == typeName {
+			return val, true
+		}
 	}
+	return val, false
 }
 
 func process(str string, procList []string) string {
