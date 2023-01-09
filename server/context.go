@@ -177,6 +177,9 @@ func (c *context) Bind(v interface{}) error {
 	}
 
 	for i := 0; i < rv.NumField(); i++ {
+		if !rv.Field(i).CanSet() {
+			continue
+		}
 		tField := rv.Type().Field(i)
 		field := tField.Tag.Get("json")
 		if field == "" {
@@ -212,12 +215,11 @@ func (c *context) Bind(v interface{}) error {
 			case "json":
 				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
 					data := reflect.New(rv.Field(i).Type())
-					err := json.Unmarshal([]byte(c.FormValue(field)), data.Addr().Interface())
+					err := json.Unmarshal([]byte(c.FormValue(field)), data.Interface())
 					if err != nil {
-						val = ""
-						continue
+						return err
 					}
-					val = data
+					val = data.Elem().Interface()
 				}
 				if strings.HasPrefix(ctype, MIMEApplicationJSON) {
 					val = ""
