@@ -185,7 +185,6 @@ func (c *context) Bind(v interface{}) error {
 		if field == "" {
 			continue
 		}
-		typeName := tField.Type.String()
 
 		binds := strings.Split(tField.Tag.Get("bind"), ",")
 		var val interface{}
@@ -230,6 +229,7 @@ func (c *context) Bind(v interface{}) error {
 				break
 			}
 		}
+		typeName := tField.Type.String()
 		procList := strings.Split(tField.Tag.Get("process"), ",")
 		if to, ok := toType(val, typeName, procList); ok {
 			rv.Field(i).Set(reflect.ValueOf(to))
@@ -459,6 +459,9 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 }
 
 func toType(val interface{}, typeName string, procList []string) (interface{}, bool) {
+	if typeName == "interface {}" {
+		return val, true
+	}
 	switch typeName {
 	case "int":
 		return utils.ToInt(val), true
@@ -592,7 +595,13 @@ func toType(val interface{}, typeName string, procList []string) (interface{}, b
 			returnVal = append(returnVal, process(utils.ToString(str), procList))
 		}
 	default:
-		if reflect.TypeOf(val).String() == typeName {
+		rv := reflect.ValueOf(val)
+		valType := rv.Type().String()
+		if valType == typeName {
+			return val, true
+		}
+		if strings.HasPrefix(valType, "*") && valType[1:] == typeName {
+			val = rv.Elem().Interface()
 			return val, true
 		}
 	}
