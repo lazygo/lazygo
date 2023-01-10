@@ -185,17 +185,8 @@ func (c *context) Bind(v interface{}) error {
 		if field == "" {
 			continue
 		}
-		typeName := tField.Type.Name()
+		typeName := tField.Type.String()
 
-		// 绑定文件
-		if typeName == "File" && strings.HasPrefix(ctype, MIMEMultipartForm) {
-			file, fileHeader, err := req.FormFile(field)
-			if err != nil {
-				return err
-			}
-			rv.Field(i).Set(reflect.ValueOf(File{file, fileHeader}))
-			continue
-		}
 		binds := strings.Split(tField.Tag.Get("bind"), ",")
 		var val interface{}
 		for _, bind := range binds {
@@ -211,6 +202,14 @@ func (c *context) Bind(v interface{}) error {
 			case "form":
 				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
 					val = c.FormValue(field)
+				}
+			case "file":
+				if strings.HasPrefix(ctype, MIMEMultipartForm) {
+					file, fileHeader, err := req.FormFile(field)
+					if err != nil {
+						return err
+					}
+					val = &File{file, fileHeader}
 				}
 			case "json":
 				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
@@ -593,7 +592,7 @@ func toType(val interface{}, typeName string, procList []string) (interface{}, b
 			returnVal = append(returnVal, process(utils.ToString(str), procList))
 		}
 	default:
-		if reflect.TypeOf(val).Name() == typeName {
+		if reflect.TypeOf(val).String() == typeName {
 			return val, true
 		}
 	}
