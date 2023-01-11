@@ -210,28 +210,19 @@ func (c *context) Bind(v interface{}) error {
 					}
 					val = &File{file, fileHeader}
 				}
-			case "json":
-				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
-					data := reflect.New(rv.Field(i).Type())
-					err := json.Unmarshal([]byte(c.FormValue(field)), data.Interface())
-					if err != nil {
-						return err
-					}
-					val = data.Elem().Interface()
-				}
-				if strings.HasPrefix(ctype, MIMEApplicationJSON) {
-					val = ""
-				}
 			default:
 				continue
 			}
-			if val != "" {
+			if val != "" && val != nil {
 				break
 			}
 		}
-		typeName := tField.Type.String()
+		if val == nil || val == "" {
+			continue
+		}
+
 		procList := strings.Split(tField.Tag.Get("process"), ",")
-		if to, ok := toType(val, typeName, procList); ok {
+		if to, ok := toType(val, tField.Type, procList); ok {
 			rv.Field(i).Set(reflect.ValueOf(to))
 		}
 	}
@@ -458,7 +449,24 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	}
 }
 
-func toType(val interface{}, typeName string, procList []string) (interface{}, bool) {
+func toType(val interface{}, rType reflect.Type, procList []string) (interface{}, bool) {
+	typeName := rType.String()
+	typeKind := rType.Kind()
+
+	if typeKind == reflect.Ptr {
+		typeKind = rType.Elem().Kind()
+	}
+	rv := reflect.ValueOf(val)
+
+	if (typeKind == reflect.Array || typeKind == reflect.Interface || typeKind == reflect.Map || typeKind == reflect.Slice || typeKind == reflect.Struct) && rv.Kind() == reflect.String {
+		returnVal := reflect.New(rType)
+		strVal := utils.ToString(val)
+		if err := json.Unmarshal([]byte(strVal), returnVal.Interface()); err == nil {
+			val = returnVal.Elem().Interface()
+			rv = returnVal.Elem()
+		}
+	}
+
 	if typeName == "interface {}" {
 		return val, true
 	}
@@ -595,7 +603,6 @@ func toType(val interface{}, typeName string, procList []string) (interface{}, b
 			returnVal = append(returnVal, process(utils.ToString(str), procList))
 		}
 	default:
-		rv := reflect.ValueOf(val)
 		valType := rv.Type().String()
 		if valType == typeName {
 			return val, true
