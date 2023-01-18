@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"time"
 
 	"github.com/lazygo/lazygo/memory"
 )
@@ -33,7 +32,7 @@ func newLruCache(opt map[string]string) (Cache, error) {
 	return l, err
 }
 
-func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
+func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
 	key = l.prefix + key
 	if item, ok := l.handler.Get(key); ok {
 		err := json.Unmarshal(item, ret)
@@ -55,18 +54,18 @@ func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time
 	if err != nil {
 		return false, err
 	}
-	err = l.handler.Set(key, value, int32(ttl.Seconds()))
+	err = l.handler.Set(key, value, int32(ttl))
 
 	return false, err
 }
 
-func (l *lruCache) Set(key string, val interface{}, ttl time.Duration) error {
+func (l *lruCache) Set(key string, val interface{}, ttl int64) error {
 	key = l.prefix + key
 	value, err := json.Marshal(val)
 	if err != nil {
 		return err
 	}
-	err = l.handler.Set(key, value, int32(ttl.Seconds()))
+	err = l.handler.Set(key, value, int32(ttl))
 	if err != nil {
 		return err
 	}

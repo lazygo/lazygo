@@ -2,7 +2,6 @@ package cache
 
 import (
 	"sync"
-	"time"
 )
 
 type Config struct {
@@ -12,9 +11,9 @@ type Config struct {
 }
 
 type Cache interface {
-	Remember(key string, value func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error)
+	Remember(key string, value func() (interface{}, error), ttl int64, ret interface{}) (bool, error)
 	Get(key string, ret interface{}) (bool, error)
-	Set(key string, value interface{}, ttl time.Duration) error
+	Set(key string, value interface{}, ttl int64) error
 	Has(key string) (bool, error)
 	Forget(key string) error
 }
@@ -65,7 +64,7 @@ func Instance(name string) (Cache, error) {
 	return a.(Cache), nil
 }
 
-func Remember(key string, value func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
+func Remember(key string, value func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return false, err
@@ -81,7 +80,7 @@ func Get(key string, ret interface{}) (bool, error) {
 	return cache.Get(key, ret)
 }
 
-func Set(key string, value interface{}, ttl time.Duration) error {
+func Set(key string, value interface{}, ttl int64) error {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return err

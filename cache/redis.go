@@ -3,7 +3,6 @@ package cache
 import (
 	"errors"
 	"reflect"
-	"time"
 
 	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
@@ -33,7 +32,7 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
-func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
+func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
 	key = r.prefix + key
 	err := r.handler.GetObject(key, ret)
 	if err == nil {
@@ -54,14 +53,14 @@ func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl ti
 	}
 	rRet.Elem().Set(reflect.ValueOf(data))
 
-	err = r.handler.Set(key, data, int64(ttl.Seconds()))
+	err = r.handler.Set(key, data, ttl)
 
 	return false, err
 }
 
-func (r *redisCache) Set(key string, val interface{}, ttl time.Duration) error {
+func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
 	key = r.prefix + key
-	err := r.handler.Set(key, val, int64(ttl.Seconds()))
+	err := r.handler.Set(key, val, ttl)
 	if err != nil {
 		return err
 	}

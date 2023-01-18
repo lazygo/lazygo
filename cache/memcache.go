@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"reflect"
-	"time"
 
 	libMemcache "github.com/bradfitz/gomemcache/memcache"
 	"github.com/lazygo/lazygo/memcache"
@@ -34,7 +33,7 @@ func newMcCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
-func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
+func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
 	key = m.prefix + key
 	item, err := m.handler.Conn().Get(key)
 	if err == nil {
@@ -60,17 +59,17 @@ func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl time.
 	if err != nil {
 		return false, err
 	}
-	err = m.handler.Set(key, value, int32(ttl.Seconds()))
+	err = m.handler.Set(key, value, int32(ttl))
 	return false, err
 }
 
-func (m *mcCache) Set(key string, val interface{}, ttl time.Duration) error {
+func (m *mcCache) Set(key string, val interface{}, ttl int64) error {
 	key = m.prefix + key
 	value, err := json.Marshal(val)
 	if err != nil {
 		return err
 	}
-	err = m.handler.Set(key, value, int32(ttl.Seconds()))
+	err = m.handler.Set(key, value, int32(ttl))
 	if err != nil {
 		return err
 	}
