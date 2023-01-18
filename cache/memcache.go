@@ -85,22 +85,21 @@ func (m *mcCache) Get(key string, ret interface{}) (bool, error) {
 		return true, err
 	}
 	if err != libMemcache.ErrCacheMiss {
-		return false, nil
+		return false, err
 	}
-
-	return false, err
+	return false, nil
 }
 
 func (m *mcCache) Has(key string) (bool, error) {
 	key = m.prefix + key
 	_, err := m.handler.Conn().Get(key)
-	if err != nil {
-		if err != libMemcache.ErrCacheMiss {
-			return false, err
-		}
+	if err == nil {
 		return true, nil
 	}
-	return true, nil
+	if err != libMemcache.ErrCacheMiss {
+		return false, err
+	}
+	return false, nil
 }
 
 func (m *mcCache) Forget(key string) error {
