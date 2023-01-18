@@ -18,8 +18,8 @@ import (
 	"time"
 )
 
-//
-type HttpRequest struct {
+// HttpClient
+type HttpClient struct {
 	url      string
 	req      *http.Request
 	params   url.Values
@@ -28,6 +28,7 @@ type HttpRequest struct {
 	resp     *http.Response
 	body     []byte
 	dump     []byte
+	lastErr  error
 }
 
 // http.Client settings
@@ -57,11 +58,14 @@ var defaultSetting = HttpSettings{
 
 var defaultCookieJar http.CookieJar
 
-//
-func NewRequest(rawUrl, method string) *HttpRequest {
-	var resp http.Response
+// NewClient http客户端
+func NewClient(rawUrl, method string) *HttpClient {
+	client := &HttpClient{}
 	u, err := url.Parse(rawUrl)
-	checkError(err)
+	if err != nil {
+		client.lastErr = err
+		return client
+	}
 	req := http.Request{
 		URL:        u,
 		Method:     method,
@@ -70,31 +74,30 @@ func NewRequest(rawUrl, method string) *HttpRequest {
 		ProtoMajor: 1,
 		ProtoMinor: 1,
 	}
-	return &HttpRequest{
-		url:      rawUrl,
-		req:      &req,
-		params:   url.Values{},
-		files:    map[string]string{},
-		settings: defaultSetting,
-		resp:     &resp,
-	}
+	client.url = rawUrl
+	client.req = &req
+	client.params = url.Values{}
+	client.files = map[string]string{}
+	client.settings = defaultSetting
+	client.resp = &http.Response{}
+	return client
 }
 
-// 设置请求配置
-func (h *HttpRequest) Settings(settings HttpSettings) *HttpRequest {
+// Settings 设置请求配置
+func (h *HttpClient) Settings(settings HttpSettings) *HttpClient {
 	h.settings = settings
 	return h
 }
 
-// 设置超时时间
-func (h *HttpRequest) SetTimeout(connectTimeout, readWriteTimeout time.Duration) *HttpRequest {
+// SetTimeout 设置超时时间
+func (h *HttpClient) SetTimeout(connectTimeout, readWriteTimeout time.Duration) *HttpClient {
 	h.settings.ConnectTimeout = connectTimeout
 	h.settings.ReadWriteTimeout = readWriteTimeout
 	return h
 }
 
-// 设置请求失败重试次数 0:不重试(默认) -1:一直重试
-func (h *HttpRequest) SetRetries(times int) *HttpRequest {
+// SetRetries 设置请求失败重试次数 0:不重试(默认) -1:一直重试
+func (h *HttpClient) SetRetries(times int) *HttpClient {
 	h.settings.Retries = times
 	return h
 }
@@ -105,62 +108,62 @@ func (h *HttpRequest) SetRetries(times int) *HttpRequest {
 	return h
 }*/
 
-// 设置请求Host
-func (h *HttpRequest) SetHost(host string) *HttpRequest {
+// SetHost 设置请求Host
+func (h *HttpClient) SetHost(host string) *HttpClient {
 	h.req.Host = host
 	return h
 }
 
-// 设置User-Agent
-func (h *HttpRequest) SetUserAgent(useragent string) *HttpRequest {
+// SetUserAgent 设置User-Agent
+func (h *HttpClient) SetUserAgent(useragent string) *HttpClient {
 	h.settings.UserAgent = useragent
 	return h
 }
 
 // SetEnableCookie sets enable/disable cookiejar
-func (h *HttpRequest) SetEnableCookie(enable bool) *HttpRequest {
+func (h *HttpClient) SetEnableCookie(enable bool) *HttpClient {
 	h.settings.EnableCookie = enable
 	return h
 }
 
-// 添加请求Cookie
-func (h *HttpRequest) AddCookie(cookie *http.Cookie) *HttpRequest {
+// AddCookie 添加请求Cookie
+func (h *HttpClient) AddCookie(cookie *http.Cookie) *HttpClient {
 	h.req.Header.Add("Cookie", cookie.String())
 	return h
 }
 
-// 设置Http代理
-func (h *HttpRequest) SetProxy(proxy func(*http.Request) (*url.URL, error)) *HttpRequest {
+// SetProxy 设置Http代理
+func (h *HttpClient) SetProxy(proxy func(*http.Request) (*url.URL, error)) *HttpClient {
 	h.settings.Proxy = proxy
 	return h
 }
 
 // SetBasicAuth sets the request's Authorization header to use HTTP Basic Authentication with the provided username and password.
-func (h *HttpRequest) SetBasicAuth(username string, password string) *HttpRequest {
+func (h *HttpClient) SetBasicAuth(username string, password string) *HttpClient {
 	h.req.SetBasicAuth(username, password)
 	return h
 }
 
-// 设置请求Header
-func (h *HttpRequest) SetHeader(key, value string) *HttpRequest {
+// SetHeader 设置请求Header
+func (h *HttpClient) SetHeader(key, value string) *HttpClient {
 	h.req.Header.Set(key, value)
 	return h
 }
 
-// 增加请求参数
-func (h *HttpRequest) AddParam(key, value string) *HttpRequest {
+// AddParam 增加请求参数
+func (h *HttpClient) AddParam(key, value string) *HttpClient {
 	h.params.Add(key, value)
 	return h
 }
 
-// 设置请求参数
-func (h *HttpRequest) SetParam(key, value string) *HttpRequest {
+// SetParam 设置请求参数
+func (h *HttpClient) SetParam(key, value string) *HttpClient {
 	h.params.Set(key, value)
 	return h
 }
 
-// 设置键值对格式请求参数
-func (h *HttpRequest) SetParams(params map[string]interface{}) *HttpRequest {
+// SetParams 设置键值对格式请求参数
+func (h *HttpClient) SetParams(params map[string]interface{}) *HttpClient {
 	h.params = url.Values{}
 	for k, v := range params {
 		switch v.(type) {
@@ -175,9 +178,8 @@ func (h *HttpRequest) SetParams(params map[string]interface{}) *HttpRequest {
 	return h
 }
 
-// 设置请求Body
-// it supports string and []byte.
-func (h *HttpRequest) SetBody(data interface{}) *HttpRequest {
+// SetBody 设置请求Body  it supports string and []byte.
+func (h *HttpClient) SetBody(data interface{}) *HttpClient {
 	switch t := data.(type) {
 	case string:
 		bf := bytes.NewBufferString(t)
@@ -191,8 +193,8 @@ func (h *HttpRequest) SetBody(data interface{}) *HttpRequest {
 	return h
 }
 
-// 设置XML格式请求Body
-func (h *HttpRequest) SetXmlBody(obj interface{}) (*HttpRequest, error) {
+// SetXmlBody 设置XML格式请求Body
+func (h *HttpClient) SetXmlBody(obj interface{}) (*HttpClient, error) {
 	if h.req.Body == nil && obj != nil {
 		xmlData, err := xml.Marshal(obj)
 		if err != nil {
@@ -205,8 +207,8 @@ func (h *HttpRequest) SetXmlBody(obj interface{}) (*HttpRequest, error) {
 	return h, nil
 }
 
-// 设置Json格式请求Body
-func (h *HttpRequest) SetJsonBody(obj interface{}) (*HttpRequest, error) {
+// SetJsonBody 设置Json格式请求Body
+func (h *HttpClient) SetJsonBody(obj interface{}) (*HttpClient, error) {
 	if h.req.Body == nil && obj != nil {
 		jsonData, err := json.Marshal(obj)
 		if err != nil {
@@ -220,7 +222,7 @@ func (h *HttpRequest) SetJsonBody(obj interface{}) (*HttpRequest, error) {
 }
 
 // PostFile add a post file to the request
-func (h *HttpRequest) PostFile(formname, filename string) *HttpRequest {
+func (h *HttpClient) PostFile(formname, filename string) *HttpClient {
 	h.files[formname] = filename
 	return h
 }
@@ -228,7 +230,7 @@ func (h *HttpRequest) PostFile(formname, filename string) *HttpRequest {
 // ===================================
 
 //
-func (h *HttpRequest) buildURL(paramBody string) {
+func (h *HttpClient) buildURL(paramBody string) {
 	// build GET url with query string
 	if h.req.Method == "GET" && len(paramBody) > 0 {
 		if strings.Contains(h.url, "?") {
@@ -278,7 +280,7 @@ func (h *HttpRequest) buildURL(paramBody string) {
 }
 
 // 发起请求
-func (h *HttpRequest) doRequest() (*http.Response, error) {
+func (h *HttpClient) doRequest() (*http.Response, error) {
 	var paramBody string = h.params.Encode()
 	h.buildURL(paramBody)
 
@@ -338,8 +340,11 @@ func (h *HttpRequest) doRequest() (*http.Response, error) {
 	return resp, err
 }
 
-// 获取http.response
-func (h *HttpRequest) GetResponse() (*http.Response, error) {
+// GetResponse 获取http.response
+func (h *HttpClient) GetResponse() (*http.Response, error) {
+	if h.lastErr != nil {
+		return nil, h.lastErr
+	}
 	if h.resp.StatusCode != 0 {
 		return h.resp, nil
 	}
@@ -351,7 +356,7 @@ func (h *HttpRequest) GetResponse() (*http.Response, error) {
 	return resp, nil
 }
 
-func (h *HttpRequest) ToBytes() ([]byte, error) {
+func (h *HttpClient) ToBytes() ([]byte, error) {
 	if h.body != nil {
 		return h.body, nil
 	}
@@ -376,7 +381,7 @@ func (h *HttpRequest) ToBytes() ([]byte, error) {
 }
 
 // 将相应转换成字符串
-func (h *HttpRequest) ToString() (string, error) {
+func (h *HttpClient) ToString() (string, error) {
 	data, err := h.ToBytes()
 	if err != nil {
 		return "", err
@@ -385,7 +390,7 @@ func (h *HttpRequest) ToString() (string, error) {
 }
 
 // 将响应作为json解析
-func (h *HttpRequest) ToJSON(v interface{}) error {
+func (h *HttpClient) ToJSON(v interface{}) error {
 	data, err := h.ToBytes()
 	if err != nil {
 		return err
@@ -395,7 +400,7 @@ func (h *HttpRequest) ToJSON(v interface{}) error {
 
 // ToXML returns the map that marshals from the body bytes as xml in response .
 // it calls Response inner.
-func (h *HttpRequest) ToXML(v interface{}) error {
+func (h *HttpClient) ToXML(v interface{}) error {
 	data, err := h.ToBytes()
 	if err != nil {
 		return err
@@ -405,7 +410,7 @@ func (h *HttpRequest) ToXML(v interface{}) error {
 
 // ToFile saves the body data in response to one file.
 // it calls Response inner.
-func (h *HttpRequest) ToFile(filename string) error {
+func (h *HttpClient) ToFile(filename string) error {
 	f, err := os.Create(filename)
 	if err != nil {
 		return err

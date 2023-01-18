@@ -21,33 +21,29 @@ func (m *Memcache) Conn() *memcache.Client {
 	return m.mc
 }
 
-// Get 获取给定密钥的项，密钥的长度必须不超过250字节。
-func (m *Memcache) Get(key string) []byte {
-	var err error
-	var item *memcache.Item
-	item, err = m.mc.Get(key)
+// Get 获取给定key的项，key的长度必须不超过250字节。
+func (m *Memcache) Get(key string) ([]byte, error) {
+	item, err := m.mc.Get(key)
 	if err == nil {
-		return item.Value
+		return item.Value, nil
 	}
 	if err == memcache.ErrCacheMiss {
-		return nil
+		return nil, nil
 	}
-	panic(err)
+	return nil, err
 }
 
 // GetMulti GetMulti是Get的批处理版本
-func (m *Memcache) GetMulti(keys []string) map[string][]byte {
-	var err error
-	var items map[string]*memcache.Item
-	items, err = m.mc.GetMulti(keys)
+func (m *Memcache) GetMulti(keys []string) (map[string][]byte, error) {
+	items, err := m.mc.GetMulti(keys)
 	if err == nil {
 		val := map[string][]byte{}
 		for key, item := range items {
 			val[key] = item.Value
 		}
-		return val
+		return val, nil
 	}
-	panic(err)
+	return nil, err
 }
 
 // Increment 按增量键原子递增

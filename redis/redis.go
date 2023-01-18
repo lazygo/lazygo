@@ -744,7 +744,7 @@ func (r *Redis) getKey(key string) string {
 func (r *Redis) encode(val interface{}) (interface{}, error) {
 	var value interface{}
 	switch v := val.(type) {
-	case string, int, uint, int8, int16, int32, int64, float32, float64, bool:
+	case string, int, uint, int8, uint8, int16, uint16, int32, uint32, int64, uint64, float32, float64, bool:
 		value = v
 	default:
 		b, err := json.Marshal(v)
