@@ -10,7 +10,8 @@ const KB = 1 << 10
 const MB = 1 << 20
 
 type LRU interface {
-	Get(key string) (v Value, ok bool)
+	Get(key string) (Value, bool)
+	Exists(key string) bool
 	Set(key string, val []byte, expiration int32) error
 	Delete(key string) bool
 	Flush()
@@ -117,6 +118,26 @@ func (lru *LRUImpl) Get(key string) (v Value, ok bool) {
 	return element.Value.(*item).value, true
 }
 
+// Exists 获取缓存
+func (lru *LRUImpl) Exists(key string) bool {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
+
+	element := lru.table[key]
+	if element == nil {
+		return false
+	}
+	// 判断过期
+	if element.Value.(*item).deadline.Before(time.Now()) {
+		lru.list.Remove(element)
+		delete(lru.table, key)
+		lru.size -= uint64(element.Value.(*item).size)
+		return false
+	}
+
+	return true
+}
+
 // Set 设置缓存
 func (lru *LRUImpl) Set(key string, val []byte, expiration int32) error {
 	value := Value(val)
@@ -127,7 +148,7 @@ func (lru *LRUImpl) Set(key string, val []byte, expiration int32) error {
 	if element := lru.table[key]; element != nil {
 		return lru.updateInplace(element, value)
 	}
-	return lru.addNew(key, value, time.Duration(expiration) *  time.Second)
+	return lru.addNew(key, value, time.Duration(expiration)*time.Second)
 }
 
 // Delete 删除缓存

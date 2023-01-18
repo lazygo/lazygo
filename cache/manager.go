@@ -12,8 +12,8 @@ type Config struct {
 }
 
 type Cache interface {
-	Remember(key string, value func() (interface{}, error), ttl time.Duration) DataResult
-	Get(key string) DataResult
+	Remember(key string, value func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error)
+	Get(key string, ret interface{}) (bool, error)
 	Set(key string, value interface{}, ttl time.Duration) error
 	Has(key string) (bool, error)
 	Forget(key string) error
@@ -65,20 +65,20 @@ func Instance(name string) (Cache, error) {
 	return a.(Cache), nil
 }
 
-func Remember(key string, value func() (interface{}, error), ttl time.Duration) DataResult {
+func Remember(key string, value func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
-		return wrapperError(err)
+		return false, err
 	}
-	return cache.Remember(key, value, ttl)
+	return cache.Remember(key, value, ttl, ret)
 }
 
-func Get(key string) DataResult {
+func Get(key string, ret interface{}) (bool, error) {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
-		return wrapperError(err)
+		return false, err
 	}
-	return cache.Get(key)
+	return cache.Get(key, ret)
 }
 
 func Set(key string, value interface{}, ttl time.Duration) error {

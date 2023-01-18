@@ -1,6 +1,8 @@
 package cache
 
 import (
+	"errors"
+	"reflect"
 	"time"
 
 	redigo "github.com/gomodule/redigo/redis"
@@ -31,73 +33,58 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
-func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
 	key = r.prefix + key
-	wp := &wrapper{}
-	wp.handler = func(wp *wrapper) error {
-		err := r.handler.GetObject(key, &wp.Data)
-		if err != nil && err != redigo.ErrNil {
-			return err
-		}
-
-		if err != redigo.ErrNil && wp.Data.Deadline >= time.Now().Unix() {
-			return nil
-		}
-
-		// 穿透
-		err = wp.PackFunc(fn, ttl)
-		if err != nil {
-			return err
-		}
-
-		return r.handler.Set(key, wp.Data, int64(ttl.Seconds()))
+	err := r.handler.GetObject(key, ret)
+	if err == nil {
+		return true, nil
 	}
-	return wp
+	if err != redigo.ErrNil {
+		return false, err
+	}
+
+	// 穿透
+	data, err := fn()
+	if err != nil {
+		return false, err
+	}
+	rRet := reflect.ValueOf(ret)
+	if rRet.Kind() != reflect.Ptr {
+		return false, errors.New("ret need a pointer")
+	}
+	rRet.Elem().Set(reflect.ValueOf(data))
+
+	err = r.handler.Set(key, data, int64(ttl.Seconds()))
+
+	return false, err
 }
 
 func (r *redisCache) Set(key string, val interface{}, ttl time.Duration) error {
 	key = r.prefix + key
-	wp := &wrapper{}
-	err := wp.Pack(val, ttl)
-	if err != nil {
-		return err
-	}
-	err = r.handler.Set(key, wp, int64(ttl.Seconds()))
+	err := r.handler.Set(key, val, int64(ttl.Seconds()))
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func (r *redisCache) Get(key string) DataResult {
+func (r *redisCache) Get(key string, ret interface{}) (bool, error) {
 	key = r.prefix + key
-	wp := &wrapper{}
-	wp.handler = func(wp *wrapper) error {
-		err := r.handler.GetObject(key, &wp.Data)
-		if err != nil && err != redigo.ErrNil {
-			return err
-		}
-
-		if err != redigo.ErrNil && wp.Data.Deadline >= time.Now().Unix() {
-			return nil
-		}
-
-		return ErrEmptyKey
+	err := r.handler.GetObject(key, ret)
+	if err != nil && err != redigo.ErrNil {
+		return false, err
 	}
-	return wp
+
+	return true, nil
 }
 
 func (r *redisCache) Has(key string) (bool, error) {
 	key = r.prefix + key
-	wp := &wrapper{}
-	err := r.handler.GetObject(key, &wp.Data)
-	if err == redigo.ErrNil {
-		return false, nil
-	}
+	ok, err := r.handler.Exists(key)
 	if err != nil {
 		return false, err
 	}
-	return wp.Data.Deadline >= time.Now().Unix(), nil
+	return ok, nil
 }
 
 func (r *redisCache) Forget(key string) error {

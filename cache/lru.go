@@ -2,6 +2,8 @@ package cache
 
 import (
 	"encoding/json"
+	"errors"
+	"reflect"
 	"time"
 
 	"github.com/lazygo/lazygo/memory"
@@ -31,45 +33,36 @@ func newLruCache(opt map[string]string) (Cache, error) {
 	return l, err
 }
 
-func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration) DataResult {
+func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl time.Duration, ret interface{}) (bool, error) {
 	key = l.prefix + key
-	wp := &wrapper{}
-	wp.handler = func(wp *wrapper) error {
-		item, ok := l.handler.Get(key)
-		if ok {
-			err := json.Unmarshal(item, &wp.Data)
-			if err != nil {
-				return err
-			}
-			if wp.Data.Deadline >= time.Now().Unix() {
-				return nil
-			}
-		}
-
-		// 穿透
-		err := wp.PackFunc(fn, ttl)
-		if err != nil {
-			return err
-		}
-
-		value, err := json.Marshal(wp.Data)
-		if err != nil {
-			return err
-		}
-
-		return l.handler.Set(key, value, int32(ttl.Seconds()))
+	if item, ok := l.handler.Get(key); ok {
+		err := json.Unmarshal(item, ret)
+		return true, err
 	}
-	return wp
+
+	// 穿透
+	data, err := fn()
+	if err != nil {
+		return false, err
+	}
+	rRet := reflect.ValueOf(ret)
+	if rRet.Kind() != reflect.Ptr {
+		return false, errors.New("ret need a pointer")
+	}
+	rRet.Elem().Set(reflect.ValueOf(data))
+
+	value, err := json.Marshal(ret)
+	if err != nil {
+		return false, err
+	}
+	err = l.handler.Set(key, value, int32(ttl.Seconds()))
+
+	return false, err
 }
 
 func (l *lruCache) Set(key string, val interface{}, ttl time.Duration) error {
 	key = l.prefix + key
-	wp := &wrapper{}
-	err := wp.Pack(val, ttl)
-	if err != nil {
-		return err
-	}
-	value, err := json.Marshal(wp.Data)
+	value, err := json.Marshal(val)
 	if err != nil {
 		return err
 	}
@@ -80,36 +73,23 @@ func (l *lruCache) Set(key string, val interface{}, ttl time.Duration) error {
 	return nil
 }
 
-func (l *lruCache) Get(key string) DataResult {
+func (l *lruCache) Get(key string, ret interface{}) (bool, error) {
 	key = l.prefix + key
-	wp := &wrapper{}
-	wp.handler = func(wp *wrapper) error {
-		if item, ok := l.handler.Get(key); ok {
-			err := json.Unmarshal(item, &wp.Data)
-			if err != nil {
-				return err
-			}
-
-			if wp.Data.Deadline >= time.Now().Unix() {
-				return nil
-			}
+	if item, ok := l.handler.Get(key); ok {
+		err := json.Unmarshal(item, ret)
+		if err != nil {
+			return true, err
 		}
-		return ErrEmptyKey
+		return true, nil
 	}
-	return wp
+	return false, nil
 }
 
 func (l *lruCache) Has(key string) (bool, error) {
 	key = l.prefix + key
-	wp := &wrapper{}
 
-	if item, ok := l.handler.Get(key); ok {
-		err := json.Unmarshal(item, &wp.Data)
-		if err != nil {
-			return false, err
-		}
-
-		return wp.Data.Deadline >= time.Now().Unix(), nil
+	if l.handler.Exists(key) {
+		return true, nil
 	}
 	return false, nil
 }
