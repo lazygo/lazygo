@@ -1,6 +1,7 @@
 package server
 
 import (
+	stdContext "context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,6 +14,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/lazygo/lazygo/utils"
 )
@@ -26,6 +28,7 @@ type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
+		stdContext.Context
 		// Request returns `*http.Request`.
 		Request() *http.Request
 		SetRequest(*http.Request)
@@ -430,6 +433,33 @@ func (c *context) Error(err error) {
 
 func (c *context) Handler() HandlerFunc {
 	return c.handler
+}
+
+// Deadline returns that there is no deadline (ok==false) when c.Request has no Context.
+func (c *context) Deadline() (deadline time.Time, ok bool) {
+	return c.request.Context().Deadline()
+}
+
+// Done returns nil (chan which will wait forever) when c.Request has no Context.
+func (c *context) Done() <-chan struct{} {
+	return c.request.Context().Done()
+}
+
+// Err returns nil when c.Request has no Context.
+func (c *context) Err() error {
+	return c.request.Context().Err()
+}
+
+// Value returns the value associated with this context for key, or nil
+// if no value is associated with key. Successive calls to Value with
+// the same key returns the same result.
+func (c *context) Value(key interface{}) interface{} {
+	if keyAsString, ok := key.(string); ok {
+		if val := c.GetVar(keyAsString); val != nil {
+			return val
+		}
+	}
+	return c.request.Context().Value(key)
 }
 
 // Reset resets the context after request completes. It must be called along
