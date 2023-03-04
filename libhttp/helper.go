@@ -1,26 +1,26 @@
 package libhttp
 
 // Get
-func Get(url string) *HttpRequest {
-	return NewRequest(url, "GET")
+func Get(url string) *HttpClient {
+	return NewClient(url, "GET")
 }
 
 // Post
-func Post(url string) *HttpRequest {
-	return NewRequest(url, "POST")
+func Post(url string) *HttpClient {
+	return NewClient(url, "POST")
 }
 
 // Put
-func Put(url string) *HttpRequest {
-	return NewRequest(url, "PUT")
+func Put(url string) *HttpClient {
+	return NewClient(url, "PUT")
 }
 
 // Delete
-func Delete(url string) *HttpRequest {
-	return NewRequest(url, "DELETE")
+func Delete(url string) *HttpClient {
+	return NewClient(url, "DELETE")
 }
 
 // Head
-func Head(url string) *HttpRequest {
-	return NewRequest(url, "HEAD")
+func Head(url string) *HttpClient {
+	return NewClient(url, "HEAD")
 }
