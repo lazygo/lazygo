@@ -1,6 +1,7 @@
 package libhttp
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -43,8 +44,8 @@ func recoverGo(callback func()) {
 }
 
 // timeoutDialer returns functions of connection dialer with timeout settings for http.Transport Dial field.
-func timeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) func(net, addr string) (net.Conn, error) {
-	return func(netw, addr string) (net.Conn, error) {
+func timeoutDialer(cTimeout time.Duration, rwTimeout time.Duration) func(context.Context, string, string) (net.Conn, error) {
+	return func(ctx context.Context, netw, addr string) (net.Conn, error) {
 		conn, err := net.DialTimeout(netw, addr, cTimeout)
 		if err != nil {
 			return nil, err

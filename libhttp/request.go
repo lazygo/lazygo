@@ -194,31 +194,33 @@ func (h *HttpClient) SetBody(data interface{}) *HttpClient {
 }
 
 // SetXmlBody 设置XML格式请求Body
-func (h *HttpClient) SetXmlBody(obj interface{}) (*HttpClient, error) {
+func (h *HttpClient) SetXmlBody(obj interface{}) *HttpClient {
 	if h.req.Body == nil && obj != nil {
 		xmlData, err := xml.Marshal(obj)
 		if err != nil {
-			return h, err
+			h.lastErr = err
+			return h
 		}
 		h.req.Body = ioutil.NopCloser(bytes.NewReader(xmlData))
 		h.req.ContentLength = int64(len(xmlData))
 		h.req.Header.Set("Content-Type", "application/xml")
 	}
-	return h, nil
+	return h
 }
 
 // SetJsonBody 设置Json格式请求Body
-func (h *HttpClient) SetJsonBody(obj interface{}) (*HttpClient, error) {
+func (h *HttpClient) SetJsonBody(obj interface{}) *HttpClient {
 	if h.req.Body == nil && obj != nil {
 		jsonData, err := json.Marshal(obj)
 		if err != nil {
-			return h, err
+			h.lastErr = err
+			return h
 		}
 		h.req.Body = ioutil.NopCloser(bytes.NewReader(jsonData))
 		h.req.ContentLength = int64(len(jsonData))
 		h.req.Header.Set("Content-Type", "application/json")
 	}
-	return h, nil
+	return h
 }
 
 // PostFile add a post file to the request
@@ -279,7 +281,7 @@ func (h *HttpClient) buildURL(paramBody string) {
 	}
 }
 
-// 发起请求
+// doRequest 发起请求
 func (h *HttpClient) doRequest() (*http.Response, error) {
 	var paramBody string = h.params.Encode()
 	h.buildURL(paramBody)
@@ -294,7 +296,7 @@ func (h *HttpClient) doRequest() (*http.Response, error) {
 	trans := &http.Transport{
 		// TLSClientConfig:     h.settings.TLSClientConfig,
 		Proxy:               h.settings.Proxy,
-		Dial:                timeoutDialer(h.settings.ConnectTimeout, h.settings.ReadWriteTimeout),
+		DialContext:         timeoutDialer(h.settings.ConnectTimeout, h.settings.ReadWriteTimeout),
 		MaxIdleConnsPerHost: -1,
 	}
 
@@ -380,7 +382,7 @@ func (h *HttpClient) ToBytes() ([]byte, error) {
 	return h.body, err
 }
 
-// 将相应转换成字符串
+// ToString 将相应转换成字符串
 func (h *HttpClient) ToString() (string, error) {
 	data, err := h.ToBytes()
 	if err != nil {
@@ -389,7 +391,7 @@ func (h *HttpClient) ToString() (string, error) {
 	return string(data), nil
 }
 
-// 将响应作为json解析
+// ToJSON 将响应作为json解析
 func (h *HttpClient) ToJSON(v interface{}) error {
 	data, err := h.ToBytes()
 	if err != nil {
