@@ -163,3 +163,35 @@ func ToUint(value interface{}, defVal ...uint) uint {
 
 	return d
 }
+
+// ToFloat 转换为float64类型
+// value 可以是数字、数字字符串
+// 如果value不能转换为数字，则返回默认值defVal
+// defVal 提供默认值，如果没有，则视为0
+func ToFloat(value interface{}, defVal ...float64) float64 {
+	val := reflect.ValueOf(value)
+	var d float64
+	var err error
+	switch value.(type) {
+	case int, int8, int16, int32, int64:
+		d = float64(val.Int())
+	case uint, uint8, uint16, uint32, uint64:
+		d = float64(val.Uint())
+	case float32, float64:
+		d = val.Float()
+	case string:
+		d, err = strconv.ParseFloat(val.String(), 64)
+	case []byte:
+		d, err = strconv.ParseFloat(string(value.([]byte)), 64)
+	default:
+		err = fmt.Errorf("ToUint need numeric not `%T`", value)
+	}
+	if err != nil {
+		d = 0
+	}
+	if d == 0 && len(defVal) == 1 {
+		return defVal[0]
+	}
+
+	return d
+}

@@ -621,6 +621,10 @@ func toType(val interface{}, rType reflect.Type, procList []string) (interface{}
 			returnVal = append(returnVal, utils.ToUint64(str))
 		}
 		return returnVal, true
+	case "float32":
+		return float32(utils.ToFloat(val)), true
+	case "float64":
+		return utils.ToFloat(val), true
 	case "string":
 		return process(utils.ToString(val), procList), true
 	case "[]string":
