@@ -1,17 +1,21 @@
 package cache
 
 import (
+	"context"
+	"encoding/json"
 	"errors"
 	"reflect"
+	"time"
 
-	redigo "github.com/gomodule/redigo/redis"
 	"github.com/lazygo/lazygo/redis"
+
+	goredis "github.com/go-redis/redis/v8"
 )
 
 type redisCache struct {
 	name    string
 	prefix  string
-	handler *redis.Redis
+	handler *goredis.Client
 }
 
 // newRedisCache 初始化redis适配器
@@ -23,7 +27,7 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	prefix := opt["prefix"]
 
 	var err error
-	handler, err := redis.Pool(name)
+	handler, err := redis.Client(name)
 	a := &redisCache{
 		name:    name,
 		prefix:  prefix,
@@ -32,13 +36,15 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
+// Remember 获取缓存，如果没有命中缓存则使用fn实时获取
 func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
 	key = r.prefix + key
-	err := r.handler.GetObject(key, ret)
+	item, err := r.handler.Get(context.Background(), key).Bytes()
 	if err == nil {
-		return true, nil
+		err = json.Unmarshal(item, ret)
+		return true, err
 	}
-	if err != redigo.ErrNil {
+	if err != goredis.Nil {
 		return false, err
 	}
 
@@ -53,14 +59,22 @@ func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl in
 	}
 	rRet.Elem().Set(reflect.ValueOf(data))
 
-	err = r.handler.Set(key, data, ttl)
+	value, err := json.Marshal(ret)
+	if err != nil {
+		return false, err
+	}
+	err = r.handler.Set(context.Background(), key, value, time.Duration(ttl)*time.Second).Err()
 
 	return false, err
 }
 
 func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
 	key = r.prefix + key
-	err := r.handler.Set(key, val, ttl)
+	value, err := json.Marshal(val)
+	if err != nil {
+		return err
+	}
+	err = r.handler.Set(context.Background(), key, value, time.Duration(ttl)*time.Second).Err()
 	if err != nil {
 		return err
 	}
@@ -69,8 +83,12 @@ func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
 
 func (r *redisCache) Get(key string, ret interface{}) (bool, error) {
 	key = r.prefix + key
-	err := r.handler.GetObject(key, ret)
-	if err != nil && err != redigo.ErrNil {
+	item, err := r.handler.Get(context.Background(), key).Bytes()
+	if err == nil {
+		err = json.Unmarshal(item, ret)
+		return true, err
+	}
+	if err != goredis.Nil {
 		return false, err
 	}
 
@@ -79,16 +97,16 @@ func (r *redisCache) Get(key string, ret interface{}) (bool, error) {
 
 func (r *redisCache) Has(key string) (bool, error) {
 	key = r.prefix + key
-	ok, err := r.handler.Exists(key)
+	n, err := r.handler.Exists(context.Background(), key).Result()
 	if err != nil {
 		return false, err
 	}
-	return ok, nil
+	return n > 0, nil
 }
 
 func (r *redisCache) Forget(key string) error {
 	key = r.prefix + key
-	return r.handler.Del(key)
+	return r.handler.Del(context.Background(), key).Err()
 }
 
 func init() {

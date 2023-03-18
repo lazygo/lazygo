@@ -1,11 +1,13 @@
 package locker
 
 import (
+	"context"
 	"runtime"
 	"strconv"
 	"sync"
+	"time"
 
-	redigo "github.com/gomodule/redigo/redis"
+	goredis "github.com/go-redis/redis/v8"
 	"github.com/lazygo/lazygo/redis"
 )
 
@@ -13,18 +15,18 @@ import (
 type redisAdapter struct {
 	local sync.Map
 	name  string
-	conn  *redis.Redis
+	conn  *goredis.Client
 	retry int
 }
 
-// 释放锁脚本
-const script = `
-        if redis.call("GET", KEYS[1]) == ARGV[1] then
-            return redis.call("DEL", KEYS[1])
-        else
-            return 0
-        end
-    `
+// UNLOCK_SCRIPT 释放锁脚本
+const UNLOCK_SCRIPT = `
+	if redis.call("GET", KEYS[1]) == ARGV[1] then
+		return redis.call("DEL", KEYS[1])
+	else
+		return 0
+	end
+`
 
 // newRedisLocker 初始化redis适配器
 func newRedisLocker(opt map[string]string) (Locker, error) {
@@ -34,7 +36,7 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 	}
 
 	var err error
-	conn, err := redis.Pool(name)
+	conn, err := redis.Client(name)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +65,7 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 		}()
 		var err error
 		for retry := r.retry; retry >= 0; retry-- {
-			_, err = r.conn.Do("EVAL", script, 1, resource, token)
+			err = goredis.NewScript(UNLOCK_SCRIPT).Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}
@@ -73,8 +75,8 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 
 	retry := r.retry
 	for {
-		_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
-		if err == redigo.ErrNil {
+		err := r.conn.SetNX(context.Background(), resource, token, time.Duration(ttl)*time.Second).Err()
+		if err == goredis.Nil {
 			// key 已存在，获取锁失败
 			runtime.Gosched()
 			continue
@@ -97,8 +99,8 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 // TryLock 获取分布式锁（非阻塞）
 func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 	token := strconv.FormatUint(randomToken(), 10)
-	_, err := r.conn.Do("SET", resource, token, "EX", ttl, "NX")
-	if err == redigo.ErrNil {
+	err := r.conn.SetNX(context.Background(), resource, token, time.Duration(ttl)*time.Second).Err()
+	if err == goredis.Nil {
 		// key 已存在，获取锁失败
 		return nil, false, nil
 	}
@@ -110,7 +112,7 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	handleRelease := func() error {
 		var err error
 		for retry := r.retry; retry > 0; retry-- {
-			_, err = r.conn.Do("EVAL", script, 1, resource, token)
+			err = goredis.NewScript(UNLOCK_SCRIPT).Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}
