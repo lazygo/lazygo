@@ -21,9 +21,6 @@ type (
 
 	// Map defines a generic map of type `map[string]interface{}`.
 	Map map[string]interface{}
-
-	// Controller 控制器
-	Controller struct{}
 )
 
 // Server is the top-level framework instance.

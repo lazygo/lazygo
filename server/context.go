@@ -106,6 +106,9 @@ type (
 
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
+
+		// IsDebug return the Server is debug.
+		IsDebug() bool
 	}
 
 	context struct {
@@ -433,6 +436,10 @@ func (c *context) Error(err error) {
 
 func (c *context) Handler() HandlerFunc {
 	return c.handler
+}
+
+func (c *context) IsDebug() bool {
+	return c.server.Debug
 }
 
 // Deadline returns that there is no deadline (ok==false) when c.Request has no Context.
