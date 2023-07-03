@@ -61,11 +61,8 @@ type (
 		FormFile(name string) (*multipart.FileHeader, error)
 		MultipartForm() (*multipart.Form, error)
 
-		// GetVar 取出存入当前请求context的数据
-		GetVar(key string) interface{}
-
-		// SetVar 存入数据到当前请求的context
-		SetVar(key string, val interface{})
+		// WithValue 存入数据到当前请求的context
+		WithValue(key string, val interface{})
 
 		// SetResponseHeader 设置响应头
 		SetResponseHeader(headerOptions map[string]string) *context
@@ -196,8 +193,8 @@ func (c *context) Bind(v interface{}) error {
 		var val interface{}
 		for _, bind := range binds {
 			switch bind {
-			case "var":
-				val = c.GetVar(field)
+			case "value":
+				val = c.Value(field)
 			case "header":
 				val = c.GetRequestHeader(field)
 			case "param":
@@ -320,18 +317,16 @@ func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm, err
 }
 
-func (c *context) GetVar(key string) interface{} {
-	c.lock.RLock()
-	defer c.lock.RUnlock()
-	return c.store[key]
-}
-
-func (c *context) SetVar(key string, val interface{}) {
+func (c *context) WithValue(key string, val interface{}) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
 	if c.store == nil {
 		c.store = make(Map)
+	}
+	if val == nil {
+		delete(c.store, key)
+		return
 	}
 	c.store[key] = val
 }
@@ -462,7 +457,10 @@ func (c *context) Err() error {
 // the same key returns the same result.
 func (c *context) Value(key interface{}) interface{} {
 	if keyAsString, ok := key.(string); ok {
-		if val := c.GetVar(keyAsString); val != nil {
+		c.lock.RLock()
+		val, ok := c.store[keyAsString]
+		c.lock.RUnlock()
+		if ok {
 			return val
 		}
 	}
