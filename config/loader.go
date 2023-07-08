@@ -21,12 +21,13 @@ func (l *jsonLoader) decode(field string, v interface{}) error {
 }
 
 type tomlLoader struct {
-	data map[string]toml.Primitive
+	metadata toml.MetaData
+	data     map[string]toml.Primitive
 }
 
 func (l *tomlLoader) decode(field string, v interface{}) error {
 	data := l.data[field]
-	return toml.PrimitiveDecode(data, v)
+	return l.metadata.PrimitiveDecode(data, v)
 }
 
 func loadJson(data []byte) (Loader, error) {
@@ -38,6 +39,7 @@ func loadJson(data []byte) (Loader, error) {
 
 func loadToml(data []byte) (Loader, error) {
 	loader := &tomlLoader{}
-	_, err := toml.DecodeReader(bytes.NewReader(data), &loader.data)
+	metadata, err := toml.DecodeReader(bytes.NewReader(data), &loader.data)
+	loader.metadata = metadata
 	return loader, err
 }

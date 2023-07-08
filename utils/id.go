@@ -36,7 +36,6 @@ func RandHumanStr(length int) string {
 	return string(Base58Encode(b))
 }
 
-
 // Base58Encode 编码
 func Base58Encode(input []byte) []byte {
 	x := big.NewInt(0).SetBytes(input)

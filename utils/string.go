@@ -2,7 +2,7 @@ package utils
 
 import "strings"
 
-// snake string, XxYy to xx_yy , XxYY to xx_yy
+// ToSnakeString snake string, XxYy to xx_yy , XxYY to xx_yy
 func ToSnakeString(s string) string {
 	data := make([]byte, 0, len(s)*2)
 	j := false
@@ -20,7 +20,7 @@ func ToSnakeString(s string) string {
 	return strings.ToLower(string(data[:]))
 }
 
-// camel string, xx_yy to XxYy
+// ToCamelString camel string, xx_yy to XxYy
 func ToCamelString(s string) string {
 	data := make([]byte, 0, len(s))
 	j := false
