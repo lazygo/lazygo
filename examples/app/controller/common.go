@@ -25,12 +25,12 @@ func (s *CommonController) Upload(req *request.ToolsUploadRequest) (*request.Too
 	uid := s.Ctx.GetUID()
 	filename := fmt.Sprintf("%d%d", uid, time.Now().UnixNano()/1000) + path.Ext(req.Image.FileHeader.Filename)
 
-	// crc path
+	// save path
 	sum := crc32.ChecksumIEEE([]byte(filename))
 	dir := fmt.Sprintf("upload/%02x/%02x/", sum>>24&0xff, sum>>16&0xff)
 	err := cos.Upload("file", "req.Image.File")
 	if err != nil {
-		s.Ctx.Logger().Warn("[msg: Cos 上传文件失败] [err: %v]", err)
+		s.Ctx.Logger().Warn("[msg: 上传文件失败] [err: %v]", err)
 		return nil, errors.ErrUploadCosFail
 	}
 	uri := dir + filename

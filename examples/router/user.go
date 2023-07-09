@@ -8,7 +8,7 @@ import (
 	"github.com/lazygo/lazygo/examples/framework"
 )
 
-func initWechat() {
+func UserRouter() {
 	app := framework.App()
 	g := app.Group("/api/user", middleware.User)
 	{
@@ -18,7 +18,6 @@ func initWechat() {
 
 		sg := g.Group("", middleware.AuthUser)
 		{
-			sg.Post("join", server.NotFoundHandler)
 			sg.Post("profile", server.NotFoundHandler)
 		}
 

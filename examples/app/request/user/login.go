@@ -6,9 +6,7 @@ type LoginRequest struct {
 }
 
 type TokenResponse struct {
-	Token  string `json:"token"`
-	Uid    int64  `json:"uid"`
-	RoomId int64  `json:"room_id"`
+	Token string `json:"token"`
 }
 
 func (r *LoginRequest) Verify() error {

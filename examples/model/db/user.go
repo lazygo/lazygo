@@ -11,14 +11,9 @@ type UserModel struct {
 }
 
 type UserData struct {
-	ID       int64  `json:"id"`
 	UID      int64  `json:"uid"`
 	Username string `json:"username"`
-	Email    string `json:"email"`
-	Mobile   string `json:"mobile"`
 	Password string `json:"password"`
-	Avatar   string `json:"avatar"`
-	Gender   int    `json:"gender"`
 	CTime    uint64 `json:"ctime"`
 	MTime    uint64 `json:"mtime"`
 }

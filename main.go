@@ -35,12 +35,12 @@ func main() {
 
 		_, err := os.Stat(projectName)
 		if !os.IsNotExist(err) {
-			fmt.Printf("%s 已存在\n", projectName)
+			fmt.Printf("目录 %s 已存在\n", projectName)
 			return
 		}
 		err = os.Mkdir(projectName, os.ModePerm)
 		if err != nil {
-			fmt.Printf("%s 创建失败\n", projectName)
+			fmt.Printf("目录 %s 创建失败\n", projectName)
 			return
 		}
 
@@ -76,8 +76,10 @@ func main() {
 		if path == "." || path == ".." {
 			return nil
 		}
-		fmt.Println(path)
-		projectPath := strings.TrimRight(filepath.Join(projectName, path), "_")
+		projectPath := filepath.Join(projectName, path)
+		if strings.HasSuffix(projectPath, "go.mod_") || strings.HasSuffix(projectPath, "go.sum_") {
+			projectPath = strings.TrimRight(projectPath, "_")
+		}
 		if d.IsDir() {
 			err = os.Mkdir(projectPath, os.ModePerm)
 			if err != nil {

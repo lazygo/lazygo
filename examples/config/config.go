@@ -1,7 +1,6 @@
 package config
 
 import (
-	"io"
 	"os"
 
 	"github.com/lazygo/lazygo/examples/pkg/cos"
@@ -38,11 +37,8 @@ var ServerConfig Server
 
 func Init(filename string) error {
 
-	file, err := os.Open(filename)
-	if err != nil {
-		return err
-	}
-	data, err := io.ReadAll(file)
+	// load config file
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return err
 	}
@@ -50,11 +46,8 @@ func Init(filename string) error {
 	if err != nil {
 		return err
 	}
-	err = base.Register("cos", cos.Init)
-	if err != nil {
-		return err
-	}
 
+	// init logger config
 	err = base.Register("logger", func(conf Logger) error {
 		return logger.Init(conf.Adapter, conf.DefaultName)
 	})
@@ -62,31 +55,41 @@ func Init(filename string) error {
 		return err
 	}
 
+	// init mysql config
 	err = base.Register("mysql", mysql.Init)
 	if err != nil {
 		return err
 	}
+
+	// init redis config
 	err = base.Register("redis", redis.Init)
 	if err != nil {
 		return err
 	}
+
+	// init memory config
 	err = base.Register("memory", memory.Init)
 	if err != nil {
 		return err
 	}
 
+	// init cache config
 	err = base.Register("cache", func(conf Cache) error {
 		return cache.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
 	}
+
+	// init locker config
 	err = base.Register("locker", func(conf Locker) error {
 		return locker.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
 	}
+
+	// init server config
 	err = base.Register("server", func(conf Server) error {
 		ServerConfig = conf
 		return nil
@@ -94,6 +97,8 @@ func Init(filename string) error {
 	if err != nil {
 		return err
 	}
+
+	// init cos config
 	err = base.Register("cos", cos.Init)
 	if err != nil {
 		return err
