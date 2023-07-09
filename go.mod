@@ -8,4 +8,5 @@ require (
 	github.com/go-redis/redis/v8 v8.11.0
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/stretchr/testify v1.8.2
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 )

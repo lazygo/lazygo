@@ -1,0 +1,26 @@
+package router
+
+import (
+	"github.com/lazygo/lazygo/server"
+
+	"github.com/lazygo/lazygo/examples/app/controller"
+	"github.com/lazygo/lazygo/examples/app/middleware"
+	"github.com/lazygo/lazygo/examples/framework"
+)
+
+func initWechat() {
+	app := framework.App()
+	g := app.Group("/api/user", middleware.User)
+	{
+
+		g.Post("login", framework.Controller(controller.UserController{}, "Login"))
+		g.Post("logout", framework.Controller(controller.UserController{}))
+
+		sg := g.Group("", middleware.AuthUser)
+		{
+			sg.Post("join", server.NotFoundHandler)
+			sg.Post("profile", server.NotFoundHandler)
+		}
+
+	}
+}
