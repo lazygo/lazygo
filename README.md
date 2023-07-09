@@ -10,7 +10,7 @@ lazygo框架
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
 
-# 创建项目
+# 创建项目 lazygo create 包名 目录名
 lazygo create github.com/lazygo/myproject myproject
 cd myproject
 
@@ -33,7 +33,7 @@ go install github.com/lazygo/lazygo@latest
 mkdir myproject
 cd myproject
 
-# 初始化项目
+# 初始化项目 lazygo init 包名
 lazygo init github.com/lazygo/myproject
 
 # 运行
