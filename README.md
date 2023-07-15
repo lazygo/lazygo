@@ -211,27 +211,23 @@ app.Post("/user/login", framework.Controller(controller.UserController{}))
 
 参数绑定规则
 
-请求数据会自动绑定到Request结构体中。绑定需要依赖结构体注解来完成。
+- 请求数据会自动绑定到Request结构体中。绑定需要依赖结构体注解来完成。
 
-对于 `Content-Type`为 `application/json` 的请求，会自动将json数据解析到结构体中。
+- 对于 `Content-Type`为 `application/json` 的请求，会自动将json数据解析到结构体中。
 
-对于 `Content-Type`为 `form-data`类型的请求，可通过 `bind` 注解 指定绑定的数据来源。
+- 对于 `Content-Type`为 `form-data`类型的请求或GET请求，可通过 `bind` 注解 指定绑定的数据来源。例如 bind:"query,form" 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
 
-例如 bind:"query,form" 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
+- bind支持的类型为：`value` context中WithValue存储的数据，`header`HTTP Header，`param`参数路由，`query` URL Query，`form` Post Form，`file` 文件。
 
-bind支持的类型为：`value` context中WithValue存储的数据，`header`HTTP Header，`param`参数路由，`query` URL Query，`form` Post Form，`file` 文件。
-
-数据类型为切片时，需要提供的参数格式为 使用逗号分隔的字符串，或json数组字符串。
-
-例如`?tags=1,2,3` 或`?tags=[1,2,3]`都可以绑定到`[]int`类型
+- 数据类型为切片时，需要提供的参数格式为 使用逗号分隔的字符串，或json数组字符串。例如`?tags=1,2,3` 或`?tags=[1,2,3]`都可以绑定到`[]int`类型
     
 预处理器
 
-将参数解析到绑定的字段前，会使用与处理器对参数进行预处理。
+- 将参数解析到绑定的字段前，会使用与处理器对参数进行预处理。
 
-内置的预处理器包括 `trim` ：剔除字符串两端空字符，`cut(num int)` ：如果utf8字符串字符数量超过num个，则将字符串截断。
+- 内置的预处理器包括 `trim` ：剔除字符串两端空字符，`cut(num int)` ：如果utf8字符串字符数量超过num个，则将字符串截断。
 
-多个预处理器之间使用逗号隔开。
+- 多个预处理器之间使用逗号隔开。
 
 ```
 type ToolsUploadRequest struct {
