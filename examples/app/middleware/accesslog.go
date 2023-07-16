@@ -39,7 +39,7 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 			var m runtime.MemStats
 			runtime.ReadMemStats(&m)
 			ctx.Logger().Notice(
-				"[pid: %d] [goroutine: %d] [sys: %.2fM] [alloc: %.2fM] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [request_uri: %s]",
+				"[pid: %d] [goroutine: %d] [sys: %.2fM] [alloc: %.2fM] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [ip: %s] [request_uri: %s]",
 				os.Getegid(),
 				runtime.NumGoroutine(),
 				float64(m.Sys)/1024/1024,
@@ -48,6 +48,7 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 				float64(time.Now().Sub(st).Microseconds())/1000,
 				code,
 				errno,
+				ctx.RealIP(),
 				uri,
 			)
 		}()

@@ -15,6 +15,12 @@ func Init(app *server.Server) *server.Server {
 	// 拓展middleware后，可在后续的middleware中使用framework.Context
 	app.Use(framework.ExtendContextMiddleware)
 
+	// 添加request_id
+	app.Use(middleware.RequestID)
+
+	// 添加TrustProxies
+	app.Use(middleware.TrustProxies)
+
 	// 增加访问日志记录
 	app.Use(middleware.AccessLog)
 

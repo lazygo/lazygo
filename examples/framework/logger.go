@@ -50,46 +50,46 @@ func InitLogger() {
 
 func (l *loggerImpl) Alert(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Alert(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Alert(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
-	ErrorLog.Alert(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	ErrorLog.Alert(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
 func (l *loggerImpl) Error(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Error(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Error(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
-	ErrorLog.Error(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	ErrorLog.Error(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
 func (l *loggerImpl) Warn(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Warn(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Warn(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
-	ErrorLog.Warn(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	ErrorLog.Warn(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
 func (l *loggerImpl) Notice(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Notice(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Notice(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
 	if strings.HasPrefix(format, "[pid:") {
-		AccessLog.Notice(l.Ctx.GetRequestID(), fmt.Sprintf(format, a...))
+		AccessLog.Notice(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 		return
 	}
-	AppLog.Notice(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	AppLog.Notice(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
 func (l *loggerImpl) Info(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Info(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Info(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
-	AppLog.Info(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	AppLog.Info(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
 func (l *loggerImpl) Debug(format string, a ...interface{}) {
 	if l.Ctx.IsDebug() {
-		ConsoleLog.Debug(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+		ConsoleLog.Debug(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
-	AppLog.Debug(l.Ctx.GetRequestID, fmt.Sprintf(format, a...))
+	AppLog.Debug(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }

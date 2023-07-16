@@ -1,11 +1,8 @@
 package framework
 
 import (
-	"math/rand"
 	"reflect"
-	"strconv"
 	"strings"
-	"time"
 
 	"github.com/lazygo/lazygo/server"
 	"github.com/lazygo/lazygo/utils"
@@ -28,17 +25,6 @@ func ToBaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 		cc := c.(*context)
 		h(err, cc)
 	}
-}
-
-func GenTraceID() uint64 {
-	var x = strconv.Itoa(time.Now().Nanosecond() / 1000)
-	res, errParseInt := strconv.ParseInt(x, 10, 64)
-	if errParseInt != nil {
-		return 0
-	}
-	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	id := ((time.Now().Unix()*100000+res)&0xFFFFFFFF)*1000000000 + 100000000 + r.Int63n(899999999)
-	return uint64(id)
 }
 
 // ExtendContextMiddleware Context 拓展中间件

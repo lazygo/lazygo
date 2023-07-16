@@ -1,7 +1,8 @@
 package framework
 
 import (
-	"strconv"
+	"net"
+	"strings"
 	"time"
 
 	"github.com/lazygo/lazygo/server"
@@ -10,8 +11,9 @@ import (
 type Context interface {
 	server.Context
 	Logger() Logger
-	GetRequestID() uint64
-	GetUID() int64
+	RequestID() uint64
+	UID() int64
+	RealIP() string
 	Succ(interface{}) error
 }
 
@@ -27,27 +29,40 @@ func (c *context) Logger() Logger {
 }
 
 // GetRequestID 获取请求id
-func (c *context) GetRequestID() uint64 {
-	if rid, ok := c.Value("request_id").(uint64); ok {
-		return rid
-	}
-
-	if param := c.GetRequestHeader("request_id"); param != "" {
-		rid, err := strconv.ParseUint(param, 10, 64)
-		if err != nil {
-			c.WithValue("request_id", rid)
-			return rid
-		}
-	}
-	rid := GenTraceID()
-	c.WithValue("request_id", rid)
+func (c *context) RequestID() uint64 {
+	rid, _ := c.Value("request_id").(uint64)
 	return rid
 }
 
 // GetUID 获取请求uid
-func (c *context) GetUID() int64 {
+func (c *context) UID() int64 {
 	uid, _ := c.Value("uid").(int64)
 	return uid
+}
+
+// GetUID 获取请求uid
+func (c *context) RealIP() string {
+	if realIP, ok := c.Value("real_ip").(string); ok {
+		return realIP
+	}
+	// Fall back to legacy behavior
+	if ip := c.GetRequestHeader(server.HeaderXForwardedFor); ip != "" {
+		i := strings.IndexAny(ip, ",")
+		if i > 0 {
+			xffip := strings.TrimSpace(ip[:i])
+			xffip = strings.TrimPrefix(xffip, "[")
+			xffip = strings.TrimSuffix(xffip, "]")
+			return xffip
+		}
+		return ip
+	}
+	if ip := c.GetRequestHeader(server.HeaderXRealIP); ip != "" {
+		ip = strings.TrimPrefix(ip, "[")
+		ip = strings.TrimSuffix(ip, "]")
+		return ip
+	}
+	ra, _, _ := net.SplitHostPort(c.Request().RemoteAddr)
+	return ra
 }
 
 // Succ 返回成功
@@ -57,8 +72,11 @@ func (c *context) Succ(data interface{}) error {
 		"errno": 0,
 		"msg":   "ok",
 		"data":  data,
-		"rid":   c.GetRequestID(),
 		"t":     time.Now().Unix(),
+	}
+	rid := c.RequestID()
+	if rid != 0 {
+		result["rid"] = rid
 	}
 	return c.JSON(200, result)
 }

@@ -1,6 +1,7 @@
 package framework
 
 import (
+	"encoding/json"
 	"net/http"
 	"time"
 
@@ -8,6 +9,9 @@ import (
 )
 
 func HTTPErrorHandlerFunc(err error, ctx Context) {
+	if ctx.ResponseWriter().Committed {
+		return
+	}
 	he, ok := err.(*server.HTTPError)
 	if ok {
 		if he.Internal != nil {
@@ -23,40 +27,50 @@ func HTTPErrorHandlerFunc(err error, ctx Context) {
 		}
 	}
 
-	// Issue #1426
 	code := he.Code
 	errno := he.Errno
 	message := he.Message
-	if msg, ok := he.Message.(string); ok {
+
+	switch msg := he.Message.(type) {
+	case string:
 		if ctx.IsDebug() {
 			message = server.Map{
-				"code":    code,
-				"errno":   errno,
-				"message": msg,
-				"error":   err.Error(),
-				"rid":     ctx.GetRequestID(),
-				"t":       time.Now().Unix(),
+				"code":  code,
+				"errno": errno,
+				"msg":   msg,
+				"error": err.Error(),
+				"rid":   ctx.RequestID(),
+				"t":     time.Now().Unix(),
 			}
 		} else {
 			message = server.Map{
-				"code":    code,
-				"errno":   errno,
-				"message": msg,
-				"rid":     ctx.GetRequestID(),
-				"t":       time.Now().Unix(),
+				"code":  code,
+				"errno": errno,
+				"msg":   msg,
+				"rid":   ctx.RequestID(),
+				"t":     time.Now().Unix(),
 			}
+		}
+	case json.Marshaler:
+		// do nothing - this type knows how to format itself to JSON
+	case error:
+		message = server.Map{
+			"code":  code,
+			"errno": errno,
+			"msg":   msg.Error(),
+			"rid":   ctx.RequestID(),
+			"t":     time.Now().Unix(),
 		}
 	}
 
 	// Send response
-	if !ctx.ResponseWriter().Committed {
-		if ctx.Request().Method == http.MethodHead { // Issue #608
-			err = ctx.NoContent(he.Code)
-		} else {
-			err = ctx.JSON(code, message)
-		}
-		if err != nil {
-			panic(err)
-		}
+	if ctx.Request().Method == http.MethodHead {
+		err = ctx.NoContent(he.Code)
+	} else {
+		err = ctx.JSON(code, message)
 	}
+	if err != nil {
+		ctx.Logger().Error("", err)
+	}
+
 }

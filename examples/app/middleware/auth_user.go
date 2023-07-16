@@ -10,7 +10,7 @@ import (
 // AuthUser 用户端登录校验
 func AuthUser(next server.HandlerFunc) server.HandlerFunc {
 	return framework.ToBase(func(ctx framework.Context) error {
-		if ctx.GetUID() == 0 {
+		if ctx.UID() == 0 {
 			return errors.ErrUnauthorized
 		}
 		return next(ctx)

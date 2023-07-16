@@ -22,7 +22,7 @@ type CommonController struct {
 }
 
 func (s *CommonController) Upload(req *request.ToolsUploadRequest) (*request.ToolsUploadResponse, error) {
-	uid := s.Ctx.GetUID()
+	uid := s.Ctx.UID()
 	filename := fmt.Sprintf("%d%d", uid, time.Now().UnixNano()/1000) + path.Ext(req.Image.FileHeader.Filename)
 
 	// save path
