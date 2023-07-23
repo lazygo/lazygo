@@ -1,6 +1,9 @@
 package locker
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // 分布式锁
 
@@ -15,7 +18,7 @@ type Locker interface {
 	// Lock 分布式自旋锁
 	// resource 资源标识，相同的资源标识会互斥
 	// ttl 生存时间 (秒)
-	Lock(resource string, ttl uint64) (Releaser, error)
+	Lock(ctx context.Context, resource string, ttl uint64) (Releaser, error)
 
 	// TryLock 尝试获取锁
 	// resource 资源标识，相同的资源标识会互斥
@@ -27,7 +30,7 @@ type Locker interface {
 	// ttl 生存时间 (秒)
 	// f 返回interface{} 的函数
 	// 在获取锁失败或超时的情况下，fn不会被执行
-	LockFunc(resource string, ttl uint64, fn func() interface{}) (interface{}, error)
+	LockFunc(ctx context.Context, ttl uint64, fn func() interface{}) (interface{}, error)
 }
 
 type Releaser interface {
@@ -87,12 +90,12 @@ func Instance(name string) (Locker, error) {
 }
 
 // Lock 分布式自旋锁
-func Lock(resource string, ttl uint64) (Releaser, error) {
+func Lock(ctx context.Context, resource string, ttl uint64) (Releaser, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, err
 	}
-	return lock.Lock(resource, ttl)
+	return lock.Lock(ctx, resource, ttl)
 }
 
 // TryLock 尝试获取锁
@@ -111,10 +114,10 @@ func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 // ttl 生存时间 (秒)
 // f 返回interface{} 的函数
 // 在获取锁失败或超时的情况下，fn不会被执行
-func LockFunc(resource string, ttl uint64, fn func() interface{}) (interface{}, error) {
+func LockFunc(ctx context.Context, resource string, ttl uint64, fn func() interface{}) (interface{}, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, err
 	}
-	return lock.LockFunc(resource, ttl, fn)
+	return lock.LockFunc(ctx, ttl, fn)
 }

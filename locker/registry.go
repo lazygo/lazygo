@@ -31,5 +31,5 @@ func (r *register) get(name string) (adapter, error) {
 	if a, ok := r.Load(name); ok {
 		return a.(adapter), nil
 	}
-	return nil, ErrAdapterNotFound
+	return nil, ErrAdapterUndefined
 }

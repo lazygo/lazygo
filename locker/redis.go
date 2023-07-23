@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"sync"
 	"time"
+	"unsafe"
 
 	goredis "github.com/go-redis/redis/v8"
 	"github.com/lazygo/lazygo/redis"
@@ -49,7 +50,7 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 }
 
 // Lock 分布式自旋锁
-func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
+func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (Releaser, error) {
 
 	actual, _ := r.local.LoadOrStore(resource, &sync.Mutex{})
 	mu := actual.(*sync.Mutex)
@@ -73,27 +74,32 @@ func (r *redisAdapter) Lock(resource string, ttl uint64) (Releaser, error) {
 		return err
 	}
 
+	timer := time.NewTimer(0)
+	defer timer.Stop()
 	retry := r.retry
 	for {
-		err := r.conn.SetNX(context.Background(), resource, token, time.Duration(ttl)*time.Second).Err()
-		if err == goredis.Nil {
-			// key 已存在，获取锁失败
-			runtime.Gosched()
-			continue
-		}
-		if err != nil {
-			if retry >= 0 {
-				retry--
-				continue
+		select {
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		case <-timer.C:
+			timer.Reset(50 * time.Millisecond)
+			err := r.conn.SetNX(ctx, resource, token, time.Duration(ttl)*time.Second).Err()
+			if err != nil {
+				if err == goredis.Nil {
+					// key 已存在，获取锁失败
+					runtime.Gosched()
+					continue
+				}
+				if retry >= 0 {
+					retry--
+					continue
+				}
+				_ = handleRelease()
+				return nil, err
 			}
-			_ = handleRelease()
-			mu.Unlock()
-			return nil, err
+			return releaseFunc(handleRelease), nil
 		}
-		break
 	}
-
-	return releaseFunc(handleRelease), nil
 }
 
 // TryLock 获取分布式锁（非阻塞）
@@ -123,8 +129,9 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	return releaseFunc(handleRelease), true, nil
 }
 
-func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface{}) (result interface{}, err error) {
-	lock, err := r.Lock(resource, ttl)
+func (r *redisAdapter) LockFunc(ctx context.Context, ttl uint64, f func() interface{}) (result interface{}, err error) {
+	resource := runtime.FuncForPC(**(**uintptr)(unsafe.Pointer(&f))).Name()
+	lock, err := r.Lock(ctx, resource, ttl)
 	if err != nil {
 		return nil, err
 	}
@@ -132,7 +139,7 @@ func (r *redisAdapter) LockFunc(resource string, ttl uint64, fn func() interface
 	defer func() {
 		err = lock.Release()
 	}()
-	return fn(), nil
+	return f(), nil
 }
 
 func init() {
