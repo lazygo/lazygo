@@ -11,16 +11,16 @@ import (
 type HandlerFunc func(Context) error
 type HTTPErrorHandler func(error, Context)
 
-// ToBase HandlerFunc 转为 server.HandlerFunc
-func ToBase(h HandlerFunc) server.HandlerFunc {
+// BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
+func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 	return func(c server.Context) error {
 		cc := c.(*context)
 		return h(cc)
 	}
 }
 
-// HandleError 返回失败
-func ToBaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
+// BaseHTTPErrorHandler 返回失败
+func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 	return func(err error, c server.Context) {
 		cc := c.(*context)
 		h(err, cc)
@@ -37,7 +37,7 @@ func ExtendContextMiddleware(h server.HandlerFunc) server.HandlerFunc {
 
 // HandleSucc 返回成功
 func HandleSucc() server.HandlerFunc {
-	return ToBase(func(ctx Context) error {
+	return BaseHandlerFunc(func(ctx Context) error {
 		return ctx.Succ(struct{}{})
 	})
 }
@@ -48,13 +48,12 @@ func Controller(h interface{}, methodName ...string) server.HandlerFunc {
 	if err != nil {
 		panic(err)
 	}
-	var alias string
+	var name string
 	if len(methodName) > 0 {
-		alias = utils.ToSnakeString(methodName[0])
+		name = utils.ToSnakeString(methodName[0])
 	}
 
-	return ToBase(func(ctx Context) error {
-		name := alias
+	return BaseHandlerFunc(func(ctx Context) error {
 		if name == "" {
 			routePath := strings.TrimRight(ctx.GetRoutePath(), "/")
 			index := strings.LastIndex(routePath, "/")

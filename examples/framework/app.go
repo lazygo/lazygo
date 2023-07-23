@@ -17,7 +17,7 @@ func App() *server.Server {
 	}
 	app = server.New()
 
-	app.HTTPErrorHandler = ToBaseHTTPErrorHandler(HTTPErrorHandlerFunc)
+	app.HTTPErrorHandler = BaseHTTPErrorHandler(AppHTTPErrorHandler)
 	app.Logger = log.New(ErrorLog, "", log.LstdFlags&log.Llongfile)
 
 	var err error

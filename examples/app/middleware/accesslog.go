@@ -17,7 +17,7 @@ var rnum int32 = 0
 
 // AccessLog 访问日志记录中间件
 func AccessLog(next server.HandlerFunc) server.HandlerFunc {
-	return framework.ToBase(func(ctx framework.Context) error {
+	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
 		uri := ctx.Request().RequestURI
 
 		errno := 0

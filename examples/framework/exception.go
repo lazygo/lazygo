@@ -8,7 +8,7 @@ import (
 	"github.com/lazygo/lazygo/server"
 )
 
-func HTTPErrorHandlerFunc(err error, ctx Context) {
+func AppHTTPErrorHandler(err error, ctx Context) {
 	if ctx.ResponseWriter().Committed {
 		return
 	}

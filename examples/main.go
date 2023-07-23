@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -20,7 +21,11 @@ func init() {
 }
 
 func main() {
-	err := config.Init("./config.toml")
+
+	ptrConfigPath := flag.String("c", "./config.toml", "config path")
+	flag.Parse()
+
+	err := config.Init(*ptrConfigPath)
 	if err != nil {
 		log.Fatalf("[msg: load config file error] [err: %v]", err)
 	}

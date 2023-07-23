@@ -11,7 +11,7 @@ import (
 
 // RequestID 添加request_id
 func RequestID(next server.HandlerFunc) server.HandlerFunc {
-	return framework.ToBase(func(ctx framework.Context) error {
+	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
 
 		var rid uint64
 		if param := ctx.GetRequestHeader(server.HeaderXRequestID); param != "" {

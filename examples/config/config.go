@@ -42,9 +42,13 @@ func Init(filename string) error {
 	if err != nil {
 		return err
 	}
-	base, err := config.Toml(data)
-	if err != nil {
-		return err
+
+	var base *config.Config
+	for _, loader := range []config.Loader{config.Json, config.Toml} {
+		base, err = loader(data)
+		if err == nil {
+			break
+		}
 	}
 
 	// init logger config

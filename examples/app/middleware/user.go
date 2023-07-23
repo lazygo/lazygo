@@ -9,9 +9,9 @@ import (
 
 // User 解析用户token，设置uid
 func User(next server.HandlerFunc) server.HandlerFunc {
-	return framework.ToBase(func(ctx framework.Context) error {
+	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
 		// 检查此次请求中是否带有 token，如果没有则抛出异常。
-		token := ctx.GetRequestHeader("Authorization")
+		token := ctx.GetRequestHeader(server.HeaderAuthorization)
 
 		cache := cacheModel.NewAuthUserCache()
 		auth, _, err := cache.Get(token)
