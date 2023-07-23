@@ -1,6 +1,7 @@
 package config
 
 import (
+	"errors"
 	"os"
 
 	"github.com/lazygo/lazygo/examples/pkg/cos"
@@ -50,51 +51,54 @@ func Init(filename string) error {
 			break
 		}
 	}
+	if err != nil || base == nil {
+		return errors.New("config file format fail")
+	}
 
-	// init logger config
-	err = base.Register("logger", func(conf Logger) error {
+	// load logger config
+	err = base.Load("logger", func(conf Logger) error {
 		return logger.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
 	}
 
-	// init mysql config
-	err = base.Register("mysql", mysql.Init)
+	// load mysql config
+	err = base.Load("mysql", mysql.Init)
 	if err != nil {
 		return err
 	}
 
-	// init redis config
-	err = base.Register("redis", redis.Init)
+	// load redis config
+	err = base.Load("redis", redis.Init)
 	if err != nil {
 		return err
 	}
 
-	// init memory config
-	err = base.Register("memory", memory.Init)
+	// load memory config
+	err = base.Load("memory", memory.Init)
 	if err != nil {
 		return err
 	}
 
-	// init cache config
-	err = base.Register("cache", func(conf Cache) error {
+	// load cache config
+	err = base.Load("cache", func(conf Cache) error {
 		return cache.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
 	}
 
-	// init locker config
-	err = base.Register("locker", func(conf Locker) error {
+	// load locker config
+	err = base.Load("locker", func(conf Locker) error {
 		return locker.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
 	}
 
-	// init server config
-	err = base.Register("server", func(conf Server) error {
+	// load server config
+	err = base.Load("server", func(conf Server) error {
 		ServerConfig = conf
 		return nil
 	})
@@ -102,8 +106,8 @@ func Init(filename string) error {
 		return err
 	}
 
-	// init cos config
-	err = base.Register("cos", cos.Init)
+	// load cos config
+	err = base.Load("cos", cos.Init)
 	if err != nil {
 		return err
 	}
