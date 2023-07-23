@@ -2,8 +2,9 @@ package config
 
 import (
 	"errors"
-	testify "github.com/stretchr/testify/assert"
 	"testing"
+
+	testify "github.com/stretchr/testify/assert"
 )
 
 type TestConfig struct {
@@ -27,7 +28,7 @@ func TestJsonConfig(t *testing.T) {
 		return
 	}
 
-	err = loader.Register("bands", func(conf TestConfig) error {
+	err = loader.Load("bands", func(conf TestConfig) error {
 		assert.Equal(conf.Sta, 1970)
 		assert.Equal(conf.Albums[0], "The J. Geils Band")
 		return nil
@@ -53,7 +54,7 @@ func TestTomlConfig(t *testing.T) {
 		return
 	}
 
-	err = loader.Register("bandsxx", func(conf *TestConfig) error {
+	err = loader.Load("bandsxx", func(conf *TestConfig) error {
 		assert.Equal(conf.Sta, 1970)
 		assert.Equal(conf.Albums[0], "The J. Geils Band")
 		return errors.New("sdsd")

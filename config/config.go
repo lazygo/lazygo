@@ -5,34 +5,37 @@ import (
 	"reflect"
 )
 
+type Loader func(data []byte) (*Config, error)
+
 func Toml(data []byte) (*Config, error) {
-	loader, err := loadToml(data)
+	parser, err := loadToml(data)
 	if err != nil {
 		return nil, err
 	}
 	config := &Config{
-		loader: loader,
+		parser: parser,
 	}
 	return config, err
 }
 
 func Json(data []byte) (*Config, error) {
-	loader, err := loadJson(data)
+	parser, err := loadJson(data)
 	if err != nil {
 		return nil, err
 	}
 
 	config := &Config{
-		loader: loader,
+		parser: parser,
 	}
 	return config, err
 }
 
 type Config struct {
-	loader Loader
+	parser Parser
 }
 
-func (c *Config) Register(field string, f interface{}) error {
+// Load 加载一段配置
+func (c *Config) Load(field string, f interface{}) error {
 	rf := reflect.ValueOf(f)
 	tf := rf.Type()
 	if tf.NumIn() != 1 {
@@ -44,7 +47,7 @@ func (c *Config) Register(field string, f interface{}) error {
 	pt := tf.In(0)
 
 	pv := reflect.New(pt)
-	err := c.loader.decode(field, pv.Interface())
+	err := c.parser.decode(field, pv.Interface())
 	if err != nil {
 		return err
 	}
