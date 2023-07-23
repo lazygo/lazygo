@@ -3,13 +3,11 @@ package cache
 import "errors"
 
 var (
-	ErrInvalidRedisAdapterParams    = errors.New("无效的redis适配器参数")
-	ErrInvalidMemcacheAdapterParams = errors.New("无效的memcache适配器参数")
-	ErrInvalidLruAdapterParams      = errors.New("无效的LRU适配器参数")
-	ErrInvalidDefaultName           = errors.New("无效的默认实例")
+	ErrInvalidRedisAdapterParams    = errors.New("invalid redis adapter params")
+	ErrInvalidMemcacheAdapterParams = errors.New("invalid memcache adapter params")
+	ErrInvalidLruAdapterParams      = errors.New("invalid lru adapter params")
+	ErrInvalidDefaultName           = errors.New("invalid default name")
 
-	ErrAdapterNotFound      = errors.New("找不到适配器")
-	ErrAdapterUninitialized = errors.New("适配器未初始化")
-
-	ErrEmptyKey = errors.New("key不存在或已过期")
+	ErrAdapterUndefined     = errors.New("undefined adapter")
+	ErrAdapterUninitialized = errors.New("uninitialized adapter")
 )
