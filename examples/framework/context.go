@@ -30,7 +30,7 @@ func (c *context) Logger() Logger {
 
 // GetRequestID 获取请求id
 func (c *context) RequestID() uint64 {
-	rid, _ := c.Value("request_id").(uint64)
+	rid, _ := c.Value(server.HeaderXRequestID).(uint64)
 	return rid
 }
 

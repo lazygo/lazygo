@@ -28,7 +28,7 @@ func RequestID(next server.HandlerFunc) server.HandlerFunc {
 			rid = generator()
 		}
 
-		ctx.WithValue("request_id", rid)
+		ctx.WithValue(server.HeaderXRequestID, rid)
 		ctx.ResponseWriter().Header().Set(server.HeaderXRequestID, strconv.FormatUint(rid, 10))
 
 		return next(ctx)
