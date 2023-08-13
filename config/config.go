@@ -15,7 +15,7 @@ func Toml(data []byte) (*Config, error) {
 	config := &Config{
 		parser: parser,
 	}
-	return config, err
+	return config, nil
 }
 
 func Json(data []byte) (*Config, error) {
@@ -27,7 +27,7 @@ func Json(data []byte) (*Config, error) {
 	config := &Config{
 		parser: parser,
 	}
-	return config, err
+	return config, nil
 }
 
 type Config struct {
@@ -39,10 +39,10 @@ func (c *Config) Load(field string, f interface{}) error {
 	rf := reflect.ValueOf(f)
 	tf := rf.Type()
 	if tf.NumIn() != 1 {
-		return errors.New("")
+		return errors.New("num in error")
 	}
 	if tf.NumOut() != 1 {
-		return errors.New("")
+		return errors.New("num out error")
 	}
 	pt := tf.In(0)
 

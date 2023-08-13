@@ -72,6 +72,7 @@ func (c *context) Succ(data interface{}) error {
 		"errno": 0,
 		"msg":   "ok",
 		"data":  data,
+		"rid":   c.RequestID(),
 		"t":     time.Now().Unix(),
 	}
 	rid := c.RequestID()
