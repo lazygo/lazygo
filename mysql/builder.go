@@ -73,11 +73,10 @@ func newBuilder(handler *DB, table string) *builder {
 }
 
 // Where 自动识别查询 推荐使用
-// cond string 字符串查询条件
-// cond map[string]interface{} map查询条件，同WhereMap
-// cond string, []interface{} In查询条件，同WhereIn
-// cond string, []anytype In查询条件，同WhereIn
-// cond field string, op string value interface{}，同WhereIn
+// cond string                                字符串查询条件
+// cond map[string]interface{}                map查询条件，同WhereMap
+// field string, value []any                  In查询条件，同WhereIn
+// field string, op string value interface{}  同WhereIn
 func (b *builder) Where(cond ...interface{}) CondBuilder {
 	switch len(cond) {
 	case 1:
@@ -114,6 +113,22 @@ func (b *builder) Where(cond ...interface{}) CondBuilder {
 		if !ok {
 			break
 		}
+		if strings.ToLower(op) == "in" {
+			val, ok := cond[2].([]interface{})
+			if !ok {
+				b.lastError = ErrInvalidCondArguments
+				break
+			}
+			return b.WhereIn(k, val)
+		}
+		if strings.ToLower(op) == "not in" {
+			val, ok := cond[2].([]interface{})
+			if !ok {
+				b.lastError = ErrInvalidCondArguments
+				break
+			}
+			return b.WhereNotIn(k, val)
+		}
 		// k op v
 		return b.WhereRaw(build(k, op), cond[2])
 	default:
@@ -123,10 +138,18 @@ func (b *builder) Where(cond ...interface{}) CondBuilder {
 }
 
 // WhereMap Map查询
-// 会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
+// key中不包含运算符时，会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
+// key中包含条件运算符时，例如 Map{"key >=": 1}  会拼接为 `k2` >= 'v2'
+// key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in”
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
 func (b *builder) WhereMap(cond map[string]interface{}) CondBuilder {
 	for k, v := range cond {
+		k = strings.TrimSpace(k)
+		if strings.Contains(k, " ") {
+			kInfo := strings.SplitN(k, " ", 2)
+			b.Where(kInfo[0], strings.TrimSpace(kInfo[1]), v)
+			continue
+		}
 		if vv, ok := CreateAnyTypeSlice(v); ok {
 			b.WhereIn(k, vv)
 		} else {
@@ -172,7 +195,7 @@ func (b *builder) WhereNotIn(k string, in []interface{}) CondBuilder {
 }
 
 // ClearCond 清空当前where
-//（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
+// （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) ClearCond() CondBuilder {
 	b.cond = []string{}
 	b.args = []interface{}{}
@@ -221,7 +244,7 @@ func (b *builder) Limit(limit int64) CondBuilder {
 // buildCond 构建条件
 // 把cond用 AND 连接起来
 // buildCond调用之后会清空当期查询构建器中暂存的条件
-//（每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
+// （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) buildCond() (string, []interface{}) {
 	defer b.ClearCond()
 	if len(b.cond) == 0 {
