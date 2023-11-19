@@ -8,4 +8,4 @@ CREATE TABLE IF NOT EXISTS user (
   `mtime` int unsigned NOT NULL DEFAULT '0' COMMENT '修改时间',
   PRIMARY KEY (`uid`),
   UNIQUE KEY `username` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户表'  
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='用户表'  
