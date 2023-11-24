@@ -198,14 +198,13 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			fmt.Println(rec)
 			s.HTTPErrorHandler(fmt.Errorf("%v", rec), c)
 		}
+		// Release context
+		s.pool.Put(c)
 	}()
 	// Execute chain
 	if err := h(c); err != nil {
 		s.HTTPErrorHandler(err, c)
 	}
-
-	// Release context
-	s.pool.Put(c)
 }
 
 // Start starts an HTTP server.
