@@ -14,7 +14,7 @@ type HTTPErrorHandler func(error, Context)
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 	return func(c server.Context) error {
-		cc := c.(*context)
+		cc := &context{c}
 		return h(cc)
 	}
 }
