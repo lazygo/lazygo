@@ -62,6 +62,7 @@ func Init(filename string) error {
 	if err != nil {
 		return err
 	}
+	framework.InitLogger()
 
 	// load mysql config
 	err = base.Load("mysql", mysql.Init)
