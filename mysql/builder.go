@@ -172,6 +172,10 @@ func (b *builder) WhereRaw(cond string, args ...interface{}) CondBuilder {
 
 // WhereIn IN查询
 func (b *builder) WhereIn(k string, in []interface{}) CondBuilder {
+	if len(in) == 0 {
+		b.lastError = ErrEmptyInCond
+		return b
+	}
 	var arr []string
 	for range in {
 		arr = append(arr, "?")
