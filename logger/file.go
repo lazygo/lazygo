@@ -280,7 +280,7 @@ func (fl *fileLogWriter) lines() (int, error) {
 	return count, nil
 }
 
-// DoRotate means it need to write file in new file.
+// DoRotate means it needs to write logs into a new file.
 // new file name like xx.2013-01-01.log (daily) or xx.001.log (by line or size)
 func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 	// file exists
@@ -296,7 +296,7 @@ func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 
 	_, err = os.Lstat(fl.Filename)
 	if err != nil {
-		//even if the file is not exist or other ,we should RESTART the logger
+		// even if the file is not exist or other ,we should RESTART the logger
 		goto RESTART
 	}
 
@@ -315,7 +315,7 @@ func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 			_, err = os.Lstat(fName)
 		}
 	} else {
-		fName = fl.fileNameOnly + fmt.Sprintf(".%s.%03d%s", openTime.Format(format), num, fl.suffix)
+		fName = fl.fileNameOnly + fmt.Sprintf(".%s%s", openTime.Format(format), fl.suffix)
 		_, err = os.Lstat(fName)
 		fl.MaxFilesCurFiles = num
 	}
@@ -340,7 +340,7 @@ func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 RESTART:
 
 	startLoggerErr := fl.startLogger()
-	go fl.clearOldLog()
+	go fl.deleteOldLog()
 
 	if startLoggerErr != nil {
 		return fmt.Errorf("Rotate StartLogger: %s", startLoggerErr)
@@ -352,8 +352,12 @@ RESTART:
 }
 
 // deleteOldLog 清理旧日志
-func (fl *fileLogWriter) clearOldLog() {
+func (fl *fileLogWriter) deleteOldLog() {
 	dir := filepath.Dir(fl.Filename)
+	absolutePath, err := filepath.EvalSymlinks(fl.Filename)
+	if err == nil {
+		dir = filepath.Dir(absolutePath)
+	}
 	filepath.Walk(dir, func(path string, info os.FileInfo, err error) (returnErr error) {
 		defer func() {
 			if r := recover(); r != nil {
