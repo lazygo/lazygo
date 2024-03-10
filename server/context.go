@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	stdContext "context"
 	"encoding/json"
 	"fmt"
@@ -25,10 +26,12 @@ type (
 		FileHeader *multipart.FileHeader
 	}
 
+	RawJson map[string]interface{}
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
 		stdContext.Context
+
 		// Request returns `*http.Request`.
 		Request() *http.Request
 		SetRequest(*http.Request)
@@ -60,6 +63,16 @@ type (
 		FormParams() (url.Values, error)
 		FormFile(name string) (*multipart.FileHeader, error)
 		MultipartForm() (*multipart.Form, error)
+		// 从请求body中获取指定name字段的值
+		JsonValue(string) (interface{}, error)
+		// 解析请求body,将数据放入指定的结构体
+		JsonParams(interface{}) error
+		JsonString(name string) (string, error)
+		JsonInt(name string) (int, error)
+		JsonInt64(name string) (int64, error)
+		JsonUint(name string) (uint, error)
+		JsonFloat(name string) (float64, error)
+		JsonBool(name string) (bool, error)
 
 		// WithValue 存入数据到当前请求的context
 		WithValue(key string, val interface{})
@@ -115,6 +128,7 @@ type (
 		pnames         []string
 		pvalues        []string
 		query          url.Values
+		rawJson        RawJson
 		handler        HandlerFunc
 		store          Map
 		server         *Server
@@ -205,6 +219,23 @@ func (c *context) Bind(v interface{}) error {
 				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
 					val = c.FormValue(field)
 				}
+			case "json":
+				switch rv.Field(i).Kind() {
+				case reflect.String:
+					val, _ = c.JsonString(field)
+				case reflect.Int, reflect.Int8, reflect.Int16, reflect.Int32, reflect.Int64:
+					val, _ = c.JsonInt(field)
+				case reflect.Uint, reflect.Uint8, reflect.Uint16, reflect.Uint32, reflect.Uint64:
+					val, _ = c.JsonUint(field)
+				case reflect.Bool:
+					val, _ = c.JsonBool(field)
+				case reflect.Float32, reflect.Float64:
+					val, _ = c.JsonFloat(field)
+				default:
+					// 处理其他类型的字段
+					val, _ = c.JsonValue(field)
+				}
+
 			case "file":
 				if strings.HasPrefix(ctype, MIMEMultipartForm) {
 					file, fileHeader, err := req.FormFile(field)
@@ -301,6 +332,100 @@ func (c *context) FormParams() (url.Values, error) {
 		}
 	}
 	return c.request.Form, nil
+}
+
+func (c *context) JsonValue(name string) (interface{}, error) {
+
+	body, err := io.ReadAll(c.request.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	err = json.Unmarshal(body, &c.rawJson)
+	if err != nil {
+		return nil, err
+	}
+
+	// 重置 Body，因为 ioutil.ReadAll 会将 Body 的指针移动到末尾
+	c.request.Body = io.NopCloser(bytes.NewBuffer(body))
+	return c.rawJson[name], nil
+}
+
+func (c *context) JsonString(name string) (string, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(string)
+	if !ok {
+		return "", fmt.Errorf("Key '%s' not found or not a string", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonInt(name string) (int, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(int)
+	if !ok {
+		return 0, fmt.Errorf("Key '%s' not found or not a int", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonUint(name string) (uint, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(uint)
+	if !ok {
+		return 0, fmt.Errorf("Key '%s' not found or not a uint", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonFloat(name string) (float64, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(float64)
+	if !ok {
+		return 0, fmt.Errorf("Key '%s' not found or not a float64", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonBool(name string) (bool, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(bool)
+	if !ok {
+		return false, fmt.Errorf("Key '%s' not found or not a bool", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonInt64(name string) (int64, error) {
+	data, _ := c.JsonValue(name)
+	value, ok := data.(int64)
+	if !ok {
+		return 0, fmt.Errorf("Key '%s' not found or not a int64", name)
+	}
+
+	return value, nil
+}
+
+func (c *context) JsonParams(data interface{}) error {
+
+	body, err := io.ReadAll(c.request.Body)
+	if err != nil {
+		return err
+	}
+
+	err = json.NewDecoder(c.request.Body).Decode(&c.rawJson)
+	if err != nil {
+		return err
+	}
+
+	// 重置 Body，因为 ioutil.ReadAll 会将 Body 的指针移动到末尾
+	c.request.Body = io.NopCloser(bytes.NewBuffer(body))
+	return nil
 }
 
 func (c *context) FormFile(name string) (*multipart.FileHeader, error) {
