@@ -63,6 +63,7 @@ type (
 
 		// WithValue 存入数据到当前请求的context
 		WithValue(key string, val interface{})
+		Value(key interface{}) interface{}
 
 		// SetResponseHeader 设置响应头
 		SetResponseHeader(headerOptions map[string]string) *context
