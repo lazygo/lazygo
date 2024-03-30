@@ -160,7 +160,7 @@ func (c *context) Bind(v interface{}) error {
 	// result pointer value
 	rpv := reflect.ValueOf(v)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
-		c.server.Logger.Println("[error][msg: bind value not a pointer]")
+		c.server.Logger.Println("bind value not a pointer")
 		return ErrInternalServerError
 	}
 
@@ -173,64 +173,80 @@ func (c *context) Bind(v interface{}) error {
 		}
 	}
 
+	var fill func(rv reflect.Value) error
+	fill = func(rv reflect.Value) error {
+		for i := 0; i < rv.NumField(); i++ {
+			if !rv.Field(i).CanSet() {
+				continue
+			}
+			tField := rv.Type().Field(i)
+			field := tField.Tag.Get("json")
+			if field == "" {
+				// 如果时嵌套结构体，则递归子结构体进行绑定
+				if tField.Type.Kind() == reflect.Pointer {
+					rv.Field(i).Set(reflect.New(tField.Type.Elem()))
+				}
+
+				subrv := reflect.Indirect(rv.Field(i))
+				if subrv.Kind() != reflect.Struct {
+					continue
+				}
+				if err := fill(subrv); err != nil {
+					return err
+				}
+			}
+
+			binds := strings.Split(tField.Tag.Get("bind"), ",")
+			var val interface{}
+			for _, bind := range binds {
+				switch bind {
+				case "value":
+					val = c.Value(field)
+				case "header":
+					val = c.GetRequestHeader(field)
+				case "param":
+					val = c.Param(field)
+				case "query":
+					val = c.QueryParam(field)
+				case "form":
+					if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
+						val = c.FormValue(field)
+					}
+				case "file":
+					if strings.HasPrefix(ctype, MIMEMultipartForm) {
+						file, fileHeader, err := req.FormFile(field)
+						if err != nil {
+							return err
+						}
+						val = &File{file, fileHeader}
+					}
+				default:
+					continue
+				}
+				if val != "" && val != nil {
+					break
+				}
+			}
+			if val == nil || val == "" {
+				continue
+			}
+
+			procList := strings.Split(tField.Tag.Get("process"), ",")
+			if to, ok := toType(val, tField.Type, procList); ok {
+				rv.Field(i).Set(reflect.ValueOf(to))
+			}
+		}
+		return nil
+	}
+
 	// result value
 	rv := rpv.Elem()
 	if rv.Kind() != reflect.Struct {
-		c.server.Logger.Println("[error][msg: bind value not a struct pointer]")
+		c.server.Logger.Println("bind value not a struct pointer")
 		return ErrInternalServerError
 	}
 
-	for i := 0; i < rv.NumField(); i++ {
-		if !rv.Field(i).CanSet() {
-			continue
-		}
-		tField := rv.Type().Field(i)
-		field := tField.Tag.Get("json")
-		if field == "" {
-			continue
-		}
-
-		binds := strings.Split(tField.Tag.Get("bind"), ",")
-		var val interface{}
-		for _, bind := range binds {
-			switch bind {
-			case "value":
-				val = c.Value(field)
-			case "header":
-				val = c.GetRequestHeader(field)
-			case "param":
-				val = c.Param(field)
-			case "query":
-				val = c.QueryParam(field)
-			case "form":
-				if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
-					val = c.FormValue(field)
-				}
-			case "file":
-				if strings.HasPrefix(ctype, MIMEMultipartForm) {
-					file, fileHeader, err := req.FormFile(field)
-					if err != nil {
-						return err
-					}
-					val = &File{file, fileHeader}
-				}
-			default:
-				continue
-			}
-			if val != "" && val != nil {
-				break
-			}
-		}
-		if val == nil || val == "" {
-			continue
-		}
-
-		procList := strings.Split(tField.Tag.Get("process"), ",")
-		if to, ok := toType(val, tField.Type, procList); ok {
-			rv.Field(i).Set(reflect.ValueOf(to))
-		}
-	}
-	return nil
+	return fill(rv)
 }
 
 // Param 路由参数
