@@ -7,7 +7,7 @@ type Config struct {
 }
 
 /**
-rawurl := "https://img-domain-1303896251.cos.ap-nanjing.myqcloud.com"
-Id := "NKIDXYIn113YFgtqXypfsqX02rRkwud5AJ8j"
-Key := "Yw50e7MQIuQkpgRyKuDUYOxFLOCnFTWJ"
+rawurl := "https://img-domain-00000.cos.ap-nanjing.myqcloud.com"
+Id := "NKI....AJ8j"
+Key := "Yw50e...FTWJ"
 */

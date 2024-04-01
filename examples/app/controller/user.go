@@ -1,13 +1,13 @@
 package controller
 
 import (
-	"golang.org/x/crypto/bcrypt"
-
 	request "github.com/lazygo/lazygo/examples/app/request/user"
 	"github.com/lazygo/lazygo/examples/framework"
 	cacheModel "github.com/lazygo/lazygo/examples/model/cache"
 	dbModel "github.com/lazygo/lazygo/examples/model/db"
+	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
+	"golang.org/x/crypto/bcrypt"
 )
 
 type UserController struct {
@@ -15,41 +15,44 @@ type UserController struct {
 }
 
 // Register 注册
-func (c *UserController) Register(req *request.RegisterRequest) (*request.TokenResponse, error) {
+func (ctl *UserController) Register(req *request.RegisterRequest) (*request.TokenResponse, error) {
 
+	// fetch user
 	mdlUser := dbModel.NewUserModel()
-	fields := []interface{}{"uid", "username"}
-	cond := map[string]interface{}{
-		"username": req.Username,
+
+	user := map[string]interface{}{}
+	if req.Type == utils.TypeEmail {
+		user["email"] = req.Username
 	}
-	_, n, err := mdlUser.FetchRow(fields, cond)
+	if req.Type == utils.TypeMobile {
+		user["mobile"] = req.Username
+	}
+	ok, err := mdlUser.Exists(user)
 	if err != nil {
-		c.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [cond: %v] [err: %v]", cond, err)
+		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [cond: %v] [err: %v]", user, err)
 		return nil, errors.ErrInternalServerError
 	}
-	if n > 0 {
+	if ok {
 		return nil, errors.ErrUserExists
 	}
 
+	// save user
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcrypt.DefaultCost)
 	if err != nil {
-		c.Ctx.Logger().Error("[msg: params error] [err: %v]", err)
+		ctl.Ctx.Logger().Error("[msg: params error] [err: %v]", err)
 		return nil, errors.ErrParamsError
 	}
-	user := map[string]interface{}{
-		"username": req.Username,
-		"password": passwordHash,
-	}
+	user["password"] = passwordHash
 	uid, err := mdlUser.Create(user)
 	if err != nil {
-		c.Ctx.Logger().Error("[msg: create user fail] [error: db error] [err: %v]", err)
+		ctl.Ctx.Logger().Error("[msg: create user fail] [error: db error] [err: %v]", err)
 		return nil, errors.ErrInternalServerError
 	}
 
-	// 签发token
-	token, err := cacheModel.NewAuthUserCache().Set(uid)
+	// sign token
+	token, err := cacheModel.NewAuthUserCache().Set(uint64(uid))
 	if err != nil {
-		c.Ctx.Logger().Error("[msg: create token fail] [err: %v]", err)
+		ctl.Ctx.Logger().Error("[msg: create token fail] [err: %v]", err)
 		return nil, errors.ErrUserTokenError
 	}
 
@@ -58,42 +61,60 @@ func (c *UserController) Register(req *request.RegisterRequest) (*request.TokenR
 }
 
 // Login 登录
-func (c *UserController) Login(req *request.LoginRequest) (*request.TokenResponse, error) {
+func (ctl *UserController) Login(req *request.LoginRequest) (*request.TokenResponse, error) {
 
-	mdlUser := dbModel.NewUserModel()
-	fields := []interface{}{"uid", "username", "password"}
-	cond := map[string]interface{}{
-		"username": req.Username,
-	}
-	user, n, err := mdlUser.FetchRow(fields, cond)
+	_, code, err := ctl.login(req)
 	if err != nil {
-		c.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [cond: %v] [err: %v]", cond, err)
-		return nil, errors.ErrInternalServerError
-	}
-	if n == 0 {
-		return nil, errors.ErrUserNotExists
+		return nil, err
 	}
 
-	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
-	if err != nil {
-		return nil, errors.ErrUserPasswordError
-	}
-
-	// 签发token
-	token, err := cacheModel.NewAuthUserCache().Set(user.UID)
-	if err != nil {
-		c.Ctx.Logger().Error("[msg: create token fail] [err: %v]", err)
-		return nil, errors.ErrUserTokenError
-	}
-
-	resp := &request.TokenResponse{Token: token}
+	resp := &request.TokenResponse{Token: code}
 	return resp, nil
 }
 
-func (c *UserController) Logout(req *request.LogoutRequest) (*request.LogoutResponse, error) {
+// login
+// return: UserData, auth code, err
+func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, string, error) {
+
+	// fetch user
+	mdlUser := dbModel.NewUserModel()
+	fields := []interface{}{"uid", "password"}
+
+	cond := map[string]interface{}{}
+	if req.Type == utils.TypeEmail {
+		cond["email"] = req.Username
+	}
+	if req.Type == utils.TypeMobile {
+		cond["mobile"] = req.Username
+	}
+	user, n, err := mdlUser.FetchRow(fields, cond)
+	if err != nil {
+		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [cond: %v] [err: %v]", cond, err)
+		return nil, "", errors.ErrInternalServerError
+	}
+	if n == 0 {
+		return nil, "", errors.ErrUserNotExists
+	}
+
+	// verify password
+	err = bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.Password))
+	if err != nil {
+		return nil, "", errors.ErrUserPasswordError
+	}
+
+	// sign token
+	code, err := cacheModel.NewAuthUserCache().Set(user.UID)
+	if err != nil {
+		ctl.Ctx.Logger().Error("[msg: create token fail] [err: %v]", err)
+		return nil, "", errors.ErrUserTokenError
+	}
+	return user, code, nil
+}
+
+func (ctl *UserController) Logout(req *request.LogoutRequest) (*request.LogoutResponse, error) {
 	err := cacheModel.NewAuthUserCache().Forget(req.Authorization)
 	if err != nil {
-		c.Ctx.Logger().Warn("[msg: delete token fail] [err: %v]", err)
+		ctl.Ctx.Logger().Warn("[msg: delete token fail] [err: %v]", err)
 	}
 
 	resp := &request.LogoutResponse{}

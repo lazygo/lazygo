@@ -6,19 +6,21 @@ import (
 )
 
 type RegisterRequest struct {
-	Username string `json:"username" bind:"form"`
-	Password string `json:"password" bind:"form"`
+	Username string `json:"username" bind:"query,form" process:"trim"`
+	Password string `json:"password" bind:"query,form" process:"trim,cut(32)"`
+	Type     int
 }
 
 func (r *RegisterRequest) Verify() error {
-	if !utils.EmailRegex.MatchString(r.Username) && !utils.MobileRegex.MatchString(r.Username) {
-		return errors.ErrUsernameError
+	r.Type = utils.UsernameType(r.Username)
+	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
+		return errors.ErrUsernameInvalid
 	}
 	if len(r.Password) < 6 {
-		return errors.ErrPasswordError
+		return errors.ErrPasswordTooShort
 	}
 	if len(r.Password) > 32 {
-		return errors.ErrPasswordTooLongError
+		return errors.ErrPasswordTooLong
 	}
 	return nil
 }

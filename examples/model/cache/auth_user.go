@@ -13,14 +13,14 @@ type AuthUserCache struct {
 }
 
 type AuthUserData struct {
-	UID int64 `json:"uid"`
+	UID uint64 `json:"uid"`
 }
 
 func NewAuthUserCache() *AuthUserCache {
 	cacheAuthUser := &AuthUserCache{
-		ttl: 3600 * 24 * 7,
+		ttl: 3600 * 24 * 365,
 	}
-	cacheAuthUser.SetCache("hdrds")
+	cacheAuthUser.SetCache("lazygo-rds")
 	return cacheAuthUser
 }
 
@@ -40,7 +40,7 @@ func (mdl *AuthUserCache) Forget(token string) error {
 	return mdl.Cache.Forget(key)
 }
 
-func (mdl *AuthUserCache) Set(uid int64) (string, error) {
+func (mdl *AuthUserCache) Set(uid uint64) (string, error) {
 	token := utils.RandStr(32)
 	key := fmt.Sprintf(utils.CACHE_AUTH_TOKEN, token)
 

@@ -1,2 +1,87 @@
-[cos]
-bucket_url = "localhost"
+[server]
+    addr = ":8089"
+    debug = true
+[[mysql]]
+    name = "lazygo-db"
+    host = "localhost"
+    port = 3306
+    user = "root"
+    passwd = "root"
+    dbname = "lazygo"
+    charset = "utf8mb4"
+    prefix = ""
+    max_open_conns = 1000
+    max_idle_conns = 10
+    conn_max_lifetime = 600
+[[mysql]]
+    name = "lazygo-db-read"
+    host = "localhost"
+    port = 3306
+    user = "root"
+    passwd = "root"
+    dbname = "lazygo"
+    charset = "utf8mb4"
+    prefix = ""
+    max_open_conns = 1000
+    max_idle_conns = 10
+    conn_max_lifetime = 600
+
+[[redis]]
+    name = "lazygo-rds"
+    host = "127.0.0.1"
+    port = 6379
+    password = ""
+    db = 0
+    prefix = ""
+
+[[memory]]
+    name = "lazygo"
+    capacity = 10000
+
+[cache]
+    default = "-cache-cache"
+    [[cache.adapter]]
+        name = "lazygo-cache"
+        adapter = "redis"
+        option= {name = "lazygo-rds"}
+
+[locker]
+    default = "lazygo"
+    [[locker.adapter]]
+        name = "lazygo"
+        adapter = "redis"
+        option= {name = "lazygo-rds"}
+
+[logger]
+    default = "console-log"
+    [[logger.adapter]]
+        name = "app-log"
+        adapter = "file"
+        async = true
+        Level = 7
+        caller = true
+        call_depth = 1
+        option= {filename = "logs/app.log", daily = "true", max_days = "30"}
+    [[logger.adapter]]
+        name = "access-log"
+        adapter = "file"
+        async = true
+        Level = 7
+        caller = true
+        call_depth = 1
+        option= {filename = "logs/access.log", daily = "true", max_days = "30"}
+    [[logger.adapter]]
+        name = "error-log"
+        adapter = "file"
+        async = true
+        Level = 7
+        caller = true
+        call_depth = 2
+        option= {filename = "logs/error.log", daily = "true", max_days = "30"}
+    [[logger.adapter]]
+        name = "console-log"
+        adapter = "console"
+        async = true
+        level = 7
+        caller = true
+        call_depth = 1

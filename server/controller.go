@@ -1,7 +1,6 @@
 package server
 
 import (
-	"log"
 	"reflect"
 	"strings"
 
@@ -20,10 +19,6 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 	}
 
 	return func(ctx Context) error {
-		log.Println("hhhh")
-		ctx.logger("[msg: method return value error] [out: %v]", 1)
-		ctx.logger("[msg: method return value error] [out: %v]", 2)
-		ctx.logger("[msg: method return value error] [out: %v]", 3)
 		if name == "" {
 			routePath := strings.TrimRight(ctx.GetRoutePath(), "/")
 			index := strings.LastIndex(routePath, "/")
@@ -32,7 +27,7 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 
 		method, ok := routes[serviceName][name]
 		if !ok {
-			ctx.logger("[msg: not fount] [method name: %s]", name)
+			ctx.s().Logger.Printf("[msg: not fount] [method name: %s]", name)
 			return ErrNotFound
 		}
 		pReq := reflect.New(method.Request)
@@ -41,11 +36,11 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 		defer req.Clear()
 
 		if err = ctx.Bind(req); err != nil {
-			ctx.logger("[msg: params error] [req: %v] [err: %v]", req, err)
+			ctx.s().Logger.Printf("[msg: params error] [req: %v] [err: %v]", req, err)
 			return ErrBadRequest
 		}
 		if err = req.Verify(); err != nil {
-			ctx.logger("[msg: verify params fail] [resp: %v] [err: %v]", req, err)
+			ctx.s().Logger.Printf("[msg: verify params fail] [resp: %v] [err: %v]", req, err)
 			return err
 		}
 
@@ -57,7 +52,7 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 		if numOut == 1 {
 			if ierr := out[0].Interface(); ierr != nil {
 				if err = ierr.(error); err != nil {
-					ctx.logger("[msg: request fail] [req: %v] [err: %v]", req, err)
+					ctx.s().Logger.Printf("[msg: request fail] [req: %v] [err: %v]", req, err)
 					return err
 				}
 			}
@@ -67,13 +62,12 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 			resp := out[0].Interface()
 			if ierr := out[1].Interface(); ierr != nil {
 				if err = ierr.(error); err != nil {
-					ctx.logger("[msg: request fail] [req: %v] [resp: %v] [err: %v]", req, resp, err)
+					ctx.s().Logger.Printf("[msg: request fail] [req: %v] [resp: %v] [err: %v]", req, resp, err)
 					return err
 				}
 			}
-			return ctx.JSON(200, resp)
+			return ctx.s().HTTPOKHandler(resp, ctx)
 		}
-		ctx.logger("[msg: method return value error] [out: %v]", out)
 		return ErrInternalServerError
 	}
 }

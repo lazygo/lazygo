@@ -4,10 +4,10 @@ import (
 	"errors"
 	"os"
 
-	"github.com/lazygo/lazygo/examples/pkg/cos"
-
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/config"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/pkg/cos"
 	"github.com/lazygo/lazygo/locker"
 	"github.com/lazygo/lazygo/logger"
 	"github.com/lazygo/lazygo/memory"

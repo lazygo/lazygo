@@ -18,6 +18,9 @@ func App() *server.Server {
 	app = server.New()
 
 	app.HTTPErrorHandler = BaseHTTPErrorHandler(AppHTTPErrorHandler)
+	app.HTTPOKHandler = BaseHTTPOKHandler(func(data interface{}, ctx Context) error {
+		return ctx.Succ(data)
+	})
 	InitLogger()
 	app.Logger = log.New(ErrorLog, "", log.LstdFlags&log.Llongfile)
 

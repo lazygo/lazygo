@@ -14,7 +14,7 @@ type (
 	HTTPErrorHandler func(error, Context)
 
 	// HTTPOKHandler is a centralized HTTP ok handler.
-	HTTPOKHandler func(interface{}, Context)
+	HTTPOKHandler func(interface{}, Context) error
 
 	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
@@ -139,22 +139,20 @@ func (s *Server) DefaultHTTPErrorHandler(err error, c Context) {
 
 // DefaultHTTPOKHandler is the default HTTP ok handler. It sends a JSON response
 // with status code.
-func (s *Server) DefaultHTTPOKHandler(data interface{}, c Context) {
+func (s *Server) DefaultHTTPOKHandler(data interface{}, c Context) error {
 
 	message := Map{"errno": 0, "data": data}
 
+	var err error
 	// Send response
 	if !c.ResponseWriter().Committed {
-		var err error
 		if c.Request().Method == http.MethodHead { // Issue #608
 			err = c.NoContent(http.StatusOK)
 		} else {
 			err = c.JSON(http.StatusOK, message)
 		}
-		if err != nil {
-			panic(err)
-		}
 	}
+	return err
 }
 
 // Pre adds middleware to the chain which is run before router.

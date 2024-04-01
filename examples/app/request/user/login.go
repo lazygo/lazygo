@@ -1,8 +1,14 @@
 package request
 
+import (
+	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo/lazygo/examples/utils/errors"
+)
+
 type LoginRequest struct {
-	Username string `json:"username" bind:"form"`
-	Password string `json:"password" bind:"form"`
+	Username string `json:"username" bind:"query,form" process:"trim"`
+	Password string `json:"password" bind:"query,form" process:"trim,cut(32)"`
+	Type     int
 }
 
 type TokenResponse struct {
@@ -10,6 +16,11 @@ type TokenResponse struct {
 }
 
 func (r *LoginRequest) Verify() error {
+	r.Type = utils.UsernameType(r.Username)
+	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
+		return errors.ErrUsernameInvalid
+	}
+
 	return nil
 }
 

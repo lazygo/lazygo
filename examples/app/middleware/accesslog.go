@@ -8,9 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lazygo/lazygo/server"
-
 	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/server"
 )
 
 var rnum int32 = 0

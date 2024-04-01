@@ -85,3 +85,27 @@ var (
 	LetterRegex = regexp.MustCompile(`^[a-zA-Z]\w+$`)
 	MD5Regex    = regexp.MustCompile(`^[0-9a-fA-F]{32}$`)
 )
+
+const (
+	TypeUnknown = iota
+	TypeEmail
+	TypeMobile
+	TypeId
+	TypeName
+)
+
+func UsernameType(username string) int {
+	if EmailRegex.MatchString(username) {
+		return TypeEmail
+	}
+	if MobileRegex.MatchString(username) {
+		return TypeMobile
+	}
+	if DigitRegex.MatchString(username) {
+		return TypeId
+	}
+	if LetterRegex.MatchString(username) {
+		return TypeName
+	}
+	return TypeUnknown
+}

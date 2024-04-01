@@ -11,9 +11,11 @@ type UserModel struct {
 }
 
 type UserData struct {
-	UID      int64  `json:"uid"`
-	Username string `json:"username"`
+	UID      uint64 `json:"uid"`
+	Email    string `json:"email"`
+	Mobile   string `json:"mobile"`
 	Password string `json:"password"`
+	Avator   string `json:"avator"`
 	CTime    uint64 `json:"ctime"`
 	MTime    uint64 `json:"mtime"`
 }
@@ -21,7 +23,7 @@ type UserData struct {
 func NewUserModel() *UserModel {
 	mdl := &UserModel{}
 	mdl.SetTable("user")
-	mdl.SetDb("hd")
+	mdl.SetDb("lazygo-db")
 	return mdl
 }
 
@@ -34,12 +36,7 @@ func (mdl *UserModel) FetchByUid(fields []interface{}, uid int64) (*UserData, in
 	cond := map[string]interface{}{
 		"uid": uid,
 	}
-	var data UserData
-	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
-	if err != nil {
-		return nil, 0, err
-	}
-	return &data, n, nil
+	return mdl.FetchRow(fields, cond)
 }
 
 func (mdl *UserModel) FetchRow(fields []interface{}, cond map[string]interface{}) (*UserData, int, error) {
@@ -52,7 +49,7 @@ func (mdl *UserModel) FetchRow(fields []interface{}, cond map[string]interface{}
 }
 
 func (mdl *UserModel) Exists(cond map[string]interface{}) (bool, error) {
-	fields := []interface{}{"id"}
+	fields := []interface{}{"uid"}
 	var data UserData
 	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
 	if err != nil {
