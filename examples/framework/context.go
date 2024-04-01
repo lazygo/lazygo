@@ -12,7 +12,7 @@ type Context interface {
 	server.Context
 	Logger() Logger
 	RequestID() uint64
-	UID() int64
+	UID() uint64
 	RealIP() string
 	Succ(interface{}) error
 }
@@ -28,19 +28,19 @@ func (c *context) Logger() Logger {
 	}
 }
 
-// GetRequestID 获取请求id
+// RequestID 获取请求id
 func (c *context) RequestID() uint64 {
 	rid, _ := c.Value(server.HeaderXRequestID).(uint64)
 	return rid
 }
 
-// GetUID 获取请求uid
-func (c *context) UID() int64 {
-	uid, _ := c.Value("uid").(int64)
+// UID 获取请求uid
+func (c *context) UID() uint64 {
+	uid, _ := c.Value("uid").(uint64)
 	return uid
 }
 
-// GetUID 获取请求uid
+// RealIP 获取请求客户端IP
 func (c *context) RealIP() string {
 	if realIP, ok := c.Value("real_ip").(string); ok {
 		return realIP
@@ -72,7 +72,6 @@ func (c *context) Succ(data interface{}) error {
 		"errno": 0,
 		"msg":   "ok",
 		"data":  data,
-		"rid":   c.RequestID(),
 		"t":     time.Now().Unix(),
 	}
 	rid := c.RequestID()
