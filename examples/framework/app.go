@@ -21,7 +21,7 @@ func App() *server.Server {
 	app.HTTPOKHandler = BaseHTTPOKHandler(func(data interface{}, ctx Context) error {
 		return ctx.Succ(data)
 	})
-	InitLogger()
+
 	app.Logger = log.New(ErrorLog, "", log.LstdFlags&log.Llongfile)
 
 	var err error
