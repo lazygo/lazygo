@@ -13,6 +13,9 @@ type (
 	// HTTPErrorHandler is a centralized HTTP error handler.
 	HTTPErrorHandler func(error, Context)
 
+	// HTTPOKHandler is a centralized HTTP ok handler.
+	HTTPOKHandler func(interface{}, Context)
+
 	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
 
@@ -36,6 +39,7 @@ type Server struct {
 	Listener         net.Listener
 	Debug            bool
 	HTTPErrorHandler HTTPErrorHandler
+	HTTPOKHandler    HTTPOKHandler
 	Logger           *log.Logger
 	ListenerNetwork  string
 }
@@ -65,6 +69,7 @@ func New() (s *Server) {
 	}
 	s.common.add = s.Add
 	s.Http.Handler = s
+	s.HTTPOKHandler = s.DefaultHTTPOKHandler
 	s.HTTPErrorHandler = s.DefaultHTTPErrorHandler
 	s.pool.New = func() interface{} {
 		return s.NewContext(nil, nil)
@@ -125,6 +130,26 @@ func (s *Server) DefaultHTTPErrorHandler(err error, c Context) {
 			err = c.NoContent(he.Code)
 		} else {
 			err = c.JSON(code, message)
+		}
+		if err != nil {
+			panic(err)
+		}
+	}
+}
+
+// DefaultHTTPOKHandler is the default HTTP ok handler. It sends a JSON response
+// with status code.
+func (s *Server) DefaultHTTPOKHandler(data interface{}, c Context) {
+
+	message := Map{"errno": 0, "data": data}
+
+	// Send response
+	if !c.ResponseWriter().Committed {
+		var err error
+		if c.Request().Method == http.MethodHead { // Issue #608
+			err = c.NoContent(http.StatusOK)
+		} else {
+			err = c.JSON(http.StatusOK, message)
 		}
 		if err != nil {
 			panic(err)

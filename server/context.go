@@ -28,6 +28,8 @@ type (
 	// Context represents the context of the current HTTP request. It holds request and
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
+		logger(format string, v ...interface{})
+
 		stdContext.Context
 		// Request returns `*http.Request`.
 		Request() *http.Request
@@ -134,6 +136,10 @@ func (c *context) writeContentType(value string) {
 	if header.Get(HeaderContentType) == "" {
 		header.Set(HeaderContentType, value)
 	}
+}
+
+func (c *context) logger(format string, v ...interface{}) {
+	c.server.Logger.Printf(format, v...)
 }
 
 func (c *context) Request() *http.Request {
