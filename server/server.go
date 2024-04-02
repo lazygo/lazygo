@@ -6,6 +6,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"sync"
 )
 
@@ -197,36 +198,32 @@ func (s *Server) ReleaseContext(c Context) {
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Acquire context
 	c := s.pool.Get().(*context)
+	// Release context
+	defer s.pool.Put(c)
 	c.reset(r, w)
 
-	h := NotFoundHandler
+	s.router.Find(r.Method, r.URL.EscapedPath(), c)
 
-	if s.premiddleware == nil {
-		s.router.Find(r.Method, r.URL.EscapedPath(), c)
-		h = c.Handler()
+	var ctx Context = c
+
+	h := func(c Context) error {
+		ctx = c
+		h := c.Handler()
 		h = applyMiddleware(h, s.middleware...)
-	} else {
-		h = func(c Context) error {
-			s.router.Find(r.Method, r.URL.EscapedPath(), c)
-			h := c.Handler()
-			h = applyMiddleware(h, s.middleware...)
-			return h(c)
-		}
-		h = applyMiddleware(h, s.premiddleware...)
+		return h(c)
 	}
+	h = applyMiddleware(h, s.premiddleware...)
 
 	defer func() {
 		rec := recover()
 		if rec != nil {
-			fmt.Println(rec)
-			s.HTTPErrorHandler(fmt.Errorf("%v", rec), c)
+			fmt.Println("panic: ", rec)
+			debug.PrintStack()
 		}
-		// Release context
-		s.pool.Put(c)
 	}()
 	// Execute chain
 	if err := h(c); err != nil {
-		s.HTTPErrorHandler(err, c)
+		s.HTTPErrorHandler(err, ctx)
 	}
 }
 
@@ -266,6 +263,9 @@ func (s *Server) Shutdown(ctx stdContext.Context) error {
 }
 
 func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
+	if len(middleware) <= 1 {
+		return h
+	}
 	for i := len(middleware) - 1; i >= 0; i-- {
 		h = middleware[i](h)
 	}

@@ -1,6 +1,8 @@
 package model
 
 import (
+	"fmt"
+
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/mysql"
 )
@@ -50,7 +52,7 @@ func (m *CacheModel) SetCache(name string) {
 func (m *CacheModel) cache(name string) cache.Cache {
 	instance, err := cache.Instance(name)
 	if err != nil {
-		panic(err)
+		panic(fmt.Sprintln(name, err))
 	}
 	return instance
 }

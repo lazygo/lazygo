@@ -11,7 +11,7 @@ type HTTPOKHandler func(interface{}, Context) error
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 	return func(c server.Context) error {
-		cc := &context{c}
+		cc := c.(Context)
 		return h(cc)
 	}
 }
@@ -19,7 +19,7 @@ func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 // BaseHTTPErrorHandler 返回失败
 func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 	return func(err error, c server.Context) {
-		cc := c.(*context)
+		cc := c.(Context)
 		h(err, cc)
 	}
 }
@@ -27,7 +27,7 @@ func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 // BaseHTTPOKHandler 返回失败
 func BaseHTTPOKHandler(h HTTPOKHandler) server.HTTPOKHandler {
 	return func(data interface{}, c server.Context) error {
-		cc := c.(*context)
+		cc := c.(Context)
 		return h(data, cc)
 	}
 }

@@ -20,7 +20,7 @@ func NewAuthUserCache() *AuthUserCache {
 	cacheAuthUser := &AuthUserCache{
 		ttl: 3600 * 24 * 365,
 	}
-	cacheAuthUser.SetCache("lazygo-rds")
+	cacheAuthUser.SetCache("lazygo-cache")
 	return cacheAuthUser
 }
 

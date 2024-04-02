@@ -59,7 +59,7 @@ func Init(conf []Config, defaultAdapter string) error {
 func Instance(name string) (Cache, error) {
 	a, ok := manager.Load(name)
 	if !ok {
-		return nil, ErrAdapterUninitialized
+		return nil, ErrInstanceUninitialized
 	}
 	return a.(Cache), nil
 }

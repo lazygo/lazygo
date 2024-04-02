@@ -13,12 +13,13 @@ func UserRouter() {
 	g := app.Group("/api/user", middleware.User)
 	{
 
+		g.Post("register", server.Controller(controller.UserController{}))
 		g.Post("login", server.Controller(controller.UserController{}, "Login"))
 		g.Post("logout", server.Controller(controller.UserController{}))
 
 		sg := g.Group("", middleware.AuthUser)
 		{
-			sg.Post("profile", server.NotFoundHandler)
+			sg.Post("profile", server.Controller(controller.UserController{}))
 		}
 
 	}

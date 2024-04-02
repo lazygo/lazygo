@@ -1,6 +1,9 @@
 package controller
 
 import (
+	"fmt"
+	"strconv"
+
 	request "github.com/lazygo/lazygo/examples/app/request/user"
 	"github.com/lazygo/lazygo/examples/framework"
 	cacheModel "github.com/lazygo/lazygo/examples/model/cache"
@@ -109,6 +112,12 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 		return nil, "", errors.ErrUserTokenError
 	}
 	return user, code, nil
+}
+
+func (ctl *UserController) Profile(req *request.LogoutRequest) error {
+	fmt.Println(ctl.Ctx.UID())
+	ctl.Ctx.HTMLBlob(200, []byte(strconv.FormatUint(ctl.Ctx.UID(), 10)))
+	return nil
 }
 
 func (ctl *UserController) Logout(req *request.LogoutRequest) (*request.LogoutResponse, error) {

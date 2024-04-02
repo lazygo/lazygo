@@ -190,19 +190,18 @@ func (r *Router) insert(method, path string, h HandlerFunc, t kind, ppath string
 // - Get context from `Server#AcquireContext()`
 // - Reset it `Context#Reset()`
 // - Return it `Server#ReleaseContext()`.
-func (r *Router) Find(method, path string, c Context) {
-	ctx := c.(*context)
-	ctx.path = path
+func (r *Router) Find(method, path string, c *context) {
+	c.path = path
 	cn := r.tree // Current node as root
 
 	var (
 		search  = path
-		child   *node         // Child node
-		n       int           // Param counter
-		nk      kind          // Next kind
-		nn      *node         // Next node
-		ns      string        // Next search
-		pvalues = ctx.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
+		child   *node       // Child node
+		n       int         // Param counter
+		nk      kind        // Next kind
+		nn      *node       // Next node
+		ns      string      // Next search
+		pvalues = c.pvalues // Use the internal slice so the interface can keep the illusion of a dynamic slice
 	)
 
 	// Search order static > param > any
@@ -305,7 +304,6 @@ func (r *Router) Find(method, path string, c Context) {
 			// No next node to go down in routing (issue #954)
 			// Find nearest "any" route going up the routing tree
 			search = ns
-			np := nn.parent
 			// Consider param route one level up only
 			if cn = nn.findChildByKind(pkind); cn != nil {
 				pos := strings.IndexByte(ns, '/')
@@ -323,7 +321,7 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 			// No param route found, try to resolve nearest any route
 			for {
-				np = nn.parent
+				np := nn.parent
 				if cn = nn.findChildByKind(akind); cn != nil {
 					break
 				}
@@ -342,32 +340,29 @@ func (r *Router) Find(method, path string, c Context) {
 			}
 		}
 		return // Not found
-
 	}
 
-	ctx.handler = cn.findHandler(method)
-	ctx.path = cn.ppath
-	ctx.pnames = cn.pnames
+	c.handler = cn.findHandler(method)
+	c.path = cn.ppath
+	c.pnames = cn.pnames
 
 	// NOTE: Slow zone...
-	if ctx.handler == nil {
-		ctx.handler = cn.checkMethodNotAllowed()
+	if c.handler == nil {
+		c.handler = cn.checkMethodNotAllowed()
 
 		// Dig further for any, might have an empty value for *, e.g.
 		if cn = cn.findChildByKind(akind); cn == nil {
 			return
 		}
 		if h := cn.findHandler(method); h != nil {
-			ctx.handler = h
+			c.handler = h
 		} else {
-			ctx.handler = cn.checkMethodNotAllowed()
+			c.handler = cn.checkMethodNotAllowed()
 		}
-		ctx.path = cn.ppath
-		ctx.pnames = cn.pnames
+		c.path = cn.ppath
+		c.pnames = cn.pnames
 		pvalues[len(cn.pnames)-1] = ""
 	}
-
-	return
 }
 
 type sNode struct {

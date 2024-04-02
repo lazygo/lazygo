@@ -6,7 +6,7 @@
     host = "localhost"
     port = 3306
     user = "root"
-    passwd = "root"
+    passwd = ""
     dbname = "lazygo"
     charset = "utf8mb4"
     prefix = ""
@@ -18,7 +18,7 @@
     host = "localhost"
     port = 3306
     user = "root"
-    passwd = "root"
+    passwd = ""
     dbname = "lazygo"
     charset = "utf8mb4"
     prefix = ""
@@ -39,7 +39,7 @@
     capacity = 10000
 
 [cache]
-    default = "-cache-cache"
+    default = "lazygo-cache"
     [[cache.adapter]]
         name = "lazygo-cache"
         adapter = "redis"

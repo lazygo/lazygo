@@ -94,6 +94,7 @@ type writer struct {
 	lw        logWriter
 	level     uint8
 	caller    bool
+	short     bool
 	callDepth int
 }
 
@@ -119,9 +120,11 @@ func (w *writer) write(b []byte, prefix string, callDepth int) (int, error) {
 			file = "???"
 			line = 0
 		}
-		_, filename := path.Split(file)
-		filename = filename + ":" + strconv.Itoa(line) + " "
-		b = append([]byte(filename), b...)
+		if w.short {
+			_, file = path.Split(file)
+		}
+		file += ":" + strconv.Itoa(line) + " "
+		b = append([]byte(file), b...)
 	}
 	if w.async != nil {
 		return w.async.Write(b, t, prefix)

@@ -8,6 +8,6 @@ var (
 	ErrInvalidLruAdapterParams      = errors.New("invalid lru adapter params")
 	ErrInvalidDefaultName           = errors.New("invalid default name")
 
-	ErrAdapterUndefined     = errors.New("undefined adapter")
-	ErrAdapterUninitialized = errors.New("uninitialized adapter")
+	ErrAdapterUndefined      = errors.New("undefined adapter")
+	ErrInstanceUninitialized = errors.New("uninitialized instance")
 )

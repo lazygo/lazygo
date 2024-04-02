@@ -13,7 +13,7 @@ func Init(app *server.Server) *server.Server {
 	app.Pre(middleware.StripUrlSuffix)
 
 	// 拓展middleware后，可在后续的middleware中使用framework.Context
-	app.Use(framework.ExtendContextMiddleware)
+	app.Pre(framework.ExtendContextMiddleware)
 
 	// 添加request_id
 	app.Use(middleware.RequestID)
