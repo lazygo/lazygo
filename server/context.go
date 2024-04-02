@@ -53,9 +53,13 @@ type (
 		GetString(name string, defVal ...string) string
 		GetInt(name string, defVal ...int) int
 		GetInt64(name string, defVal ...int64) int64
+		GetUint(name string, defVal ...uint) uint
+		GetUint64(name string, defVal ...uint64) uint64
 		PostString(name string, defVal ...string) string
 		PostInt(name string, defVal ...int) int
 		PostInt64(name string, defVal ...int64) int64
+		PostUint(name string, defVal ...uint) uint
+		PostUint64(name string, defVal ...uint64) uint64
 
 		QueryParam(name string) string
 		FormValue(name string) string
@@ -286,6 +290,16 @@ func (c *context) GetInt64(name string, defVal ...int64) int64 {
 	return utils.ToInt64(c.QueryParam(name), defVal...)
 }
 
+// GetUint 获取Get无符号整型变量
+func (c *context) GetUint(name string, defVal ...uint) uint {
+	return utils.ToUint(c.QueryParam(name), defVal...)
+}
+
+// GetUint64 获取Get无符号整型变量
+func (c *context) GetUint64(name string, defVal ...uint64) uint64 {
+	return utils.ToUint64(c.QueryParam(name), defVal...)
+}
+
 // PostString 获取Post字符串变量
 func (c *context) PostString(name string, defVal ...string) string {
 	return utils.ToString(c.FormValue(name), defVal...)
@@ -299,6 +313,16 @@ func (c *context) PostInt(name string, defVal ...int) int {
 // PostInt64 获取Post整型变量
 func (c *context) PostInt64(name string, defVal ...int64) int64 {
 	return utils.ToInt64(c.FormValue(name), defVal...)
+}
+
+// PostUint 获取Get无符号整型变量
+func (c *context) PostUint(name string, defVal ...uint) uint {
+	return utils.ToUint(c.FormValue(name), defVal...)
+}
+
+// PostUint64 获取Get无符号整型变量
+func (c *context) PostUint64(name string, defVal ...uint64) uint64 {
+	return utils.ToUint64(c.FormValue(name), defVal...)
 }
 
 func (c *context) QueryParam(name string) string {
