@@ -64,8 +64,7 @@ make build
 │   ├── context.go                   // 用户拓展server.Context，在controller和middleware中可以使用拓展Context中提供的方法
 │   ├── exception.go                 // 错误处理
 │   ├── handler.go                   // 提供一些 HandlerFunc 转换函数
-│   ├── logger.go                    // 提供日志记录器
-│   └── route.go                     // 路由缓存
+│   └── logger.go                    // 提供日志记录器
 ├── go.mod
 ├── main.go
 ├── Dockerfile
@@ -171,30 +170,35 @@ func LoadJsonConfig() {
 
 ## 控制器
 
-控制器函数用于处理业务逻辑，控制器每一个函数都应通过路由绑定到指定的uri中。
+### 控制器的定义 ###
 
-控制器函数的参数为一个`Request`结构体
-
-返回参数为一个`Response`结构体和一个error，如果返回error不为nil，将向http请求返回错误信息。
-
-特殊情况下，控制器函数返回参数也可以仅有一个error，用于没有响应内容，只关注是否成功的http请求
-
-注册路由时需要使用`framework.Controller`函数 将控制器函数转换为路由中的HandlerFunc
+控制器结构体必须包含类型为Context的Ctx成员变量。其定义如下所示：
 
 ```
-// 参数h为控制器结构体实例
-// method为函数名，若不指定函数名，会自动指定函数名为路由uri最后一个“/”后面的字符串
-func Controller(h interface{}, methodName ...string) server.HandlerFunc
+// UserController 定义一个User控制器
+type UserController struct{
+	Ctx Context
+}
 ```
 
-示例代码：
+### 控制器方法的定义规则 ###
+
+控制器的Public类型成员函数用于处理业务逻辑，其入参和出参定义形式必须遵循以下规则。
+
+- 入参必须有且仅有一个，且此参数必须实现server.Request接口。
+- 返回参数可以有一个或两个，且最后一个返回参数必须时error类型。
+- 当返回仅有1个error类型参数时，如果返回的error为nil框架将不会向HTTP输出任何内容。这可以方便开发者在控制器方法中自行定义HTTP响应的内容。如果返回error不为nil，则根据`framework/exception.go`中定义的格式输出错误信息到HTTP响应。
+- 当返回有2个参数时，如果返回的第二个参数error为nil，则会根据server.HTTPOKHandler中定义的格式，输出第一个参数到HTTP响应。如果返回error不为nil，处理方式与1个参数时相同，直接向HTTP响应输出错误信息。
 
 ```
-type UserController struct{}
-
+// 自定义响应内容的控制器方法
 func (c *UserController)Login(request.UserLoginRequest) error {
+    ctl.Ctx.HTMLBlob(200, []byte("<h1>lazygo framework</h1>"))
     return nil
 }
+
+// 返回一个request.UserProfileResponse结构，框架默认会使用ctx.Succ() 处理返回的*request.UserProfileResponse
+// 也就是会将第一个参数*request.UserProfileResponse 整个放入"data"字段中，并序列化成json。{"data": {"name": "李某人"}}
 func (c *UserController)Profile(request.UserProfileRequest) (*request.UserProfileResponse, error) {
     resp := &request.UserProfileResponse{
         Name: "李某人",
@@ -202,32 +206,47 @@ func (c *UserController)Profile(request.UserProfileRequest) (*request.UserProfil
     return resp, nil
 }
 
-// 将uri /user/profile 注册到UserController.UserInfo
-app.Post("/user/profile", framework.Controller(controller.UserController{}, "UserInfo"))
+// 返回一个map结构，返回结果处理方式同上{"data": {"lazygo": "yes"}}
+func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error) {
+    resp := map[string]interface{}{
+        "lazygo": "yes",
+    }
+    return resp, nil
+}
 
-// 将uri /user/login 注册到UserController.Login
-app.Post("/user/login", framework.Controller(controller.UserController{}))
+// 返回一个error信息，返回结果类似 {"errno": 400, "msg": "参数错误"}
+// 可在`framework/exception.go`中自行定义返回结果的渲染格式
+func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error) {
+    return nil, server.NewHTTPError(200, 400, "参数错误")
+}
 ```
 
-参数绑定规则
+需要注意的是，框架会默认认为所有Public成员函数都是HTTP请求处理函数，也就是说这些Public类型成员函数都必须遵循上述入参和出参的定义规则。在框架启动时会强制检查该控制器下所有的Public成员函数是否满足此规则。如果有不符合此规则的函数，请定义为开头小写的私有类型。
+例如`(ctl *UserController) Register(req *request.User) (any, error)`和`(ctl *UserController) Login(req *request.User) (any, error)`两个函数内部都会调用发送通知的方法，可将发送通知定义为`(ctl *UserController)sendMsg(uid uint64, msg string)`并在Register和Login中以`ctl.sendMsg(uid, msg)`的形式调用。
 
-- 请求数据会自动绑定到Request结构体中。绑定需要依赖结构体注解来完成。
+### 注册控制器到HTTP路由 ###
 
-- 对于 `Content-Type`为 `application/json` 的请求，会自动将json数据解析到结构体中。
+控制器函数需要注册到路由才能被HTTP请求访问到，注册路由时需要使用`server.Controller`函数 将控制器函数转换为路由中的HandlerFunc。
 
-- 对于 `Content-Type`为 `form-data`类型的请求或GET请求，可通过 `bind` 注解 指定绑定的数据来源。例如 bind:"query,form" 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
 
-- bind支持的类型为：`value` context中WithValue存储的数据，`header`HTTP Header，`param`参数路由，`query` URL Query，`form` Post Form，`file` 文件。
+```
+// server.Controller 函数定义如下
+// 参数h为控制器结构体实例
+// method为函数名，若不指定函数名，会自动指定函数名为路由uri最后一个“/”后面的字符串
+func Controller(h interface{}, methodName ...string) server.HandlerFunc
+```
 
-- 数据类型为切片时，需要提供的参数格式为 使用逗号分隔的字符串，或json数组字符串。例如`?tags=1,2,3` 或`?tags=[1,2,3]`都可以绑定到`[]int`类型
-    
-预处理器
+注册路由示例代码：
 
-- 将参数解析到绑定的字段前，会使用与处理器对参数进行预处理。
+```
+// 将uri /user/profile 注册到UserController.UserInfo
+app.Post("/user/profile", server.Controller(controller.UserController{}, "UserInfo"))
 
-- 内置的预处理器包括 `trim` ：剔除字符串两端空字符，`cut(num int)` ：如果utf8字符串字符数量超过num个，则将字符串截断。
+// 将uri /user/login 注册到UserController.Login
+app.Post("/user/login", server.Controller(controller.UserController{}))
+```
 
-- 多个预处理器之间使用逗号隔开。
+### Request 参数绑定和预处理 ###
 
 ```
 type ToolsUploadRequest struct {
@@ -237,14 +256,39 @@ type ToolsUploadRequest struct {
 }
 ```
 
+在框架收到HTTP请求时，请求数据会自动绑定到Request结构体中。绑定需要依赖结构体注解来完成。
+
+- 对于 `Content-Type`为 `application/json` 的请求，会自动将json数据解析到结构体中。
+
+- 对于 `Content-Type`为 `form-data`类型的请求或GET请求，可通过 `bind` 注解 指定绑定的数据来源。例如 bind:"query,form" 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
+
+- bind支持的类型为：
+  
+    `value` 或 `ctx` 表示调用context中Value方法获取数据；
+    `header` 表示从HTTP Header中获取数据；
+    `param`从路由参数中获取数据；
+    `query` 从URL Query中获取数据；
+    `form` 从Post Form中获取数据；
+    `file` 绑定文件数据。
+
+- 数据类型为切片时，需要提供的参数格式为 使用逗号分隔的字符串，或json数组字符串。例如`?tags=1,2,3` 或`?tags=[1,2,3]`都可以绑定到`[]int`类型
+    
+在绑定数据时，会自动通过注解中的预处理器函数，对被绑定的参数进行预处理。多个预处理器之间使用逗号隔开。
+
+`trim` ：剔除字符串两端空字符；
+`tolower` ：字符串转为小写；
+`toupper` ：字符串转为大写；
+`cut(num int)` ：如果utf8字符串字符数量超过num个，则将字符串截断。
+
+
 `Request`需要实现 `func Verify() error` 和 `func Clear()` 两个函数
 
-`Verify`函数在参数绑定后执行，用于对请求参数内容进行校验
+- `Verify`函数在参数绑定后执行，用于对请求参数内容进行校验
 
-`Clear`会在http请求返回响应后执行，用于做一些清理工作
+- `Clear`会在http请求返回响应后执行，用于做一些清理工作
+
 
 ```
-
 func (r *ToolsUploadRequest) Verify() error {
 
 	if utils.InSlice(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
@@ -258,7 +302,6 @@ func (r *ToolsUploadRequest) Clear() {
 		r.Image.File.Close()
 	}
 }
-
 ```
 
 
