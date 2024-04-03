@@ -217,7 +217,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() {
 		rec := recover()
 		if rec != nil {
-			fmt.Println("panic: ", rec)
+			fmt.Println("panic:", rec)
 			debug.PrintStack()
 		}
 	}()
