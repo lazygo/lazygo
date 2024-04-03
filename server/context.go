@@ -209,7 +209,7 @@ func (c *context) Bind(v interface{}) error {
 			var val interface{}
 			for _, bind := range binds {
 				switch bind {
-				case "value":
+				case "ctx", "value":
 					val = c.Value(field)
 				case "header":
 					val = c.GetRequestHeader(field)
