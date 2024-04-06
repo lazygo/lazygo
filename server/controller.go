@@ -1,6 +1,7 @@
 package server
 
 import (
+	"fmt"
 	"reflect"
 	"strings"
 
@@ -27,8 +28,7 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 
 		method, ok := routes[serviceName][name]
 		if !ok {
-			ctx.s().Logger.Printf("[msg: not fount] [method name: %s]", name)
-			return ErrNotFound
+			return ErrNotFound.SetInternal(fmt.Errorf(" method name %s not found", name))
 		}
 		pReq := reflect.New(method.Request)
 		req := pReq.Interface().(Request)
@@ -36,12 +36,13 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 		defer req.Clear()
 
 		if err = ctx.Bind(req); err != nil {
-			ctx.s().Logger.Printf("[msg: params error] [req: %v] [err: %v]", req, err)
-			return ErrBadRequest
+			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
 		}
 		if err = req.Verify(); err != nil {
-			ctx.s().Logger.Printf("[msg: verify params fail] [resp: %v] [err: %v]", req, err)
-			return err
+			if he, ok := err.(*HTTPError); ok {
+				return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
+			}
+			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
 		}
 
 		pServ := reflect.New(rtServ)
@@ -52,8 +53,11 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 		if numOut == 1 {
 			if ierr := out[0].Interface(); ierr != nil {
 				if err = ierr.(error); err != nil {
-					ctx.s().Logger.Printf("[msg: request fail] [req: %v] [err: %v]", req, err)
-					return err
+					if he, ok := err.(*HTTPError); ok {
+						return he.SetInternal(fmt.Errorf("request fail, req: %v", req))
+
+					}
+					return fmt.Errorf("request fail, req: %v, err: %w", req, err)
 				}
 			}
 			return nil
@@ -62,8 +66,11 @@ func Controller(h interface{}, methodName ...string) HandlerFunc {
 			resp := out[0].Interface()
 			if ierr := out[1].Interface(); ierr != nil {
 				if err = ierr.(error); err != nil {
-					ctx.s().Logger.Printf("[msg: request fail] [req: %v] [resp: %v] [err: %v]", req, resp, err)
-					return err
+					if he, ok := err.(*HTTPError); ok {
+						return he.SetInternal(fmt.Errorf("request fail, req: %v, resp: %v", req, resp))
+
+					}
+					return fmt.Errorf("request fail, req: %v, resp: %v, err: %w", req, resp, err)
 				}
 			}
 			return ctx.s().HTTPOKHandler(resp, ctx)

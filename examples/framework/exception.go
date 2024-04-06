@@ -9,6 +9,7 @@ import (
 )
 
 func AppHTTPErrorHandler(err error, ctx Context) {
+	ctx.Logger().Error("http return error: url: %s, headers: %+v, err: %+v", ctx.Request().RequestURI, ctx.Request().Header, err)
 	if ctx.ResponseWriter().Committed {
 		return
 	}
