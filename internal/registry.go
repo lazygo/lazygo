@@ -9,7 +9,7 @@ var (
 	ErrAdapterUndefined = errors.New("undefined adapter")
 )
 
-type adapter[T any] interface {
+type Adapter[T any] interface {
 	Init(map[string]string) (T, error)
 }
 
@@ -23,16 +23,16 @@ type Register[T any] struct {
 	sync.Map
 }
 
-// add 注册适配器
+// Add 注册适配器
 func (r *Register[T]) Add(name string, f func(map[string]string) (T, error)) {
 	r.Store(name, adapterFunc[T](f))
 }
 
-// get 获取适配器实例
-func (r *Register[T]) Get(name string) (adapter[T], error) {
+// Get 获取适配器实例
+func (r *Register[T]) Get(name string) (Adapter[T], error) {
 	// 获取适配器
 	if a, ok := r.Load(name); ok {
-		return a.(adapter[T]), nil
+		return a.(Adapter[T]), nil
 	}
 	return nil, ErrAdapterUndefined
 }

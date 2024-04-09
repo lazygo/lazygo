@@ -279,7 +279,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 
-	result := []map[string]any{}
+	var result []map[string]any
 	_, err = db.Table(tableName).Where("id", id).Fetch([]any{"uid", "name"}, &result)
 	if err != nil {
 		assert.Nil(err, ErrInvalidResultPtr)
@@ -359,7 +359,7 @@ func CheckTable(db *DB, table string) (bool, error) {
 		return false, err
 	}
 	defer rows.Close()
-	result := []map[string]any{}
+	var result []map[string]any
 	_, err = parseData(rows, &result)
 	if err != nil {
 		return false, err

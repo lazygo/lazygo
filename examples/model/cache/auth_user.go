@@ -25,7 +25,7 @@ func NewAuthUserCache() *AuthUserCache {
 }
 
 func (mdl *AuthUserCache) Get(token string) (*AuthUserData, bool, error) {
-	key := fmt.Sprintf(utils.CACHE_AUTH_TOKEN, token)
+	key := fmt.Sprintf(utils.CacheAuthToken, token)
 
 	var info AuthUserData
 	exists, err := mdl.Cache.Get(key, &info)
@@ -36,13 +36,13 @@ func (mdl *AuthUserCache) Get(token string) (*AuthUserData, bool, error) {
 }
 
 func (mdl *AuthUserCache) Forget(token string) error {
-	key := fmt.Sprintf(utils.CACHE_AUTH_TOKEN, token)
+	key := fmt.Sprintf(utils.CacheAuthToken, token)
 	return mdl.Cache.Forget(key)
 }
 
 func (mdl *AuthUserCache) Set(uid uint64) (string, error) {
 	token := utils.RandStr(32)
-	key := fmt.Sprintf(utils.CACHE_AUTH_TOKEN, token)
+	key := fmt.Sprintf(utils.CacheAuthToken, token)
 
 	info := AuthUserData{
 		UID: uid,

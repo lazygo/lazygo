@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"encoding/xml"
 	"io"
-	"io/ioutil"
 	"log"
 	"mime/multipart"
 	"net/http"
@@ -182,11 +181,11 @@ func (h *HttpClient) SetBody(data any) *HttpClient {
 	switch t := data.(type) {
 	case string:
 		bf := bytes.NewBufferString(t)
-		h.req.Body = ioutil.NopCloser(bf)
+		h.req.Body = io.NopCloser(bf)
 		h.req.ContentLength = int64(len(t))
 	case []byte:
 		bf := bytes.NewBuffer(t)
-		h.req.Body = ioutil.NopCloser(bf)
+		h.req.Body = io.NopCloser(bf)
 		h.req.ContentLength = int64(len(t))
 	}
 	return h
@@ -200,7 +199,7 @@ func (h *HttpClient) SetXmlBody(obj any) *HttpClient {
 			h.lastErr = err
 			return h
 		}
-		h.req.Body = ioutil.NopCloser(bytes.NewReader(xmlData))
+		h.req.Body = io.NopCloser(bytes.NewReader(xmlData))
 		h.req.ContentLength = int64(len(xmlData))
 		h.req.Header.Set("Content-Type", "application/xml")
 	}
@@ -215,7 +214,7 @@ func (h *HttpClient) SetJsonBody(obj any) *HttpClient {
 			h.lastErr = err
 			return h
 		}
-		h.req.Body = ioutil.NopCloser(bytes.NewReader(jsonData))
+		h.req.Body = io.NopCloser(bytes.NewReader(jsonData))
 		h.req.ContentLength = int64(len(jsonData))
 		h.req.Header.Set("Content-Type", "application/json")
 	}
@@ -267,7 +266,7 @@ func (h *HttpClient) buildURL(paramBody string) {
 				_ = pw.Close()
 			})
 			h.SetHeader("Content-Type", bodyWriter.FormDataContentType())
-			h.req.Body = ioutil.NopCloser(pr)
+			h.req.Body = io.NopCloser(pr)
 			return
 		}
 
@@ -281,7 +280,7 @@ func (h *HttpClient) buildURL(paramBody string) {
 
 // doRequest 发起请求
 func (h *HttpClient) doRequest() (*http.Response, error) {
-	var paramBody string = h.params.Encode()
+	var paramBody = h.params.Encode()
 	h.buildURL(paramBody)
 
 	reqUrl, err := url.Parse(h.url)
@@ -373,10 +372,10 @@ func (h *HttpClient) ToBytes() ([]byte, error) {
 		if err != nil {
 			return nil, err
 		}
-		h.body, err = ioutil.ReadAll(reader)
+		h.body, err = io.ReadAll(reader)
 		return h.body, err
 	}
-	h.body, err = ioutil.ReadAll(resp.Body)
+	h.body, err = io.ReadAll(resp.Body)
 	return h.body, err
 }
 
