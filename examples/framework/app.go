@@ -18,7 +18,7 @@ func App() *server.Server {
 	app = server.New()
 
 	app.HTTPErrorHandler = BaseHTTPErrorHandler(AppHTTPErrorHandler)
-	app.HTTPOKHandler = BaseHTTPOKHandler(func(data interface{}, ctx Context) error {
+	app.HTTPOKHandler = BaseHTTPOKHandler(func(data any, ctx Context) error {
 		return ctx.Succ(data)
 	})
 

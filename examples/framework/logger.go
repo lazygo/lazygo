@@ -9,12 +9,12 @@ import (
 )
 
 type Logger interface {
-	Alert(format string, a ...interface{})  // 1
-	Error(format string, a ...interface{})  // 3
-	Warn(format string, a ...interface{})   // 4
-	Notice(format string, a ...interface{}) // 5
-	Info(format string, a ...interface{})   // 6
-	Debug(format string, a ...interface{})  // 7
+	Alert(format string, a ...any)  // 1
+	Error(format string, a ...any)  // 3
+	Warn(format string, a ...any)   // 4
+	Notice(format string, a ...any) // 5
+	Info(format string, a ...any)   // 6
+	Debug(format string, a ...any)  // 7
 }
 
 type loggerImpl struct {
@@ -48,28 +48,28 @@ func InitLogger() {
 	}
 }
 
-func (l *loggerImpl) Alert(format string, a ...interface{}) {
+func (l *loggerImpl) Alert(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Alert(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
 	ErrorLog.Alert(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
-func (l *loggerImpl) Error(format string, a ...interface{}) {
+func (l *loggerImpl) Error(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Error(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
 	ErrorLog.Error(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
-func (l *loggerImpl) Warn(format string, a ...interface{}) {
+func (l *loggerImpl) Warn(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Warn(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
 	ErrorLog.Warn(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
-func (l *loggerImpl) Notice(format string, a ...interface{}) {
+func (l *loggerImpl) Notice(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Notice(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
@@ -80,14 +80,14 @@ func (l *loggerImpl) Notice(format string, a ...interface{}) {
 	AppLog.Notice(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
-func (l *loggerImpl) Info(format string, a ...interface{}) {
+func (l *loggerImpl) Info(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Info(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}
 	AppLog.Info(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 }
 
-func (l *loggerImpl) Debug(format string, a ...interface{}) {
+func (l *loggerImpl) Debug(format string, a ...any) {
 	if l.Ctx.IsDebug() {
 		ConsoleLog.Debug(l.Ctx.RequestID(), fmt.Sprintf(format, a...))
 	}

@@ -21,7 +21,7 @@ type RouteCache map[string]map[string]Route
 
 var routes = make(RouteCache)
 
-func (RouteCache) Make(h interface{}) (reflect.Type, string, error) {
+func (RouteCache) Make(h any) (reflect.Type, string, error) {
 	rv := reflect.Indirect(reflect.ValueOf(h))
 	if rv.Kind() != reflect.Struct {
 		return nil, "", errors.New("param not service")

@@ -6,7 +6,7 @@ import (
 )
 
 // toString 转换为string
-func toString(value interface{}) string {
+func toString(value any) string {
 	var str string
 	switch value.(type) {
 	case string:
@@ -30,14 +30,14 @@ func toString(value interface{}) string {
 }
 
 // CreateAnyTypeSlice interface{}转为 []interface{}
-func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
+func CreateAnyTypeSlice(slice any) ([]any, bool) {
 	val, ok := isSlice(slice)
 	if !ok {
 		return nil, false
 	}
 
 	sliceLen := val.Len()
-	out := make([]interface{}, sliceLen)
+	out := make([]any, sliceLen)
 	for i := 0; i < sliceLen; i++ {
 		out[i] = val.Index(i).Interface()
 	}
@@ -46,7 +46,7 @@ func CreateAnyTypeSlice(slice interface{}) ([]interface{}, bool) {
 }
 
 // isSlice 判断是否为slice数据
-func isSlice(arg interface{}) (reflect.Value, bool) {
+func isSlice(arg any) (reflect.Value, bool) {
 	val := reflect.ValueOf(arg)
 	ok := false
 	if val.Kind() == reflect.Slice {
@@ -55,8 +55,8 @@ func isSlice(arg interface{}) (reflect.Value, bool) {
 	return val, ok
 }
 
-func mergeMap(maps ...map[string]interface{}) map[string]interface{} {
-	var merged = make(map[string]interface{}, cap(maps))
+func mergeMap(maps ...map[string]any) map[string]any {
+	var merged = make(map[string]any, cap(maps))
 	for _, m := range maps {
 		for mk, mv := range m {
 			merged[mk] = mv

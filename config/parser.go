@@ -8,14 +8,14 @@ import (
 )
 
 type Parser interface {
-	decode(field string, v interface{}) error
+	decode(field string, v any) error
 }
 
 type jsonParser struct {
 	data map[string]json.RawMessage
 }
 
-func (l *jsonParser) decode(field string, v interface{}) error {
+func (l *jsonParser) decode(field string, v any) error {
 	data := l.data[field]
 	return json.Unmarshal(data, v)
 }
@@ -25,7 +25,7 @@ type tomlParser struct {
 	data     map[string]toml.Primitive
 }
 
-func (l *tomlParser) decode(field string, v interface{}) error {
+func (l *tomlParser) decode(field string, v any) error {
 	data := l.data[field]
 	return l.metadata.PrimitiveDecode(data, v)
 }

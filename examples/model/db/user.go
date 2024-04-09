@@ -27,19 +27,19 @@ func NewUserModel() *UserModel {
 	return mdl
 }
 
-func (mdl *UserModel) Create(data map[string]interface{}) (int64, error) {
+func (mdl *UserModel) Create(data map[string]any) (int64, error) {
 	data["ctime"] = time.Now().Unix()
 	return mdl.QueryBuilder().Insert(data)
 }
 
-func (mdl *UserModel) FetchByUid(fields []interface{}, uid int64) (*UserData, int, error) {
-	cond := map[string]interface{}{
+func (mdl *UserModel) FetchByUid(fields []any, uid int64) (*UserData, int, error) {
+	cond := map[string]any{
 		"uid": uid,
 	}
 	return mdl.FetchRow(fields, cond)
 }
 
-func (mdl *UserModel) FetchRow(fields []interface{}, cond map[string]interface{}) (*UserData, int, error) {
+func (mdl *UserModel) FetchRow(fields []any, cond map[string]any) (*UserData, int, error) {
 	var data UserData
 	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
 	if err != nil {
@@ -48,8 +48,8 @@ func (mdl *UserModel) FetchRow(fields []interface{}, cond map[string]interface{}
 	return &data, n, nil
 }
 
-func (mdl *UserModel) Exists(cond map[string]interface{}) (bool, error) {
-	fields := []interface{}{"uid"}
+func (mdl *UserModel) Exists(cond map[string]any) (bool, error) {
+	fields := []any{"uid"}
 	var data UserData
 	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
 	if err != nil {
@@ -58,8 +58,8 @@ func (mdl *UserModel) Exists(cond map[string]interface{}) (bool, error) {
 	return n > 0, nil
 }
 
-func (mdl *UserModel) UpdateByUid(uid int64, data map[string]interface{}) (int64, error) {
-	cond := map[string]interface{}{
+func (mdl *UserModel) UpdateByUid(uid int64, data map[string]any) (int64, error) {
+	cond := map[string]any{
 		"uid": uid,
 	}
 	data["mtime"] = time.Now().Unix()

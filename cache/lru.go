@@ -32,7 +32,7 @@ func newLruCache(opt map[string]string) (Cache, error) {
 	return l, err
 }
 
-func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
+func (l *lruCache) Remember(key string, fn func() (any, error), ttl int64, ret any) (bool, error) {
 	key = l.prefix + key
 	if item, ok := l.handler.Get(key); ok {
 		err := json.Unmarshal(item, ret)
@@ -59,7 +59,7 @@ func (l *lruCache) Remember(key string, fn func() (interface{}, error), ttl int6
 	return false, err
 }
 
-func (l *lruCache) Set(key string, val interface{}, ttl int64) error {
+func (l *lruCache) Set(key string, val any, ttl int64) error {
 	key = l.prefix + key
 	value, err := json.Marshal(val)
 	if err != nil {
@@ -72,7 +72,7 @@ func (l *lruCache) Set(key string, val interface{}, ttl int64) error {
 	return nil
 }
 
-func (l *lruCache) Get(key string, ret interface{}) (bool, error) {
+func (l *lruCache) Get(key string, ret any) (bool, error) {
 	key = l.prefix + key
 	if item, ok := l.handler.Get(key); ok {
 		err := json.Unmarshal(item, ret)
@@ -100,5 +100,5 @@ func (l *lruCache) Forget(key string) error {
 }
 
 func init() {
-	registry.add("lru", adapterFunc(newLruCache))
+	registry.Add("lru", newLruCache)
 }

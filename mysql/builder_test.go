@@ -14,19 +14,19 @@ func TestWhere(t *testing.T) {
 
 	builder := newBuilder(nil, "table_name")
 
-	arr := []interface{}{1, 2}
+	arr := []any{1, 2}
 
 	builder.
 		Where("a", 1).
 		Where("b", "=", 2).
 		Where("c=3").
 		Where("d", arr).
-		Where(map[string]interface{}{"e": 1, "f": "ff", "g": arr}).
+		Where(map[string]any{"e": 1, "f": "ff", "g": arr}).
 		WhereNotIn("h", arr).
 		WhereRaw("(x=? OR y=?)", "aa", 99).
 		Where("table_name.field", 1)
 
-	data := []interface{}{
+	data := []any{
 		"last_view_time",
 		"last_view_user",
 		"table_name.field",
@@ -63,7 +63,7 @@ func TestWhere(t *testing.T) {
 }
 
 func TestBuildVal(t *testing.T) {
-	set := map[string]interface{}{
+	set := map[string]any{
 		"last_view_time": "12345678",
 		"last_view_user": "li",
 	}

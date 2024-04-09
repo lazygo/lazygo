@@ -3,6 +3,8 @@ package locker
 import (
 	"context"
 	"sync"
+
+	"github.com/lazygo/lazygo/internal"
 )
 
 // 分布式锁
@@ -30,7 +32,7 @@ type Locker interface {
 	// ttl 生存时间 (秒)
 	// f 返回interface{} 的函数
 	// 在获取锁失败或超时的情况下，fn不会被执行
-	LockFunc(ctx context.Context, ttl uint64, fn func() interface{}) (interface{}, error)
+	LockFunc(ctx context.Context, ttl uint64, fn func() any) (any, error)
 }
 
 type Releaser interface {
@@ -46,6 +48,8 @@ type Manager struct {
 	defaultName string
 }
 
+var registry = internal.Register[Locker]{}
+
 var manager = &Manager{}
 
 // init 初始化分布式锁
@@ -55,11 +59,11 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 			continue
 		}
 
-		a, err := registry.get(item.Adapter)
+		a, err := registry.Get(item.Adapter)
 		if err != nil {
 			return err
 		}
-		lock, err := a.init(item.Option)
+		lock, err := a.Init(item.Option)
 		if err != nil {
 			return err
 		}
@@ -114,7 +118,7 @@ func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 // ttl 生存时间 (秒)
 // f 返回interface{} 的函数
 // 在获取锁失败或超时的情况下，fn不会被执行
-func LockFunc(ctx context.Context, resource string, ttl uint64, fn func() interface{}) (interface{}, error) {
+func LockFunc(ctx context.Context, resource string, ttl uint64, fn func() any) (any, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, err

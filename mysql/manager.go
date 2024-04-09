@@ -52,7 +52,7 @@ func (m *Manager) init(conf []Config) error {
 // closeAll 关闭数据库连接
 func (m *Manager) closeAll() error {
 	var err error
-	m.Range(func(name, db interface{}) bool {
+	m.Range(func(name, db any) bool {
 		err = db.(*DB).Close()
 		if err != nil {
 			return false

@@ -46,7 +46,6 @@ type HttpSettings struct {
 	Retries       int // if set to -1 means will retry forever
 }
 
-//
 var defaultSetting = HttpSettings{
 	UserAgent:        "lazygo",
 	ConnectTimeout:   60 * time.Second,
@@ -163,7 +162,7 @@ func (h *HttpClient) SetParam(key, value string) *HttpClient {
 }
 
 // SetParams 设置键值对格式请求参数
-func (h *HttpClient) SetParams(params map[string]interface{}) *HttpClient {
+func (h *HttpClient) SetParams(params map[string]any) *HttpClient {
 	h.params = url.Values{}
 	for k, v := range params {
 		switch v.(type) {
@@ -179,7 +178,7 @@ func (h *HttpClient) SetParams(params map[string]interface{}) *HttpClient {
 }
 
 // SetBody 设置请求Body  it supports string and []byte.
-func (h *HttpClient) SetBody(data interface{}) *HttpClient {
+func (h *HttpClient) SetBody(data any) *HttpClient {
 	switch t := data.(type) {
 	case string:
 		bf := bytes.NewBufferString(t)
@@ -194,7 +193,7 @@ func (h *HttpClient) SetBody(data interface{}) *HttpClient {
 }
 
 // SetXmlBody 设置XML格式请求Body
-func (h *HttpClient) SetXmlBody(obj interface{}) *HttpClient {
+func (h *HttpClient) SetXmlBody(obj any) *HttpClient {
 	if h.req.Body == nil && obj != nil {
 		xmlData, err := xml.Marshal(obj)
 		if err != nil {
@@ -209,7 +208,7 @@ func (h *HttpClient) SetXmlBody(obj interface{}) *HttpClient {
 }
 
 // SetJsonBody 设置Json格式请求Body
-func (h *HttpClient) SetJsonBody(obj interface{}) *HttpClient {
+func (h *HttpClient) SetJsonBody(obj any) *HttpClient {
 	if h.req.Body == nil && obj != nil {
 		jsonData, err := json.Marshal(obj)
 		if err != nil {
@@ -231,7 +230,6 @@ func (h *HttpClient) PostFile(formname, filename string) *HttpClient {
 
 // ===================================
 
-//
 func (h *HttpClient) buildURL(paramBody string) {
 	// build GET url with query string
 	if h.req.Method == "GET" && len(paramBody) > 0 {
@@ -392,7 +390,7 @@ func (h *HttpClient) ToString() (string, error) {
 }
 
 // ToJSON 将响应作为json解析
-func (h *HttpClient) ToJSON(v interface{}) error {
+func (h *HttpClient) ToJSON(v any) error {
 	data, err := h.ToBytes()
 	if err != nil {
 		return err
@@ -402,7 +400,7 @@ func (h *HttpClient) ToJSON(v interface{}) error {
 
 // ToXML returns the map that marshals from the body bytes as xml in response .
 // it calls Response inner.
-func (h *HttpClient) ToXML(v interface{}) error {
+func (h *HttpClient) ToXML(v any) error {
 	data, err := h.ToBytes()
 	if err != nil {
 		return err

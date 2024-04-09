@@ -9,7 +9,7 @@ import (
 )
 
 // Controller 转为 server.HandlerFunc
-func Controller(h interface{}, methodName ...string) HandlerFunc {
+func Controller(h any, methodName ...string) HandlerFunc {
 	rtServ, serviceName, err := routes.Make(h)
 	if err != nil {
 		panic(err)

@@ -42,14 +42,14 @@ var (
 
 // HTTPError represents an error that occurred while handling a request.
 type HTTPError struct {
-	Code     int         `json:"code"`
-	Errno    int         `json:"errno"`
-	Message  interface{} `json:"message"`
-	Internal error       `json:"-"` // Stores the error returned by an external dependency
+	Code     int   `json:"code"`
+	Errno    int   `json:"errno"`
+	Message  any   `json:"message"`
+	Internal error `json:"-"` // Stores the error returned by an external dependency
 }
 
 // NewHTTPError creates a new HTTPError instance.
-func NewHTTPError(code int, message ...interface{}) *HTTPError {
+func NewHTTPError(code int, message ...any) *HTTPError {
 	he := &HTTPError{Code: code, Errno: code, Message: http.StatusText(code)}
 	switch len(message) {
 	case 0:

@@ -12,7 +12,7 @@ type logMsg struct {
 }
 
 var msgPool = &sync.Pool{
-	New: func() interface{} {
+	New: func() any {
 		return &logMsg{}
 	},
 }

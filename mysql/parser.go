@@ -6,7 +6,7 @@ import (
 )
 
 // parseData 解析结果集
-func parseData(rows *sql.Rows, result interface{}) (int, error) {
+func parseData(rows *sql.Rows, result any) (int, error) {
 	// row slice pointer value
 	rspv := reflect.ValueOf(result)
 	if rspv.Kind() != reflect.Ptr || rspv.IsNil() {
@@ -81,7 +81,7 @@ func parseData(rows *sql.Rows, result interface{}) (int, error) {
 }
 
 // parseRowData 解析单行结果集
-func parseRowData(rows *sql.Rows, result interface{}) (int, error) {
+func parseRowData(rows *sql.Rows, result any) (int, error) {
 	// result pointer value
 	rpv := reflect.ValueOf(result)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
@@ -151,9 +151,9 @@ func checkMap(rt reflect.Type) error {
 }
 
 // getResultPtr 解析结果集
-func getResultPtr(columns []string) ([]interface{}, []sql.RawBytes, map[string]int64) {
+func getResultPtr(columns []string) ([]any, []sql.RawBytes, map[string]int64) {
 	fCount := len(columns)
-	fieldPtr := make([]interface{}, fCount)
+	fieldPtr := make([]any, fCount)
 	fieldArr := make([]sql.RawBytes, fCount)
 	fieldToID := make(map[string]int64, fCount)
 	for k, v := range columns {
@@ -164,13 +164,13 @@ func getResultPtr(columns []string) ([]interface{}, []sql.RawBytes, map[string]i
 }
 
 // getFieldPtr 获取结果集指针数组
-func getFieldPtr(columns []string, rv reflect.Value) ([]interface{}, error) {
+func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 	fCount := len(columns)
 
-	fieldPtr := make([]interface{}, fCount)
+	fieldPtr := make([]any, fCount)
 
 	resultFieldNum := rv.NumField()
-	fieldArr := make(map[string]interface{}, resultFieldNum)
+	fieldArr := make(map[string]any, resultFieldNum)
 	for i := 0; i < resultFieldNum; i++ {
 		field := rv.Type().Field(i).Tag.Get("json")
 		if field == "" {

@@ -8,32 +8,32 @@ import (
 )
 
 type ReadBuilder interface {
-	MakeQueryString(fields []interface{}) (string, []interface{}, error)
+	MakeQueryString(fields []any) (string, []any, error)
 	Count() (int64, error)
-	Fetch(fields []interface{}, result interface{}) (int, error)
-	FetchRow(fields []interface{}, result interface{}) (int, error)
+	Fetch(fields []any, result any) (int, error)
+	FetchRow(fields []any, result any) (int, error)
 	FetchOne(field string) (string, error)
-	FetchWithPage(fields []interface{}, page int64, pageSize int64) (*ResultData, error)
+	FetchWithPage(fields []any, page int64, pageSize int64) (*ResultData, error)
 }
 
 type WriteBuilder interface {
-	Update(set map[string]interface{}, limit ...int) (int64, error)
+	Update(set map[string]any, limit ...int) (int64, error)
 	UpdateRaw(set string, limit ...int) (int64, error)
-	Increment(column string, amount int64, set ...map[string]interface{}) (int64, error)
-	Decrement(column string, amount int64, set ...map[string]interface{}) (int64, error)
+	Increment(column string, amount int64, set ...map[string]any) (int64, error)
+	Decrement(column string, amount int64, set ...map[string]any) (int64, error)
 	Delete(limit ...int) (int64, error)
 }
 
 type InsertBuilder interface {
-	Insert(set map[string]interface{}) (int64, error)
+	Insert(set map[string]any) (int64, error)
 }
 
 type CondBuilder interface {
-	Where(cond ...interface{}) CondBuilder
-	WhereMap(cond map[string]interface{}) CondBuilder
-	WhereRaw(cond string, args ...interface{}) CondBuilder
-	WhereIn(k string, in []interface{}) CondBuilder
-	WhereNotIn(k string, in []interface{}) CondBuilder
+	Where(cond ...any) CondBuilder
+	WhereMap(cond map[string]any) CondBuilder
+	WhereRaw(cond string, args ...any) CondBuilder
+	WhereIn(k string, in []any) CondBuilder
+	WhereNotIn(k string, in []any) CondBuilder
 	ClearCond() CondBuilder
 	GroupBy(k string, ks ...string) CondBuilder
 	OrderBy(k string, direct string) CondBuilder
@@ -52,8 +52,8 @@ type Builder interface {
 type builder struct {
 	handler   *DB
 	table     string
-	cond      []string      // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
-	args      []interface{} // 预处理参数
+	cond      []string // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
+	args      []any    // 预处理参数
 	orderBy   []string
 	groupBy   []string
 	offset    int64
@@ -77,16 +77,16 @@ func newBuilder(handler *DB, table string) *builder {
 // cond map[string]interface{}                map查询条件，同WhereMap
 // field string, value []any                  In查询条件，同WhereIn
 // field string, op string value interface{}  同WhereIn
-func (b *builder) Where(cond ...interface{}) CondBuilder {
+func (b *builder) Where(cond ...any) CondBuilder {
 	switch len(cond) {
 	case 1:
 		switch cond[0].(type) {
 		case string, Raw:
 			// 字符串查询
 			return b.WhereRaw(cond[0].(string))
-		case map[string]interface{}:
+		case map[string]any:
 			// map拼接查询
-			return b.WhereMap(cond[0].(map[string]interface{}))
+			return b.WhereMap(cond[0].(map[string]any))
 		default:
 			b.lastError = ErrInvalidCondArguments
 			return b
@@ -114,7 +114,7 @@ func (b *builder) Where(cond ...interface{}) CondBuilder {
 			break
 		}
 		if strings.ToLower(op) == "in" {
-			val, ok := cond[2].([]interface{})
+			val, ok := cond[2].([]any)
 			if !ok {
 				b.lastError = ErrInvalidCondArguments
 				break
@@ -122,7 +122,7 @@ func (b *builder) Where(cond ...interface{}) CondBuilder {
 			return b.WhereIn(k, val)
 		}
 		if strings.ToLower(op) == "not in" {
-			val, ok := cond[2].([]interface{})
+			val, ok := cond[2].([]any)
 			if !ok {
 				b.lastError = ErrInvalidCondArguments
 				break
@@ -142,7 +142,7 @@ func (b *builder) Where(cond ...interface{}) CondBuilder {
 // key中包含条件运算符时，例如 Map{"key >=": 1}  会拼接为 `k2` >= 'v2'
 // key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like”
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
-func (b *builder) WhereMap(cond map[string]interface{}) CondBuilder {
+func (b *builder) WhereMap(cond map[string]any) CondBuilder {
 	for k, v := range cond {
 		k = strings.TrimSpace(k)
 		if strings.Contains(k, " ") {
@@ -161,7 +161,7 @@ func (b *builder) WhereMap(cond map[string]interface{}) CondBuilder {
 }
 
 // WhereRaw 子句查询
-func (b *builder) WhereRaw(cond string, args ...interface{}) CondBuilder {
+func (b *builder) WhereRaw(cond string, args ...any) CondBuilder {
 	cond = strings.Trim(cond, " ")
 	if cond != "" {
 		b.cond = append(b.cond, cond)
@@ -171,7 +171,7 @@ func (b *builder) WhereRaw(cond string, args ...interface{}) CondBuilder {
 }
 
 // WhereIn IN查询
-func (b *builder) WhereIn(k string, in []interface{}) CondBuilder {
+func (b *builder) WhereIn(k string, in []any) CondBuilder {
 	if len(in) == 0 {
 		b.lastError = ErrEmptyInCond
 		return b
@@ -187,7 +187,7 @@ func (b *builder) WhereIn(k string, in []interface{}) CondBuilder {
 }
 
 // WhereNotIn NOT IN查询
-func (b *builder) WhereNotIn(k string, in []interface{}) CondBuilder {
+func (b *builder) WhereNotIn(k string, in []any) CondBuilder {
 	var arr []string
 	for range in {
 		arr = append(arr, "?")
@@ -202,7 +202,7 @@ func (b *builder) WhereNotIn(k string, in []interface{}) CondBuilder {
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) ClearCond() CondBuilder {
 	b.cond = []string{}
-	b.args = []interface{}{}
+	b.args = []any{}
 	return b
 }
 
@@ -249,7 +249,7 @@ func (b *builder) Limit(limit int64) CondBuilder {
 // 把cond用 AND 连接起来
 // buildCond调用之后会清空当期查询构建器中暂存的条件
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
-func (b *builder) buildCond() (string, []interface{}) {
+func (b *builder) buildCond() (string, []any) {
 	defer b.ClearCond()
 	if len(b.cond) == 0 {
 		return "", nil
@@ -263,9 +263,9 @@ func (b *builder) buildCond() (string, []interface{}) {
 // val map[string]interface{} 将会被展开成 k=? 的形式 多个元素用逗号隔开
 // extra []string 多个元素间用逗号隔开，并追加在 val参数展开的字符串后面
 // 示例：val = {"last_view_time": "12345678", "last_view_user": "li"}; extra = ["view_num=view_num+1"]
-func buildVal(val map[string]interface{}, extra []string) (string, []interface{}) {
+func buildVal(val map[string]any, extra []string) (string, []any) {
 	var items []string
-	var args []interface{}
+	var args []any
 
 	// 使用等号连接map的key和value，并放入数组
 	for k, v := range val {
@@ -309,7 +309,7 @@ func buildK(k string) string {
 }
 
 // buildFields 构造查询fields
-func buildFields(fields []interface{}) (string, error) {
+func buildFields(fields []any) (string, error) {
 	arr := make([]string, len(fields), cap(fields))
 	for i, v := range fields {
 		switch v.(type) {
@@ -325,7 +325,7 @@ func buildFields(fields []interface{}) (string, error) {
 }
 
 // MakeQueryString 拼接查询语句字符串
-func (b *builder) MakeQueryString(fields []interface{}) (string, []interface{}, error) {
+func (b *builder) MakeQueryString(fields []any) (string, []any, error) {
 	defer b.Clear()
 
 	if b.table == "" {
@@ -390,7 +390,7 @@ func (b *builder) Count() (int64, error) {
 		Num int64 `json:"num"`
 	}{}
 
-	_, err := b.FetchRow([]interface{}{Raw("COUNT(*) AS num")}, result)
+	_, err := b.FetchRow([]any{Raw("COUNT(*) AS num")}, result)
 	if err != nil {
 		return 0, err
 	}
@@ -400,7 +400,7 @@ func (b *builder) Count() (int64, error) {
 
 // Fetch 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Fetch(fields []interface{}, result interface{}) (int, error) {
+func (b *builder) Fetch(fields []any, result any) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
@@ -413,7 +413,7 @@ func (b *builder) Fetch(fields []interface{}, result interface{}) (int, error) {
 // FetchWithPage 查询并返回多条记录，且包含分页信息
 // page 第几页，从1开始
 // limit 结果数量
-func (b *builder) FetchWithPage(fields []interface{}, page int64, pageSize int64) (*ResultData, error) {
+func (b *builder) FetchWithPage(fields []any, page int64, pageSize int64) (*ResultData, error) {
 
 	cond, args := b.buildCond()
 	count, err := b.ClearCond().WhereRaw(cond, args...).Count()
@@ -428,7 +428,7 @@ func (b *builder) FetchWithPage(fields []interface{}, page int64, pageSize int64
 
 // FetchRow 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) FetchRow(fields []interface{}, result interface{}) (int, error) {
+func (b *builder) FetchRow(fields []any, result any) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
@@ -442,7 +442,7 @@ func (b *builder) FetchRow(fields []interface{}, result interface{}) (int, error
 // field string 返回的字段 示例："count(*) AS count"
 func (b *builder) FetchOne(field string) (string, error) {
 
-	queryString, args, err := b.MakeQueryString([]interface{}{field})
+	queryString, args, err := b.MakeQueryString([]any{field})
 	if err != nil {
 		return "", err
 	}
@@ -458,7 +458,7 @@ func (b *builder) FetchOne(field string) (string, error) {
 // Insert 单条插入
 // set map[string]interface{} 插入的数据
 // 返回插入的id，错误信息
-func (b *builder) Insert(set map[string]interface{}) (int64, error) {
+func (b *builder) Insert(set map[string]any) (int64, error) {
 	if b.table == "" {
 		return 0, ErrEmptyTableName
 	}
@@ -470,7 +470,7 @@ func (b *builder) Insert(set map[string]interface{}) (int64, error) {
 	// 拼接查询语句
 	var fields []string
 	var values []string
-	var args []interface{}
+	var args []any
 	for name, value := range set {
 		fields = append(fields, buildK(name))
 		values = append(values, "?")
@@ -493,7 +493,7 @@ func (b *builder) Insert(set map[string]interface{}) (int64, error) {
 // set map[string]interface{} 更新的字段
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
-func (b *builder) Update(set map[string]interface{}, limit ...int) (int64, error) {
+func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
@@ -590,7 +590,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 // amount int 自增的数量
 // set map[string]interface{} （可选参数）自增同时update的字段
 // 返回影响的条数，错误信息
-func (b *builder) Increment(column string, amount int64, set ...map[string]interface{}) (int64, error) {
+func (b *builder) Increment(column string, amount int64, set ...map[string]any) (int64, error) {
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
 	if where == "" {
@@ -649,7 +649,7 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]inter
 // amount int 自减的数量
 // set map[string]interface{} （可选参数）自减同时update的字段
 // 返回影响的条数，错误信息
-func (b *builder) Decrement(column string, amount int64, set ...map[string]interface{}) (int64, error) {
+func (b *builder) Decrement(column string, amount int64, set ...map[string]any) (int64, error) {
 	return b.Increment(column, -amount, set...)
 }
 

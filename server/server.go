@@ -15,7 +15,7 @@ type (
 	HTTPErrorHandler func(error, Context)
 
 	// HTTPOKHandler is a centralized HTTP ok handler.
-	HTTPOKHandler func(interface{}, Context) error
+	HTTPOKHandler func(any, Context) error
 
 	// MiddlewareFunc defines a function to process middleware.
 	MiddlewareFunc func(HandlerFunc) HandlerFunc
@@ -24,7 +24,7 @@ type (
 	HandlerFunc func(Context) error
 
 	// Map defines a generic map of type `map[string]interface{}`.
-	Map map[string]interface{}
+	Map map[string]any
 )
 
 // Server is the top-level framework instance.
@@ -72,7 +72,7 @@ func New() (s *Server) {
 	s.Http.Handler = s
 	s.HTTPOKHandler = s.DefaultHTTPOKHandler
 	s.HTTPErrorHandler = s.DefaultHTTPErrorHandler
-	s.pool.New = func() interface{} {
+	s.pool.New = func() any {
 		return s.NewContext(nil, nil)
 	}
 	s.router = NewRouter(s)
@@ -140,7 +140,7 @@ func (s *Server) DefaultHTTPErrorHandler(err error, c Context) {
 
 // DefaultHTTPOKHandler is the default HTTP ok handler. It sends a JSON response
 // with status code.
-func (s *Server) DefaultHTTPOKHandler(data interface{}, c Context) error {
+func (s *Server) DefaultHTTPOKHandler(data any, c Context) error {
 
 	message := Map{"errno": 0, "data": data}
 
@@ -202,14 +202,15 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer s.pool.Put(c)
 	c.reset(r, w)
 
-	s.router.Find(r.Method, r.URL.EscapedPath(), c)
-
-	var ctx Context = c
+	ctx := Context(c)
 
 	h := func(c Context) error {
-		ctx = c
+		// premiddleware 在路由查找之前加载
+		// 可以在premiddleware中处理url路径等参数以改变路由查找的行为
+		s.router.Find(r.Method, r.URL.EscapedPath(), ctx.(*context))
 		h := c.Handler()
 		h = applyMiddleware(h, s.middleware...)
+		ctx = c
 		return h(c)
 	}
 	h = applyMiddleware(h, s.premiddleware...)

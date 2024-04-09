@@ -39,5 +39,5 @@ func (cl *consoleLogWriter) Flush() error {
 
 func init() {
 	// 注册适配器
-	registry.add("console", adapterFunc(newConsoleLogWriter))
+	registry.Add("console", newConsoleLogWriter)
 }

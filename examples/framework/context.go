@@ -14,7 +14,7 @@ type Context interface {
 	RequestID() uint64
 	UID() uint64
 	RealIP() string
-	Succ(interface{}) error
+	Succ(any) error
 }
 
 type context struct {
@@ -66,7 +66,7 @@ func (c *context) RealIP() string {
 }
 
 // Succ 返回成功
-func (c *context) Succ(data interface{}) error {
+func (c *context) Succ(data any) error {
 	result := server.Map{
 		"code":  200,
 		"errno": 0,

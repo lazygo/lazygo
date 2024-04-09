@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sync"
 
-	goredis "github.com/go-redis/redis/v8"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 type Config struct {

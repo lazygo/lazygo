@@ -42,7 +42,7 @@ type (
 		// GetRoutePath route info
 		GetRoutePath() string
 
-		Bind(interface{}) error
+		Bind(any) error
 
 		// Param returns path parameter by name.
 		Param(name string) string
@@ -68,7 +68,7 @@ type (
 		MultipartForm() (*multipart.Form, error)
 
 		// WithValue 存入数据到当前请求的context
-		WithValue(key string, val interface{})
+		WithValue(key string, val any)
 
 		// SetResponseHeader 设置响应头
 		SetResponseHeader(headerOptions map[string]string) *context
@@ -77,7 +77,7 @@ type (
 		GetRequestHeader(name string) string
 
 		// JSON sends a JSON response with status code.
-		JSON(code int, i interface{}) error
+		JSON(code int, i any) error
 		// Blob sends a blob response with status code and content type.
 		Blob(code int, contentType string, b []byte) error
 
@@ -165,7 +165,7 @@ func (c *context) GetRoutePath() string {
 	return c.path
 }
 
-func (c *context) Bind(v interface{}) error {
+func (c *context) Bind(v any) error {
 	// result pointer value
 	rpv := reflect.ValueOf(v)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
@@ -206,7 +206,7 @@ func (c *context) Bind(v interface{}) error {
 			}
 
 			binds := strings.Split(tField.Tag.Get("bind"), ",")
-			var val interface{}
+			var val any
 			for _, bind := range binds {
 				switch bind {
 				case "ctx", "value":
@@ -363,7 +363,7 @@ func (c *context) MultipartForm() (*multipart.Form, error) {
 	return c.request.MultipartForm, err
 }
 
-func (c *context) WithValue(key string, val interface{}) {
+func (c *context) WithValue(key string, val any) {
 	c.lock.Lock()
 	defer c.lock.Unlock()
 
@@ -392,7 +392,7 @@ func (c *context) GetRequestHeader(name string) string {
 	return c.request.Header.Get(name)
 }
 
-func (c *context) JSON(code int, i interface{}) error {
+func (c *context) JSON(code int, i any) error {
 	enc := json.NewEncoder(c.responseWriter)
 	c.writeContentType(MIMEApplicationJSONCharsetUTF8)
 	c.responseWriter.Status = code
@@ -501,7 +501,7 @@ func (c *context) Err() error {
 // Value returns the value associated with this context for key, or nil
 // if no value is associated with key. Successive calls to Value with
 // the same key returns the same result.
-func (c *context) Value(key interface{}) interface{} {
+func (c *context) Value(key any) any {
 	if keyAsString, ok := key.(string); ok {
 		c.lock.RLock()
 		val, ok := c.store[keyAsString]
@@ -530,7 +530,7 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	}
 }
 
-func toType(val interface{}, rType reflect.Type, procList []string) (interface{}, bool) {
+func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 	typeName := rType.String()
 	typeKind := rType.Kind()
 

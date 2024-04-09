@@ -8,8 +8,8 @@ import (
 	"time"
 	"unsafe"
 
-	goredis "github.com/go-redis/redis/v8"
 	"github.com/lazygo/lazygo/redis"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 // redis适配器
@@ -80,6 +80,7 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 	for {
 		select {
 		case <-ctx.Done():
+			_ = handleRelease()
 			return nil, ctx.Err()
 		case <-timer.C:
 			timer.Reset(50 * time.Millisecond)
@@ -129,7 +130,7 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	return releaseFunc(handleRelease), true, nil
 }
 
-func (r *redisAdapter) LockFunc(ctx context.Context, ttl uint64, f func() interface{}) (result interface{}, err error) {
+func (r *redisAdapter) LockFunc(ctx context.Context, ttl uint64, f func() any) (result any, err error) {
 	resource := runtime.FuncForPC(**(**uintptr)(unsafe.Pointer(&f))).Name()
 	lock, err := r.Lock(ctx, resource, ttl)
 	if err != nil {
@@ -144,5 +145,5 @@ func (r *redisAdapter) LockFunc(ctx context.Context, ttl uint64, f func() interf
 
 func init() {
 	// 注册适配器
-	registry.add("redis", adapterFunc(newRedisLocker))
+	registry.Add("redis", newRedisLocker)
 }

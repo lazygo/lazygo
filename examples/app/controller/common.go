@@ -21,7 +21,7 @@ type CommonController struct {
 	Ctx framework.Context
 }
 
-func (s *CommonController) Upload(req *request.ToolsUploadRequest) (*request.ToolsUploadResponse, error) {
+func (s *CommonController) Upload(req *request.ToolsUploadRequest) (any, error) {
 	uid := s.Ctx.UID()
 	filename := fmt.Sprintf("%d%d", uid, time.Now().UnixNano()/1000) + path.Ext(req.Image.FileHeader.Filename)
 
@@ -35,7 +35,7 @@ func (s *CommonController) Upload(req *request.ToolsUploadRequest) (*request.Too
 	}
 	uri := dir + filename
 
-	data := map[string]interface{}{
+	data := map[string]any{
 		"uid":         uid,
 		"uri":         uri,
 		"name":        filename,

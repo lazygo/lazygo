@@ -35,7 +35,7 @@ type Config struct {
 }
 
 // Load 加载一段配置
-func (c *Config) Load(field string, f interface{}) error {
+func (c *Config) Load(field string, f any) error {
 	rf := reflect.ValueOf(f)
 	tf := rf.Type()
 	if tf.NumIn() != 1 {

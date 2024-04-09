@@ -15,21 +15,21 @@ type DB struct {
 
 // ResultData 分页返回数据 - 返回结果定义
 type ResultData struct {
-	List      []map[string]interface{} `json:"list"`
-	Count     int64                    `json:"count"`
-	PageSize  int64                    `json:"page_size"`
-	Page      int64                    `json:"page"`
-	PageCount int64                    `json:"page_count"`
-	Start     int64                    `json:"start"`
-	Mark      int64                    `json:"mark"`
+	List      []map[string]any `json:"list"`
+	Count     int64            `json:"count"`
+	PageSize  int64            `json:"page_size"`
+	Page      int64            `json:"page"`
+	PageCount int64            `json:"page_count"`
+	Start     int64            `json:"start"`
+	Mark      int64            `json:"mark"`
 }
 
 // ToMap 分页结果集转化为map
-func (r *ResultData) ToMap() map[string]interface{} {
+func (r *ResultData) ToMap() map[string]any {
 	if r == nil {
-		return map[string]interface{}{}
+		return map[string]any{}
 	}
-	return map[string]interface{}{
+	return map[string]any{
 		"list":       r.List,
 		"count":      r.Count,
 		"page_size":  r.PageSize,
@@ -60,7 +60,7 @@ func (d *DB) TableRaw(table string) *builder {
 }
 
 // Query 查询sql并返回结果集
-func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
+func (d *DB) Query(query string, args ...any) (*sql.Rows, error) {
 	// start := time.Now()
 	// defer func() {
 	// 	// 计算查询执行时间，记录慢查询
@@ -73,12 +73,12 @@ func (d *DB) Query(query string, args ...interface{}) (*sql.Rows, error) {
 }
 
 // Exec 执行sql
-func (d *DB) Exec(query string, args ...interface{}) (sql.Result, error) {
+func (d *DB) Exec(query string, args ...any) (sql.Result, error) {
 	return d.DB.Exec(query, args...)
 }
 
 // GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(result interface{}, query string, args ...interface{}) (int, error) {
+func (d *DB) GetAll(result any, query string, args ...any) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return 0, err
@@ -90,7 +90,7 @@ func (d *DB) GetAll(result interface{}, query string, args ...interface{}) (int,
 }
 
 // GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(result interface{}, query string, args ...interface{}) (int, error) {
+func (d *DB) GetRow(result any, query string, args ...any) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return 0, err

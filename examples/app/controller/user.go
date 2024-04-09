@@ -18,12 +18,12 @@ type UserController struct {
 }
 
 // Register 注册
-func (ctl *UserController) Register(req *request.RegisterRequest) (*request.TokenResponse, error) {
+func (ctl *UserController) Register(req *request.RegisterRequest) (any, error) {
 
 	// fetch user
 	mdlUser := dbModel.NewUserModel()
 
-	user := map[string]interface{}{}
+	user := map[string]any{}
 	if req.Type == utils.TypeEmail {
 		user["email"] = req.Username
 	}
@@ -64,7 +64,7 @@ func (ctl *UserController) Register(req *request.RegisterRequest) (*request.Toke
 }
 
 // Login 登录
-func (ctl *UserController) Login(req *request.LoginRequest) (*request.TokenResponse, error) {
+func (ctl *UserController) Login(req *request.LoginRequest) (any, error) {
 
 	_, code, err := ctl.login(req)
 	if err != nil {
@@ -81,9 +81,9 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 
 	// fetch user
 	mdlUser := dbModel.NewUserModel()
-	fields := []interface{}{"uid", "password"}
+	fields := []any{"uid", "password"}
 
-	cond := map[string]interface{}{}
+	cond := map[string]any{}
 	if req.Type == utils.TypeEmail {
 		cond["email"] = req.Username
 	}
@@ -120,7 +120,7 @@ func (ctl *UserController) Profile(req *request.LogoutRequest) error {
 	return nil
 }
 
-func (ctl *UserController) Logout(req *request.LogoutRequest) (*request.LogoutResponse, error) {
+func (ctl *UserController) Logout(req *request.LogoutRequest) (any, error) {
 	err := cacheModel.NewAuthUserCache().Forget(req.Authorization)
 	if err != nil {
 		ctl.Ctx.Logger().Warn("[msg: delete token fail] [err: %v]", err)

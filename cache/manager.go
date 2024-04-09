@@ -2,6 +2,8 @@ package cache
 
 import (
 	"sync"
+
+	"github.com/lazygo/lazygo/internal"
 )
 
 type Config struct {
@@ -11,9 +13,9 @@ type Config struct {
 }
 
 type Cache interface {
-	Remember(key string, value func() (interface{}, error), ttl int64, ret interface{}) (bool, error)
-	Get(key string, ret interface{}) (bool, error)
-	Set(key string, value interface{}, ttl int64) error
+	Remember(key string, value func() (any, error), ttl int64, ret any) (bool, error)
+	Get(key string, ret any) (bool, error)
+	Set(key string, value any, ttl int64) error
 	Has(key string) (bool, error)
 	Forget(key string) error
 }
@@ -23,6 +25,8 @@ type Manager struct {
 	defaultName string
 }
 
+var registry = internal.Register[Cache]{}
+
 var manager = &Manager{}
 
 // init 初始化数据库连接
@@ -31,11 +35,11 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 		if _, ok := m.Load(item.Name); ok {
 			continue
 		}
-		a, err := registry.get(item.Adapter)
+		a, err := registry.Get(item.Adapter)
 		if err != nil {
 			return err
 		}
-		cache, err := a.init(item.Option)
+		cache, err := a.Init(item.Option)
 		if err != nil {
 			return err
 		}
@@ -64,7 +68,7 @@ func Instance(name string) (Cache, error) {
 	return a.(Cache), nil
 }
 
-func Remember(key string, value func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
+func Remember(key string, value func() (any, error), ttl int64, ret any) (bool, error) {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return false, err
@@ -72,7 +76,7 @@ func Remember(key string, value func() (interface{}, error), ttl int64, ret inte
 	return cache.Remember(key, value, ttl, ret)
 }
 
-func Get(key string, ret interface{}) (bool, error) {
+func Get(key string, ret any) (bool, error) {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return false, err
@@ -80,7 +84,7 @@ func Get(key string, ret interface{}) (bool, error) {
 	return cache.Get(key, ret)
 }
 
-func Set(key string, value interface{}, ttl int64) error {
+func Set(key string, value any, ttl int64) error {
 	cache, err := Instance(manager.defaultName)
 	if err != nil {
 		return err

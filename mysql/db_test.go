@@ -85,7 +85,7 @@ func TestDb(t *testing.T) {
 	assert.True(ok)
 
 	// Test Insert
-	data := map[string]interface{}{
+	data := map[string]any{
 		"uid":   1001,
 		"name":  "测试",
 		"ctime": now,
@@ -97,7 +97,7 @@ func TestDb(t *testing.T) {
 
 	// Test FetchRowIn
 	user := &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]interface{}{"uid", "name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"uid", "name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -106,7 +106,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(user.Ctime, now)
 
 	// Test Update
-	set := map[string]interface{}{
+	set := map[string]any{
 		"name": "goodcoder",
 	}
 	n, err := db.Table(tableName).Where("uid", "=", user.Uid).Update(set)
@@ -138,7 +138,7 @@ func TestDb(t *testing.T) {
 	assert.NotNil(err)
 
 	// Test Increment
-	set = map[string]interface{}{
+	set = map[string]any{
 		"name": "小明",
 	}
 	n, err = db.Table(tableName).Where("id", id).Increment("ctime", 1, set)
@@ -147,7 +147,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]interface{}{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -155,7 +155,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(user.Ctime, now+1)
 
 	// Test Decrement
-	set = map[string]interface{}{
+	set = map[string]any{
 		"name": "goodcoder",
 	}
 	n, err = db.Table(tableName).Where("id", id).Decrement("ctime", 1, set)
@@ -164,7 +164,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]interface{}{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -179,7 +179,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(name, "goodcoder")
 
 	// Test FetchAll
-	data = map[string]interface{}{
+	data = map[string]any{
 		"uid":   1002,
 		"name":  "测试2号",
 		"ctime": now,
@@ -190,7 +190,7 @@ func TestDb(t *testing.T) {
 	}
 
 	var listSS []UserInfo
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]interface{}{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name"}, &listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -203,15 +203,15 @@ func TestDb(t *testing.T) {
 		assert.Equal(listSS[1].Uid, uint64(1002))
 		assert.Equal(listSS[1].Name, "测试2号")
 	}
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]interface{}{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name"}, &listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
 	assert.Equal(len(listSS), 2)
 
 	// Fetch Map
-	var userMap []map[string]interface{}
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]interface{}{"uid", "name", "ctime"}, &userMap)
+	var userMap []map[string]any
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name", "ctime"}, &userMap)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -226,7 +226,7 @@ func TestDb(t *testing.T) {
 	}
 
 	// Test FetchWithPage
-	data = map[string]interface{}{
+	data = map[string]any{
 		"uid":   1003,
 		"name":  "测试3号",
 		"ctime": now,
@@ -235,7 +235,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
-	dataList, err := db.Table(tableName).Where("id", ">", 0).FetchWithPage([]interface{}{"uid", "name"}, 1, 2)
+	dataList, err := db.Table(tableName).Where("id", ">", 0).FetchWithPage([]any{"uid", "name"}, 1, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -247,10 +247,10 @@ func TestDb(t *testing.T) {
 	in := []int{
 		1001, 1002, 1003,
 	}
-	cond := map[string]interface{}{
+	cond := map[string]any{
 		"uid": in,
 	}
-	dataList, err = db.Table(tableName).Where(cond).FetchWithPage([]interface{}{"uid", "name"}, 2, 2)
+	dataList, err = db.Table(tableName).Where(cond).FetchWithPage([]any{"uid", "name"}, 2, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -262,7 +262,7 @@ func TestDb(t *testing.T) {
 
 	dataMap := dataList.ToMap()
 	assert.Equal(dataMap["count"], int64(3))
-	lst, ok := dataMap["list"].([]map[string]interface{})
+	lst, ok := dataMap["list"].([]map[string]any)
 	assert.True(ok)
 	assert.Equal(len(lst), 1)
 	if len(lst) >= 1 {
@@ -270,7 +270,7 @@ func TestDb(t *testing.T) {
 	}
 
 	// Test Delete
-	cond = map[string]interface{}{
+	cond = map[string]any{
 		"id": id,
 	}
 	n, err = db.Table(tableName).Where(cond).Delete()
@@ -279,8 +279,8 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 
-	result := []map[string]interface{}{}
-	_, err = db.Table(tableName).Where("id", id).Fetch([]interface{}{"uid", "name"}, &result)
+	result := []map[string]any{}
+	_, err = db.Table(tableName).Where("id", id).Fetch([]any{"uid", "name"}, &result)
 	if err != nil {
 		assert.Nil(err, ErrInvalidResultPtr)
 	}
@@ -291,11 +291,11 @@ func TestDb(t *testing.T) {
 	assert.Equal(prefix, conf[0].Prefix)
 
 	// test error
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]interface{}{1, "name"}, &result)
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{1, "name"}, &result)
 	assert.Equal(err, ErrInvalidColumnsArguments)
 
 	// test error
-	n, err = db.Table(tableName).Update(map[string]interface{}{"name1": 1})
+	n, err = db.Table(tableName).Update(map[string]any{"name1": 1})
 	assert.Equal(err, ErrEmptyCond)
 	assert.Equal(n, int64(0))
 
@@ -303,7 +303,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(err, ErrEmptyCond)
 	assert.Equal(n, int64(0))
 
-	n, err = db.Table(tableName).Where("1=1").Update(map[string]interface{}{})
+	n, err = db.Table(tableName).Where("1=1").Update(map[string]any{})
 	assert.Equal(err, ErrEmptyValue)
 	assert.Equal(n, int64(0))
 
@@ -315,7 +315,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(err, ErrInvalidCondArguments)
 	assert.Equal(n, int64(0))
 
-	n, err = db.Table(tableName).Insert(map[string]interface{}{})
+	n, err = db.Table(tableName).Insert(map[string]any{})
 	assert.Equal(err, ErrEmptyValue)
 	assert.Equal(n, int64(0))
 
@@ -331,20 +331,20 @@ func TestDb(t *testing.T) {
 	assert.Equal(err, nil)
 	assert.Equal(x, "2")
 
-	n, err = db.Table(tableName).Where("1, 2, 3").Increment("132", 12, map[string]interface{}{}, map[string]interface{}{})
+	n, err = db.Table(tableName).Where("1, 2, 3").Increment("132", 12, map[string]any{}, map[string]any{})
 	assert.Equal(err, ErrInvalidArguments)
 	assert.Equal(n, int64(0))
 
 	resErrType := 0
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]interface{}{"id", "name"}, &resErrType)
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{"id", "name"}, &resErrType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
-	var resNilType map[string]interface{}
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]interface{}{"id", "name"}, &resNilType)
+	var resNilType map[string]any
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{"id", "name"}, &resNilType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 	var resErrType2 []map[string]int
-	_, err = db.Table(tableName).Where("id", ">", id).Fetch([]interface{}{"id", "name"}, &resErrType2)
+	_, err = db.Table(tableName).Where("id", ">", id).Fetch([]any{"id", "name"}, &resErrType2)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 }
@@ -359,7 +359,7 @@ func CheckTable(db *DB, table string) (bool, error) {
 		return false, err
 	}
 	defer rows.Close()
-	result := []map[string]interface{}{}
+	result := []map[string]any{}
 	_, err = parseData(rows, &result)
 	if err != nil {
 		return false, err

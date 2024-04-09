@@ -6,7 +6,7 @@ import (
 
 type HandlerFunc func(Context) error
 type HTTPErrorHandler func(error, Context)
-type HTTPOKHandler func(interface{}, Context) error
+type HTTPOKHandler func(any, Context) error
 
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
@@ -26,7 +26,7 @@ func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 
 // BaseHTTPOKHandler 返回失败
 func BaseHTTPOKHandler(h HTTPOKHandler) server.HTTPOKHandler {
-	return func(data interface{}, c server.Context) error {
+	return func(data any, c server.Context) error {
 		cc := c.(Context)
 		return h(data, cc)
 	}

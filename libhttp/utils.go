@@ -15,7 +15,7 @@ func checkError(err error) {
 	}
 }
 
-func toString(value interface{}) string {
+func toString(value any) string {
 	var str string
 	switch value.(type) {
 	case string:

@@ -9,7 +9,7 @@ import (
 // ToString 转换为字符串
 // 如果value不能转换为字符串，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为空字符串""
-func ToString(value interface{}, defVal ...string) string {
+func ToString(value any, defVal ...string) string {
 	var str string
 	switch value.(type) {
 	case string:
@@ -38,7 +38,7 @@ func ToString(value interface{}, defVal ...string) string {
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
-func ToInt64(value interface{}, defVal ...int64) int64 {
+func ToInt64(value any, defVal ...int64) int64 {
 	val := reflect.ValueOf(value)
 	var d int64
 	var err error
@@ -69,7 +69,7 @@ func ToInt64(value interface{}, defVal ...int64) int64 {
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
-func ToUint64(value interface{}, defVal ...uint64) uint64 {
+func ToUint64(value any, defVal ...uint64) uint64 {
 	val := reflect.ValueOf(value)
 	var d uint64
 	var err error
@@ -100,7 +100,7 @@ func ToUint64(value interface{}, defVal ...uint64) uint64 {
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
-func ToInt(value interface{}, defVal ...int) int {
+func ToInt(value any, defVal ...int) int {
 	val := reflect.ValueOf(value)
 	var d int
 	var err error
@@ -132,7 +132,7 @@ func ToInt(value interface{}, defVal ...int) int {
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
-func ToUint(value interface{}, defVal ...uint) uint {
+func ToUint(value any, defVal ...uint) uint {
 	val := reflect.ValueOf(value)
 	var d uint
 	var err error
@@ -168,7 +168,7 @@ func ToUint(value interface{}, defVal ...uint) uint {
 // value 可以是数字、数字字符串
 // 如果value不能转换为数字，则返回默认值defVal
 // defVal 提供默认值，如果没有，则视为0
-func ToFloat(value interface{}, defVal ...float64) float64 {
+func ToFloat(value any, defVal ...float64) float64 {
 	val := reflect.ValueOf(value)
 	var d float64
 	var err error

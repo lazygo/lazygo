@@ -389,5 +389,5 @@ func (fl *fileLogWriter) deleteOldLog() {
 
 func init() {
 	// 注册适配器
-	registry.add("file", adapterFunc(newFileLogWriter))
+	registry.Add("file", newFileLogWriter)
 }

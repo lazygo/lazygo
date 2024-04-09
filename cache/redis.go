@@ -9,7 +9,7 @@ import (
 
 	"github.com/lazygo/lazygo/redis"
 
-	goredis "github.com/go-redis/redis/v8"
+	goredis "github.com/redis/go-redis/v9"
 )
 
 type redisCache struct {
@@ -37,7 +37,7 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 }
 
 // Remember 获取缓存，如果没有命中缓存则使用fn实时获取
-func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
+func (r *redisCache) Remember(key string, fn func() (any, error), ttl int64, ret any) (bool, error) {
 	key = r.prefix + key
 	item, err := r.handler.Get(context.Background(), key).Bytes()
 	if err == nil {
@@ -68,7 +68,7 @@ func (r *redisCache) Remember(key string, fn func() (interface{}, error), ttl in
 	return false, err
 }
 
-func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
+func (r *redisCache) Set(key string, val any, ttl int64) error {
 	key = r.prefix + key
 	value, err := json.Marshal(val)
 	if err != nil {
@@ -81,7 +81,7 @@ func (r *redisCache) Set(key string, val interface{}, ttl int64) error {
 	return nil
 }
 
-func (r *redisCache) Get(key string, ret interface{}) (bool, error) {
+func (r *redisCache) Get(key string, ret any) (bool, error) {
 	key = r.prefix + key
 	item, err := r.handler.Get(context.Background(), key).Bytes()
 	if err == nil {
@@ -110,5 +110,5 @@ func (r *redisCache) Forget(key string) error {
 }
 
 func init() {
-	registry.add("redis", adapterFunc(newRedisCache))
+	registry.Add("redis", newRedisCache)
 }

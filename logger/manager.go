@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"sync"
 	"time"
+
+	"github.com/lazygo/lazygo/internal"
 )
 
 // RFC5424 log message levels.
@@ -41,6 +43,8 @@ type Config struct {
 	Option    map[string]string `json:"option" toml:"option"`
 }
 
+var registry = internal.Register[logWriter]{}
+
 type logWriter interface {
 	Write([]byte, time.Time, string) (int, error)
 	Close() error
@@ -50,43 +54,43 @@ type logWriter interface {
 type Writer interface {
 	io.WriteCloser
 
-	Println(v ...interface{})
+	Println(v ...any)
 
 	// Emergency Log EMERGENCY level message.
-	Emergency(v ...interface{})
+	Emergency(v ...any)
 
 	// Alert Log ALERT level message.
-	Alert(v ...interface{})
+	Alert(v ...any)
 
 	// Critical Log CRITICAL level message.
-	Critical(v ...interface{})
+	Critical(v ...any)
 
 	// Error Log ERROR level message.
-	Error(v ...interface{})
+	Error(v ...any)
 
 	// Warning Log WARNING level message.
-	Warning(v ...interface{})
+	Warning(v ...any)
 
 	// Notice Log NOTICE level message.
-	Notice(v ...interface{})
+	Notice(v ...any)
 
 	// Informational Log INFORMATIONAL level message.
-	Informational(v ...interface{})
+	Informational(v ...any)
 
 	// Debug Log DEBUG level message.
-	Debug(v ...interface{})
+	Debug(v ...any)
 
 	// Warn Log WARN level message.
 	// compatibility alias for Warning()
-	Warn(v ...interface{})
+	Warn(v ...any)
 
 	// Info Log INFO level message.
 	// compatibility alias for Informational()
-	Info(v ...interface{})
+	Info(v ...any)
 
 	// Trace Log TRACE level message.
 	// compatibility alias for Debug()
-	Trace(v ...interface{})
+	Trace(v ...any)
 }
 
 type writer struct {
@@ -144,12 +148,12 @@ func (w *writer) Close() error {
 	return w.lw.Close()
 }
 
-func (w *writer) Println(v ...interface{}) {
+func (w *writer) Println(v ...any) {
 	w.write(str2bytes(fmt.Sprintln(v...)), "[info]", w.callDepth+1)
 }
 
 // Emergency Log EMERGENCY level message.
-func (w *writer) Emergency(v ...interface{}) {
+func (w *writer) Emergency(v ...any) {
 	if LevelEmergency > w.level {
 		return
 	}
@@ -158,7 +162,7 @@ func (w *writer) Emergency(v ...interface{}) {
 }
 
 // Alert Log ALERT level message.
-func (w *writer) Alert(v ...interface{}) {
+func (w *writer) Alert(v ...any) {
 	if LevelAlert > w.level {
 		return
 	}
@@ -167,7 +171,7 @@ func (w *writer) Alert(v ...interface{}) {
 }
 
 // Critical Log CRITICAL level message.
-func (w *writer) Critical(v ...interface{}) {
+func (w *writer) Critical(v ...any) {
 	if LevelCritical > w.level {
 		return
 	}
@@ -176,7 +180,7 @@ func (w *writer) Critical(v ...interface{}) {
 }
 
 // Error Log ERROR level message.
-func (w *writer) Error(v ...interface{}) {
+func (w *writer) Error(v ...any) {
 	if LevelError > w.level {
 		return
 	}
@@ -185,7 +189,7 @@ func (w *writer) Error(v ...interface{}) {
 }
 
 // Warning Log WARNING level message.
-func (w *writer) Warning(v ...interface{}) {
+func (w *writer) Warning(v ...any) {
 	if LevelWarn > w.level {
 		return
 	}
@@ -194,7 +198,7 @@ func (w *writer) Warning(v ...interface{}) {
 }
 
 // Notice Log NOTICE level message.
-func (w *writer) Notice(v ...interface{}) {
+func (w *writer) Notice(v ...any) {
 	if LevelNotice > w.level {
 		return
 	}
@@ -203,7 +207,7 @@ func (w *writer) Notice(v ...interface{}) {
 }
 
 // Informational Log INFORMATIONAL level message.
-func (w *writer) Informational(v ...interface{}) {
+func (w *writer) Informational(v ...any) {
 	if LevelInfo > w.level {
 		return
 	}
@@ -212,7 +216,7 @@ func (w *writer) Informational(v ...interface{}) {
 }
 
 // Debug Log DEBUG level message.
-func (w *writer) Debug(v ...interface{}) {
+func (w *writer) Debug(v ...any) {
 	if LevelDebug > w.level {
 		return
 	}
@@ -222,7 +226,7 @@ func (w *writer) Debug(v ...interface{}) {
 
 // Warn Log WARN level message.
 // compatibility alias for Warning()
-func (w *writer) Warn(v ...interface{}) {
+func (w *writer) Warn(v ...any) {
 	if LevelWarn > w.level {
 		return
 	}
@@ -232,7 +236,7 @@ func (w *writer) Warn(v ...interface{}) {
 
 // Info Log INFO level message.
 // compatibility alias for Informational()
-func (w *writer) Info(v ...interface{}) {
+func (w *writer) Info(v ...any) {
 	if LevelInfo > w.level {
 		return
 	}
@@ -242,7 +246,7 @@ func (w *writer) Info(v ...interface{}) {
 
 // Trace Log TRACE level message.
 // compatibility alias for Debug()
-func (w *writer) Trace(v ...interface{}) {
+func (w *writer) Trace(v ...any) {
 	if LevelDebug > w.level {
 		return
 	}
@@ -264,11 +268,11 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 			continue
 		}
 
-		a, err := registry.get(item.Adapter)
+		a, err := registry.Get(item.Adapter)
 		if err != nil {
 			return err
 		}
-		lw, err := a.init(item.Option)
+		lw, err := a.Init(item.Option)
 		if err != nil {
 			return err
 		}

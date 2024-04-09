@@ -33,7 +33,7 @@ func newMcCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
-func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl int64, ret interface{}) (bool, error) {
+func (m *mcCache) Remember(key string, fn func() (any, error), ttl int64, ret any) (bool, error) {
 	key = m.prefix + key
 	item, err := m.handler.Conn().Get(key)
 	if err == nil {
@@ -63,7 +63,7 @@ func (m *mcCache) Remember(key string, fn func() (interface{}, error), ttl int64
 	return false, err
 }
 
-func (m *mcCache) Set(key string, val interface{}, ttl int64) error {
+func (m *mcCache) Set(key string, val any, ttl int64) error {
 	key = m.prefix + key
 	value, err := json.Marshal(val)
 	if err != nil {
@@ -76,7 +76,7 @@ func (m *mcCache) Set(key string, val interface{}, ttl int64) error {
 	return nil
 }
 
-func (m *mcCache) Get(key string, ret interface{}) (bool, error) {
+func (m *mcCache) Get(key string, ret any) (bool, error) {
 	key = m.prefix + key
 	item, err := m.handler.Conn().Get(key)
 	if err == nil {
@@ -107,5 +107,5 @@ func (m *mcCache) Forget(key string) error {
 }
 
 func init() {
-	registry.add("memcache", adapterFunc(newMcCache))
+	registry.Add("memcache", newMcCache)
 }
