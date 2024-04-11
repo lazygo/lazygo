@@ -5,6 +5,10 @@ lazygo框架
 
 ## 快速开始
 
+
+### 初始化lazygo项目
+
+方案一：
 ```
 
 # 安装lazygo
@@ -22,7 +26,7 @@ make build
 
 ```
 
-或
+方案二：
 
 ```
 
@@ -45,7 +49,9 @@ make build
 ```
 
 
-项目文件目录结构
+### 项目文件目录结构说明
+
+项目初始化后，将会自动创建下列文件目录结构。
 
 ```
 .
@@ -93,20 +99,21 @@ make build
 
 ## 配置
 
+项目的配置加载相关代码在`config/config.go`中，可根据实际使用情况修改此文件内容。
+
 lazygo 默认支持toml和json两种格式的配置。
 
 ```
 // 加载toml格式的配置
-Toml(data []byte) (*Config, error)
+loader := config.Toml(data []byte) (*Config, error)
 // 加载json格式的配置
-Json(data []byte) (*Config, error)
-
-// 将配置信息中的field配置段解析到回调函数f的第一个参数中
-// 因此需要确保提供的配置内容与回调函数的第一个参数的数据字段相匹配
-func (c *Config) Register(field string, f interface{}) error
+loader := config.Json(data []byte) (*Config, error)
 ```
 
-项目的配置加载相关代码在`config/config.go`中，可根据实际使用情况修改此文件内容。
+可以调用func (c *Config) Load(field string f any) 方法，将配置信息中的field配置段解析到回调函数f的第一个参数中。
+其中回调函数f的定义需符合 func(*CustomStruct) error 或 func([]CustomStruct) error 的形式。 注意需要确保提供的配置内容与回调函数参数结构体类型CustomStruct的数据字段相匹配。如果加载的是json类型的配置，则需要在CustomStruct结构体字段中提供json注解，同理toml格式配置需要提供toml注解。
+以下代码为解析配置redis配置段到RedisConfig结构体的示例。
+```
 
 示例：加载json配置
 ```
@@ -114,7 +121,7 @@ import (
     "github.com/lazygo/lazygo/config"
 )
 
-
+// RedisConfig 可同时增加json和toml注解，便于更换配置文件格式。
 type RedisConfig struct {
 	Name     string `json:"name" toml:"name"`
 	Host     string `json:"host" toml:"host"`
@@ -145,6 +152,9 @@ func LoadJsonConfig() {
                 "db": 0
             }
         ],
+	"redis": {
+             "foo": "bar"
+	}
     }
     `
 
@@ -155,7 +165,7 @@ func LoadJsonConfig() {
 	}
 
 	// 注册redis配置
-	err = jsonLoader.Register("redis", func(conf []RedisConfig) error {
+	err = jsonLoader.Load("redis", func(conf []RedisConfig) error {
 		fmt.Pringln(conf)
 	})
 	if err != nil {
