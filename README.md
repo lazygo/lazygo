@@ -113,7 +113,6 @@ loader := config.Json(data []byte) (*Config, error)
 可以调用func (c *Config) Load(field string f any) 方法，将配置信息中的field配置段解析到回调函数f的第一个参数中。
 其中回调函数f的定义需符合 func(*CustomStruct) error 或 func([]CustomStruct) error 的形式。 注意需要确保提供的配置内容与回调函数参数结构体类型CustomStruct的数据字段相匹配。如果加载的是json类型的配置，则需要在CustomStruct结构体字段中提供json注解，同理toml格式配置需要提供toml注解。
 以下代码为解析配置redis配置段到RedisConfig结构体的示例。
-```
 
 示例：加载json配置
 ```
