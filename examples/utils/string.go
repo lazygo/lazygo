@@ -16,15 +16,6 @@ func CutRune(str string, n int) string {
 	return string(r)
 }
 
-func InSlice(haystack []string, needle string) bool {
-	for _, e := range haystack {
-		if e == needle {
-			return true
-		}
-	}
-	return false
-}
-
 const letters = "0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 var src = rand.NewSource(time.Now().UnixNano())

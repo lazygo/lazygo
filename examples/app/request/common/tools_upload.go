@@ -2,6 +2,7 @@ package request
 
 import (
 	"path"
+	"slices"
 
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
@@ -20,7 +21,7 @@ type ToolsUploadResponse struct {
 
 func (r *ToolsUploadRequest) Verify() error {
 
-	if utils.InSlice(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
+	if slices.Contains(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
 		return errors.ErrInvalidImageFormat
 	}
 	return nil

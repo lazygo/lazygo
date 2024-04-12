@@ -300,7 +300,7 @@ type ToolsUploadRequest struct {
 ```
 func (r *ToolsUploadRequest) Verify() error {
 
-	if utils.InSlice(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
+	if slices.Contains(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
 		return errors.ErrInvalidImageFormat
 	}
 	return nil
