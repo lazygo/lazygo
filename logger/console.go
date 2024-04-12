@@ -12,7 +12,7 @@ type consoleLogWriter struct {
 	writer io.Writer
 }
 
-func newConsoleLogWriter(opt map[string]string) (logWriter, error) {
+func newConsoleLogWriter(map[string]string) (logWriter, error) {
 	cl := &consoleLogWriter{
 		writer: os.Stdout,
 	}

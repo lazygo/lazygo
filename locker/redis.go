@@ -20,8 +20,8 @@ type redisAdapter struct {
 	retry int
 }
 
-// UNLOCK_SCRIPT 释放锁脚本
-const UNLOCK_SCRIPT = `
+// UnlockScript 释放锁脚本
+const UnlockScript = `
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
 		return redis.call("DEL", KEYS[1])
 	else
@@ -66,7 +66,7 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 		}()
 		var err error
 		for retry := r.retry; retry >= 0; retry-- {
-			err = goredis.NewScript(UNLOCK_SCRIPT).Run(context.Background(), r.conn, []string{resource}, token).Err()
+			err = goredis.NewScript(UnlockScript).Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}
@@ -119,7 +119,7 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	handleRelease := func() error {
 		var err error
 		for retry := r.retry; retry > 0; retry-- {
-			err = goredis.NewScript(UNLOCK_SCRIPT).Run(context.Background(), r.conn, []string{resource}, token).Err()
+			err = goredis.NewScript(UnlockScript).Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}

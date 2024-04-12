@@ -19,7 +19,7 @@ type LRU interface {
 	Capacity() uint64
 }
 
-// 定义Value类型为byte数组
+// Value 定义Value类型为byte数组
 type Value []byte
 
 func (v Value) String() string {
@@ -35,7 +35,7 @@ type item struct {
 	deadline     time.Time
 }
 
-// 定义LRU缓存结构体
+// LRUImpl 定义LRU缓存结构体
 type LRUImpl struct {
 	name string
 	mu   sync.Mutex

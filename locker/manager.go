@@ -114,11 +114,10 @@ func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 }
 
 // LockFunc 启用分布式锁执行fn
-// resource 资源标识，相同的资源标识会互斥
 // ttl 生存时间 (秒)
 // f 返回interface{} 的函数
 // 在获取锁失败或超时的情况下，fn不会被执行
-func LockFunc(ctx context.Context, resource string, ttl uint64, fn func() any) (any, error) {
+func LockFunc(ctx context.Context, ttl uint64, fn func() any) (any, error) {
 	lock, err := Instance(manager.defaultName)
 	if err != nil {
 		return nil, err

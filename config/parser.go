@@ -39,7 +39,7 @@ func loadJson(data []byte) (Parser, error) {
 
 func loadToml(data []byte) (Parser, error) {
 	parser := &tomlParser{}
-	metadata, err := toml.DecodeReader(bytes.NewReader(data), &parser.data)
+	metadata, err := toml.NewDecoder(bytes.NewReader(data)).Decode(&parser.data)
 	parser.metadata = metadata
 	return parser, err
 }

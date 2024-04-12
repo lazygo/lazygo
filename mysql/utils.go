@@ -2,32 +2,7 @@ package mysql
 
 import (
 	"reflect"
-	"strconv"
 )
-
-// toString 转换为string
-func toString(value any) string {
-	var str string
-	switch value.(type) {
-	case string:
-		str = value.(string)
-	case []byte:
-		str = string(value.([]byte))
-	case int, int8, int16, int32, int64:
-		str = strconv.FormatInt(reflect.ValueOf(value).Int(), 10)
-	case uint, uint8, uint16, uint32, uint64:
-		str = strconv.FormatUint(reflect.ValueOf(value).Uint(), 10)
-	case float32:
-		str = strconv.FormatFloat(float64(value.(float32)), 'f', -1, 32)
-	case float64:
-		str = strconv.FormatFloat(value.(float64), 'f', -1, 64)
-	case Raw:
-		str = string(value.(Raw))
-	default:
-		str = ""
-	}
-	return str
-}
 
 // CreateAnyTypeSlice interface{}转为 []interface{}
 func CreateAnyTypeSlice(slice any) ([]any, bool) {
