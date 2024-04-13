@@ -93,6 +93,18 @@ func (l *lruCache) Has(key string) (bool, error) {
 	return false, nil
 }
 
+func (l *lruCache) HasMulti(keys ...string) (map[string]bool, error) {
+	result := make(map[string]bool, len(keys))
+	for i := range keys {
+		ok, err := l.Has(l.prefix + keys[i])
+		if err != nil {
+			return nil, err
+		}
+		result[keys[i]] = ok
+	}
+	return result, nil
+}
+
 func (l *lruCache) Forget(key string) error {
 	key = l.prefix + key
 	l.handler.Delete(key)

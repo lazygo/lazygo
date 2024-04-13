@@ -17,6 +17,7 @@ type Cache interface {
 	Get(key string, ret any) (bool, error)
 	Set(key string, value any, ttl int64) error
 	Has(key string) (bool, error)
+	HasMulti(keys ...string) (map[string]bool, error)
 	Forget(key string) error
 }
 
@@ -98,6 +99,14 @@ func Has(key string) (bool, error) {
 		return false, err
 	}
 	return cache.Has(key)
+}
+
+func HasMulti(keys ...string) (map[string]bool, error) {
+	cache, err := Instance(manager.defaultName)
+	if err != nil {
+		return nil, err
+	}
+	return cache.HasMulti(keys...)
 }
 
 func Forget(key string) error {

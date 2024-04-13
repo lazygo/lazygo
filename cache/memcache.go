@@ -101,6 +101,22 @@ func (m *mcCache) Has(key string) (bool, error) {
 	return false, nil
 }
 
+func (m *mcCache) HasMulti(keys ...string) (map[string]bool, error) {
+	result := make(map[string]bool, len(keys))
+	keysWithPrefix := make([]string, len(keys))
+	for i := range keys {
+		keysWithPrefix[i] = m.prefix + keys[i]
+	}
+	res, err := m.handler.Conn().GetMulti(keysWithPrefix)
+	if err != nil {
+		return nil, err
+	}
+	for i, key := range keys {
+		result[key] = res[keysWithPrefix[i]].Value != nil
+	}
+	return result, nil
+}
+
 func (m *mcCache) Forget(key string) error {
 	key = m.prefix + key
 	return m.handler.Delete(key)

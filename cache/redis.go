@@ -104,6 +104,30 @@ func (r *redisCache) Has(key string) (bool, error) {
 	return n > 0, nil
 }
 
+func (r *redisCache) HasMulti(keys ...string) (map[string]bool, error) {
+	result := make(map[string]bool, len(keys))
+	if len(keys) == 0 {
+		return result, nil
+	}
+	ctx := context.Background()
+
+	cmds, err := r.handler.Pipelined(ctx, func(pipe goredis.Pipeliner) error {
+		for i := range keys {
+			pipe.Exists(ctx, r.prefix+keys[i])
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	for i, cmd := range cmds {
+		result[keys[i]] = cmd.(*goredis.IntCmd).Val() > 0
+	}
+
+	return result, nil
+}
+
 func (r *redisCache) Forget(key string) error {
 	key = r.prefix + key
 	return r.handler.Del(context.Background(), key).Err()
