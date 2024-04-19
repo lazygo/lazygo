@@ -173,8 +173,7 @@ func (b *builder) WhereRaw(cond string, args ...any) CondBuilder {
 // WhereIn IN查询
 func (b *builder) WhereIn(k string, in []any) CondBuilder {
 	if len(in) == 0 {
-		b.lastError = ErrEmptyInCond
-		return b
+		return b.WhereRaw(fmt.Sprintf("%s IS NULL", buildK(k)))
 	}
 	var arr []string
 	for range in {
@@ -188,6 +187,9 @@ func (b *builder) WhereIn(k string, in []any) CondBuilder {
 
 // WhereNotIn NOT IN查询
 func (b *builder) WhereNotIn(k string, in []any) CondBuilder {
+	if len(in) == 0 {
+		return b.WhereRaw(fmt.Sprintf("%s IS NOT NULL", buildK(k)))
+	}
 	var arr []string
 	for range in {
 		arr = append(arr, "?")
