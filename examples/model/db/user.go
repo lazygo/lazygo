@@ -1,6 +1,7 @@
 package db
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/lazygo/lazygo/examples/model"
@@ -11,13 +12,13 @@ type UserModel struct {
 }
 
 type UserData struct {
-	UID      uint64 `json:"uid"`
-	Email    string `json:"email"`
-	Mobile   string `json:"mobile"`
-	Password string `json:"password"`
-	Avator   string `json:"avator"`
-	CTime    uint64 `json:"ctime"`
-	MTime    uint64 `json:"mtime"`
+	UID      uint64         `json:"uid"`
+	Email    sql.NullString `json:"email"`
+	Mobile   sql.NullString `json:"mobile"`
+	Password string         `json:"password"`
+	Avator   string         `json:"avator"`
+	CTime    uint64         `json:"ctime"`
+	MTime    uint64         `json:"mtime"`
 }
 
 func NewUserModel() *UserModel {
@@ -32,7 +33,7 @@ func (mdl *UserModel) Create(data map[string]any) (int64, error) {
 	return mdl.QueryBuilder().Insert(data)
 }
 
-func (mdl *UserModel) FetchByUid(fields []any, uid int64) (*UserData, int, error) {
+func (mdl *UserModel) FetchByUid(fields []any, uid uint64) (*UserData, int, error) {
 	cond := map[string]any{
 		"uid": uid,
 	}

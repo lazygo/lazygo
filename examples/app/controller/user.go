@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 
@@ -114,9 +115,26 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 	return user, code, nil
 }
 
-func (ctl *UserController) Profile(req *request.LogoutRequest) error {
+func (ctl *UserController) Profile(req *request.ProfileRequest) error {
 	fmt.Println(ctl.Ctx.UID())
-	ctl.Ctx.HTMLBlob(200, []byte(strconv.FormatUint(ctl.Ctx.UID(), 10)))
+	fmt.Println(req.UID)
+	mdlUser := dbModel.NewUserModel()
+	user, n, err := mdlUser.FetchByUid([]any{"*"}, req.UID)
+	if err != nil {
+		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [uid: %d] [err: %v]", req.UID, err)
+		return errors.ErrInternalServerError
+	}
+	if n == 0 {
+		return errors.ErrUserExists
+	}
+	fmt.Println(user.Email.String)
+	fmt.Println(user.Mobile.String)
+	data, err := json.Marshal(user)
+	if err != nil {
+		ctl.Ctx.Logger().Error("[msg: marshal json fail] [user: %v] [err: %v]", user, err)
+		return errors.ErrInternalServerError
+	}
+	ctl.Ctx.HTMLBlob(200, append([]byte(strconv.FormatUint(ctl.Ctx.UID(), 10)+"\n"), data...))
 	return nil
 }
 

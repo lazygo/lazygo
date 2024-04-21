@@ -208,8 +208,8 @@ func (c *context) Bind(v any) error {
 			binds := strings.Split(tField.Tag.Get("bind"), ",")
 			var val any
 			for _, bind := range binds {
-				switch bind {
-				case "ctx", "value":
+				switch strings.TrimSpace(strings.ToLower(bind)) {
+				case "ctx", "context", "value":
 					val = c.Value(field)
 				case "header":
 					val = c.GetRequestHeader(field)
@@ -702,6 +702,7 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 
 func process(str string, procList []string) string {
 	for _, proc := range procList {
+		proc = strings.TrimSpace(strings.ToLower(proc))
 		switch {
 		case strings.HasPrefix(proc, "trim"):
 			str = strings.TrimSpace(str)
