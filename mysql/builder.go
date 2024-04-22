@@ -113,19 +113,17 @@ func (b *builder) Where(cond ...any) CondBuilder {
 		if !ok {
 			break
 		}
-		if strings.ToLower(op) == "in" {
-			val, ok := cond[2].([]any)
+		if strings.ReplaceAll(strings.ToLower(op), " ", "") == "in" {
+			val, ok := CreateAnyTypeSlice(cond[2])
 			if !ok {
-				b.lastError = ErrInvalidCondArguments
-				break
+				val = []any{cond[2]}
 			}
 			return b.WhereIn(k, val)
 		}
-		if strings.ToLower(op) == "not in" {
-			val, ok := cond[2].([]any)
+		if strings.ReplaceAll(strings.ToLower(op), " ", "") == "notin" {
+			val, ok := CreateAnyTypeSlice(cond[2])
 			if !ok {
-				b.lastError = ErrInvalidCondArguments
-				break
+				val = []any{cond[2]}
 			}
 			return b.WhereNotIn(k, val)
 		}
