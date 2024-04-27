@@ -72,10 +72,10 @@ func (he *HTTPError) Error() string {
 	return fmt.Sprintf("code=%d, errno=%d, message=%v, internal=%v", he.Code, he.Errno, he.Message, he.Internal)
 }
 
-// SetInternal sets error to HTTPError.Internal
-func (he *HTTPError) SetInternal(err error) *HTTPError {
+// SetInternal copy and set error to HTTPError.Internal
+func (he HTTPError) SetInternal(err error) *HTTPError {
 	he.Internal = err
-	return he
+	return &he
 }
 
 // Unwrap satisfies the Go 1.13 error wrapper interface.
