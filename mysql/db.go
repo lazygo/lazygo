@@ -50,7 +50,7 @@ func (d *DB) TableRaw(table string) *builder {
 	return newBuilder(d, table)
 }
 
-// TableRaw 获取查询构建器
+// Before sql执行前hook
 func (d *DB) Before(h func(string, ...any) func()) {
 	if h == nil {
 		return
@@ -59,23 +59,37 @@ func (d *DB) Before(h func(string, ...any) func()) {
 }
 
 // Query 查询sql并返回结果集
-func (d *DB) Query(query string, args ...any) (*sql.Rows, error) {
-	after := d.before(query, args...)
-	row, err := d.DB.Query(query, args...)
+func (d *DB) Query(sql string, args ...any) (*sql.Rows, error) {
+	after := d.before(sql, args...)
+	row, err := d.DB.Query(sql, args...)
 	if after != nil {
 		after()
 	}
-	return row, err
+	if err != nil {
+		return nil, &SqlError{
+			err:  err,
+			sql:  sql,
+			args: args,
+		}
+	}
+	return row, nil
 }
 
 // Exec 执行sql
-func (d *DB) Exec(query string, args ...any) (sql.Result, error) {
-	after := d.before(query, args...)
-	result, err := d.DB.Exec(query, args...)
+func (d *DB) Exec(sql string, args ...any) (sql.Result, error) {
+	after := d.before(sql, args...)
+	result, err := d.DB.Exec(sql, args...)
 	if after != nil {
 		after()
 	}
-	return result, err
+	if err != nil {
+		return nil, &SqlError{
+			err:  err,
+			sql:  sql,
+			args: args,
+		}
+	}
+	return result, nil
 }
 
 // GetAll 直接执行sql原生语句并返回多行

@@ -1,6 +1,9 @@
 package mysql
 
-import "errors"
+import (
+	"errors"
+	"fmt"
+)
 
 var (
 	// ErrEmptyCond 防止在update、delete操作时，漏掉条件造成的严重后果
@@ -15,3 +18,13 @@ var (
 	ErrEmptyTableName          = errors.New("没有指定表名称")
 	ErrDatabaseNotExists       = errors.New("指定数据库不存在，或未初始化")
 )
+
+type SqlError struct {
+	err  error
+	sql  string
+	args []any
+}
+
+func (err *SqlError) Error() string {
+	return fmt.Errorf("SQL ERROR: %s ARGS: %v, ERR: %v", err.sql, err.args, err.err).Error()
+}
