@@ -106,10 +106,12 @@ func (g *groupCond) where(cond ...any) error {
 	case 3:
 		k, ok := cond[0].(string)
 		if !ok {
+			return ErrInvalidCondArguments
 			break
 		}
 		op, ok := cond[1].(string)
 		if !ok {
+			return ErrInvalidCondArguments
 			break
 		}
 		if strings.ReplaceAll(strings.ToLower(op), " ", "") == "in" {
