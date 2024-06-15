@@ -32,7 +32,7 @@ func (c *metaCond) String() string {
 		return fmt.Sprintf("%s IS NULL", buildK(c.key))
 	}
 	if strings.Contains(strings.ToUpper(c.op), "IN") {
-		arr := make([]string, len(c.args))
+		arr := make([]string, 0, len(c.args))
 		for range c.args {
 			arr = append(arr, "?")
 		}
