@@ -52,8 +52,7 @@ type Builder interface {
 type builder struct {
 	handler   *DB
 	table     string
-	cond      []string // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
-	args      []any    // 预处理参数
+	cond      *groupCond // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
 	orderBy   []string
 	groupBy   []string
 	offset    int64
@@ -68,7 +67,7 @@ func newBuilder(handler *DB, table string) *builder {
 	return &builder{
 		handler: handler,
 		table:   table,
-		cond:    []string{},
+		cond:    newGroup(AND),
 	}
 }
 
@@ -78,60 +77,7 @@ func newBuilder(handler *DB, table string) *builder {
 // field string, value []any                  In查询条件，同WhereIn
 // field string, op string value interface{}  同WhereIn
 func (b *builder) Where(cond ...any) CondBuilder {
-	switch len(cond) {
-	case 1:
-		switch cond[0].(type) {
-		case string, Raw:
-			// 字符串查询
-			return b.WhereRaw(cond[0].(string))
-		case map[string]any:
-			// map拼接查询
-			return b.WhereMap(cond[0].(map[string]any))
-		default:
-			b.lastError = ErrInvalidCondArguments
-			return b
-		}
-	case 2:
-		k, ok := cond[0].(string)
-		if !ok {
-			b.lastError = ErrInvalidCondArguments
-			break
-		}
-		// in查询
-		in, ok := CreateAnyTypeSlice(cond[1])
-		if ok {
-			return b.WhereIn(k, in)
-		}
-		// k = v
-		return b.Where(k, "=", cond[1])
-	case 3:
-		k, ok := cond[0].(string)
-		if !ok {
-			break
-		}
-		op, ok := cond[1].(string)
-		if !ok {
-			break
-		}
-		if strings.ReplaceAll(strings.ToLower(op), " ", "") == "in" {
-			val, ok := CreateAnyTypeSlice(cond[2])
-			if !ok {
-				val = []any{cond[2]}
-			}
-			return b.WhereIn(k, val)
-		}
-		if strings.ReplaceAll(strings.ToLower(op), " ", "") == "notin" {
-			val, ok := CreateAnyTypeSlice(cond[2])
-			if !ok {
-				val = []any{cond[2]}
-			}
-			return b.WhereNotIn(k, val)
-		}
-		// k op v
-		return b.WhereRaw(build(k, op), cond[2])
-	default:
-	}
-	b.lastError = ErrInvalidCondArguments
+	b.lastError = b.cond.where(cond...)
 	return b
 }
 
@@ -141,68 +87,32 @@ func (b *builder) Where(cond ...any) CondBuilder {
 // key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like”
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
 func (b *builder) WhereMap(cond map[string]any) CondBuilder {
-	for k, v := range cond {
-		k = strings.TrimSpace(k)
-		if strings.Contains(k, " ") {
-			kInfo := strings.SplitN(k, " ", 2)
-			b.Where(kInfo[0], strings.TrimSpace(kInfo[1]), v)
-			continue
-		}
-		if vv, ok := CreateAnyTypeSlice(v); ok {
-			b.WhereIn(k, vv)
-		} else {
-			b.cond = append(b.cond, build(k, "="))
-			b.args = append(b.args, v)
-		}
-	}
+	b.cond.whereMap(cond)
 	return b
 }
 
 // WhereRaw 子句查询
 func (b *builder) WhereRaw(cond string, args ...any) CondBuilder {
-	cond = strings.Trim(cond, " ")
-	if cond != "" {
-		b.cond = append(b.cond, cond)
-		b.args = append(b.args, args...)
-	}
+	b.cond.whereRaw(cond, args...)
 	return b
 }
 
 // WhereIn IN查询
 func (b *builder) WhereIn(k string, in []any) CondBuilder {
-	if len(in) == 0 {
-		return b.WhereRaw(fmt.Sprintf("%s IS NULL", buildK(k)))
-	}
-	var arr []string
-	for range in {
-		arr = append(arr, "?")
-	}
-	cond := fmt.Sprintf("%s IN(%s)", buildK(k), strings.Join(arr, ", "))
-	b.cond = append(b.cond, cond)
-	b.args = append(b.args, in...)
+	b.cond.meta(k, "IN", in...)
 	return b
 }
 
 // WhereNotIn NOT IN查询
 func (b *builder) WhereNotIn(k string, in []any) CondBuilder {
-	if len(in) == 0 {
-		return b.WhereRaw(fmt.Sprintf("%s IS NOT NULL", buildK(k)))
-	}
-	var arr []string
-	for range in {
-		arr = append(arr, "?")
-	}
-	cond := fmt.Sprintf("%s NOT IN(%s)", buildK(k), strings.Join(arr, ", "))
-	b.cond = append(b.cond, cond)
-	b.args = append(b.args, in...)
+	b.cond.meta(k, "NOT IN", in...)
 	return b
 }
 
 // ClearCond 清空当前where
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) ClearCond() CondBuilder {
-	b.cond = []string{}
-	b.args = []any{}
+	b.cond.clear()
 	return b
 }
 
@@ -251,11 +161,8 @@ func (b *builder) Limit(limit int64) CondBuilder {
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
 func (b *builder) buildCond() (string, []any) {
 	defer b.ClearCond()
-	if len(b.cond) == 0 {
-		return "", nil
-	}
-	result := strings.Join(b.cond, " AND ")
-	args := b.args
+	result := b.cond.String()
+	args := b.cond.Args()
 	return strings.TrimSpace(result), args
 }
 

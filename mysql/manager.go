@@ -44,7 +44,12 @@ func (m *Manager) init(conf []Config) error {
 		if err != nil {
 			return err
 		}
-		m.Store(item.Name, newDb(item.Name, db, item.Prefix))
+		m.Store(item.Name, &DB{
+			DB:     db,
+			name:   item.Name,
+			prefix: item.Prefix,
+			before: func(query string, args ...any) func() { return func() {} },
+		})
 	}
 	return nil
 }

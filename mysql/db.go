@@ -10,7 +10,7 @@ type DB struct {
 	*sql.DB
 	name   string // 数据库名称
 	prefix string // 表前缀
-	slow   int    // 慢查询时间
+	before func(string, ...any) func()
 }
 
 // ResultData 分页返回数据 - 返回结果定义
@@ -40,15 +40,6 @@ func (r *ResultData) ToMap() map[string]any {
 	}
 }
 
-func newDb(name string, db *sql.DB, prefix string) *DB {
-	return &DB{
-		DB:     db,
-		name:   name,
-		prefix: prefix,
-		slow:   200,
-	}
-}
-
 // Table 获取查询构建器
 func (d *DB) Table(table string) *builder {
 	return newBuilder(d, d.prefix+table)
@@ -59,22 +50,32 @@ func (d *DB) TableRaw(table string) *builder {
 	return newBuilder(d, table)
 }
 
+// TableRaw 获取查询构建器
+func (d *DB) Before(h func(string, ...any) func()) {
+	if h == nil {
+		return
+	}
+	d.before = h
+}
+
 // Query 查询sql并返回结果集
 func (d *DB) Query(query string, args ...any) (*sql.Rows, error) {
-	// start := time.Now()
-	// defer func() {
-	// 	// 计算查询执行时间，记录慢查询
-	// 	since := time.Since(start)
-	// 	if since > time.Duration(d.slow)*time.Millisecond {
-	// 		log.Println("慢查询 " + strconv.FormatInt(int64(since/time.Millisecond), 10) + " SQL:" + query)
-	// 	}
-	// }()
-	return d.DB.Query(query, args...)
+	after := d.before(query, args...)
+	row, err := d.DB.Query(query, args...)
+	if after != nil {
+		after()
+	}
+	return row, err
 }
 
 // Exec 执行sql
 func (d *DB) Exec(query string, args ...any) (sql.Result, error) {
-	return d.DB.Exec(query, args...)
+	after := d.before(query, args...)
+	result, err := d.DB.Exec(query, args...)
+	if after != nil {
+		after()
+	}
+	return result, err
 }
 
 // GetAll 直接执行sql原生语句并返回多行

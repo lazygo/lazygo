@@ -36,7 +36,7 @@ func TestWhere(t *testing.T) {
 
 	sp := strings.Split(sql, " WHERE ")
 	assert.Equal(len(sp), 2, "错误")
-	assert.Equal(sp[0], "SELECT `last_view_time`, `last_view_user`, table_name.`field` FROM table_name", "错误")
+	assert.Equal(sp[0], "SELECT `last_view_time`, `last_view_user`, table_name.`field` FROM `table_name`", "错误")
 
 	cond := sp[1]
 	expectedCond := strings.Split(cond, " AND ")
@@ -59,6 +59,26 @@ func TestWhere(t *testing.T) {
 	assert.Equal(expectedCond[7], "`h` NOT IN(1, 2)", "错误")
 	assert.Equal(expectedCond[8], "c=3", "错误")
 	assert.Equal(expectedCond[9], "table_name.`field` = 1", "错误")
+
+	// ((a=1 AND b=2) OR c=3) AND d=4
+	builder.Where(map[string]any{
+		string(OR): map[string]any{
+			string(AND): map[string]any{
+				"a": 1,
+				"b": 2,
+			},
+			"c": 3,
+		},
+		"d": 4,
+	})
+	sql, args, err = builder.MakeQueryString(data)
+	assert.Nil(err, "err.Error()")
+
+	sp = strings.Split(sql, " WHERE ")
+	assert.Equal(len(sp), 2, "错误")
+
+	assert.Equal(sp[1], "((`a` = ? AND `b` = ?) OR `c` = ?) AND `d` = ?", "错误")
+	assert.Equal(args, []any{1, 2, 3, 4}, "错误")
 
 }
 
