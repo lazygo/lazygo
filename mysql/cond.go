@@ -31,14 +31,14 @@ func (c *metaCond) String() string {
 	if len(c.args) == 0 {
 		return fmt.Sprintf("%s IS NULL", buildK(c.key))
 	}
-	if len(c.args) == 1 {
-		return build(c.key, c.op)
+	if strings.Contains(strings.ToUpper(c.op), "IN") {
+		arr := make([]string, len(c.args))
+		for range c.args {
+			arr = append(arr, "?")
+		}
+		return fmt.Sprintf("%s %s(%s)", buildK(c.key), c.op, strings.Join(arr, ", "))
 	}
-	var arr []string
-	for range c.args {
-		arr = append(arr, "?")
-	}
-	return fmt.Sprintf("%s %s(%s)", buildK(c.key), c.op, strings.Join(arr, ", "))
+	return build(c.key, c.op)
 }
 
 func (c *metaCond) Args() []any {
