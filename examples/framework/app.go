@@ -9,7 +9,11 @@ import (
 
 var app *server.Server
 
-var Hostname string
+var (
+	Version  = "0.0.0"
+	BuildID  string
+	Hostname string
+)
 
 func App() *server.Server {
 	if app != nil {
