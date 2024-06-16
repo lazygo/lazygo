@@ -39,7 +39,8 @@ run: deps
 
 .PHONY: release
 release:
-	git pull && \
-	last_tag=`git tag --list | grep -E '(\d+\.){1,3}' | tail -n 1 | \
-	awk -F. -v OFS=. 'NF==1{print ++$$NF}; NF>1{if(length($$NF+1)>length($$NF))$$(NF-1)++; $$NF=sprintf("%0*d", length($$NF), ($$NF+1)%(10^length($$NF))); print}'` && \
+	git pull
+	last_tag=`git tag --list | grep -E 'v?([0-9]+\.){1,3}[0-9]' | sort -V | tail -n 1 | tr -d 'v' | \
+	awk -F. -v OFS=. 'NF==1{print ++$$NF}; NF>1{ $NF=$NF+1; for (i=NF; i>1; i--) { if ($i>=100) { $i=0; $(i-1)++ }} print}'`
+	echo tag: $$last_tag
 	git tag $$last_tag && git push --tag
