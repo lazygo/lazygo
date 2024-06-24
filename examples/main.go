@@ -22,6 +22,8 @@ func init() {
 
 func main() {
 
+	fmt.Println("Version:", framework.Version)
+	fmt.Println("BuildID:", framework.BuildID)
 	ptrConfigPath := flag.String("c", "./config.toml", "config path")
 	flag.Parse()
 
@@ -38,6 +40,7 @@ func main() {
 		fmt.Println("Listen " + config.ServerConfig.Addr)
 		err = router.Init(app).Start(config.ServerConfig.Addr)
 		if err != nil && err != http.ErrServerClosed {
+			log.Printf("[msg: shutting down the server] [err: %v]", err)
 			app.Logger.Fatal("shutting down the server")
 		}
 	}()
@@ -50,6 +53,7 @@ func main() {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	if err := app.Shutdown(ctx); err != nil {
+		log.Printf("[msg: shutting down the server] [err: %v]", err)
 		app.Logger.Fatal(err)
 	}
 }
