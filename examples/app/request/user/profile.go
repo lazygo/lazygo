@@ -1,5 +1,7 @@
 package request
 
+import "github.com/lazygo/lazygo/examples/framework"
+
 type ProfileRequest struct {
 	UID uint64 `json:"uid" bind:"ctx"`
 }
@@ -7,7 +9,7 @@ type ProfileRequest struct {
 type ProfileResponse struct {
 }
 
-func (r *ProfileRequest) Verify() error {
+func (r *ProfileRequest) Verify(ctx framework.Context) error {
 	return nil
 }
 

@@ -1,5 +1,7 @@
 package request
 
+import "github.com/lazygo/lazygo/examples/framework"
+
 type LogoutRequest struct {
 	Authorization string `json:"authorization" bind:"header" process:"trim,cut(32)"`
 }
@@ -7,7 +9,7 @@ type LogoutRequest struct {
 type LogoutResponse struct {
 }
 
-func (r *LogoutRequest) Verify() error {
+func (r *LogoutRequest) Verify(ctx framework.Context) error {
 	return nil
 }
 

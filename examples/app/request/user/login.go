@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
 )
@@ -15,7 +16,7 @@ type TokenResponse struct {
 	Token string `json:"token"`
 }
 
-func (r *LoginRequest) Verify() error {
+func (r *LoginRequest) Verify(ctx framework.Context) error {
 	r.Type = utils.UsernameType(r.Username)
 	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
 		return errors.ErrUsernameInvalid

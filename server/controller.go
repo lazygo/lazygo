@@ -30,15 +30,16 @@ func Controller(h any, methodName ...string) HandlerFunc {
 		if !ok {
 			return ErrNotFound.SetInternal(fmt.Errorf(" method name %s not found", name))
 		}
+		rCtx := reflect.ValueOf(ctx)
 		pReq := reflect.New(method.Request)
-		req := pReq.Interface().(Request)
+		req := pReq.Interface()
 
-		defer req.Clear()
+		defer pReq.MethodByName("Clear").Call(nil)
 
 		if err = ctx.Bind(req); err != nil {
 			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
 		}
-		if err = req.Verify(); err != nil {
+		if err = pReq.MethodByName("Verify").Call([]reflect.Value{rCtx})[0].Interface().(error); err != nil {
 			if he, ok := err.(*HTTPError); ok {
 				return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
 			}
@@ -46,7 +47,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 		}
 
 		pServ := reflect.New(rtServ)
-		pServ.Elem().FieldByName("Ctx").Set(reflect.ValueOf(ctx))
+		pServ.Elem().FieldByName("Ctx").Set(rCtx)
 
 		out := method.Method.Func.Call([]reflect.Value{pServ, pReq})
 		numOut := len(out)

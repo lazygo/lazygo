@@ -1,6 +1,7 @@
 package request
 
 import (
+	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
 )
@@ -11,7 +12,7 @@ type RegisterRequest struct {
 	Type     int
 }
 
-func (r *RegisterRequest) Verify() error {
+func (r *RegisterRequest) Verify(ctx framework.Context) error {
 	r.Type = utils.UsernameType(r.Username)
 	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
 		return errors.ErrUsernameInvalid

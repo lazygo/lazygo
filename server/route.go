@@ -7,11 +7,6 @@ import (
 	"github.com/lazygo/lazygo/utils"
 )
 
-type Request interface {
-	Verify() error
-	Clear()
-}
-
 type Route struct {
 	Method  reflect.Method
 	Request reflect.Type
@@ -32,6 +27,7 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 	num := rtp.NumMethod()
 	if _, ok := routes[serviceName]; !ok {
 		routes[serviceName] = make(map[string]Route, num)
+		tError := reflect.TypeOf((*error)(nil)).Elem()
 		for i := 0; i < num; i++ {
 			method := rtp.Method(i)
 			methodName := utils.ToSnakeString(method.Name)
@@ -42,8 +38,15 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 			if method.Type.In(0).String() != serviceName {
 				return nil, "", errors.New("method first param must type receiver")
 			}
-			if !method.Type.In(1).Implements(reflect.TypeOf((*Request)(nil)).Elem()) {
-				return nil, "", errors.New("method second param must implements Request")
+			if _, ok := method.Type.In(1).MethodByName("Clear"); !ok {
+				return nil, "", errors.New("method second param Request must has func Clear()")
+			}
+			rf, ok := method.Type.In(1).MethodByName("Verify")
+			if !ok {
+				return nil, "", errors.New("method second param Request must has func Verify(Context) error")
+			}
+			if rf.Type.NumOut() != 1 || !rf.Type.Out(0).Implements(tError) {
+				return nil, "", errors.New("method second param Request must has func Verify(Context) error")
 			}
 
 			numOut := method.Type.NumOut()
