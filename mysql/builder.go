@@ -248,7 +248,7 @@ func (b *builder) MakeQueryString(fields []any) (string, []any, error) {
 		return "", nil, err
 	}
 
-	queryString := fmt.Sprintf("SELECT %s FROM `%s`", fieldsStr, b.table)
+	queryString := fmt.Sprintf("SELECT %s FROM `%s`", fieldsStr, strings.Trim(b.table, "`"))
 
 	// 构建where条件
 	cond, args := b.buildCond()
@@ -383,7 +383,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 		values = append(values, "?")
 		args = append(args, value)
 	}
-	queryString := "INSERT INTO `" + b.table + "` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
+	queryString := "INSERT INTO `" + strings.Trim(b.table, "`") + "` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
 
 	// 执行插入语句
 	res, err := b.handler.Exec(queryString, args...)
@@ -429,7 +429,7 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 	args = append(valArgs, args...)
 
 	// 查询字符串
-	queryString := "UPDATE `" + b.table + "` SET " + strset + " WHERE " + where
+	queryString := "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + strset + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])
@@ -476,7 +476,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	}
 
 	// 查询字符串
-	queryString := "UPDATE `" + b.table + "` SET " + set + " WHERE " + where
+	queryString := "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + set + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])
@@ -535,9 +535,9 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]any) 
 
 	var queryString = ""
 	if len(set) > 0 && set[0] != nil {
-		queryString = "UPDATE `" + b.table + "` SET " + strset + " WHERE " + where
+		queryString = "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + strset + " WHERE " + where
 	} else {
-		queryString = "UPDATE `" + b.table + "` SET " + extra[0] + " WHERE " + where
+		queryString = "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + extra[0] + " WHERE " + where
 	}
 
 	// 执行更新sql语句
@@ -583,7 +583,7 @@ func (b *builder) Delete(limit ...int) (int64, error) {
 	}
 
 	// 拼接删除语句
-	queryString := "DELETE FROM `" + b.table + "` WHERE " + where
+	queryString := "DELETE FROM `" + strings.Trim(b.table, "`") + "` WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])

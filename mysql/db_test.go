@@ -22,12 +22,11 @@ func TestDb(t *testing.T) {
 		{
 			Name:            "unit_test",
 			User:            "root",
-			Passwd:          "root",
+			Passwd:          "",
 			Host:            "127.0.0.1",
 			Port:            3306,
-			DbName:          "abc",
+			DbName:          "unit_test",
 			Charset:         "utf8mb4",
-			Prefix:          "good_",
 			MaxOpenConns:    10,
 			MaxIdleConns:    10,
 			ConnMaxLifetime: 60,
@@ -43,7 +42,7 @@ func TestDb(t *testing.T) {
 		assert.NotNil(err)
 	}()
 
-	tableName := "unit_test"
+	tableName := "good_unit_test"
 
 	tableSql := "CREATE TABLE `good_unit_test` (" +
 		"`id` int(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'primary key'," +
@@ -71,14 +70,14 @@ func TestDb(t *testing.T) {
 		if err != nil {
 			assert.Nil(err, err.Error())
 		}
-		ok, err := CheckTable(db, "good_"+tableName)
+		ok, err := CheckTable(db, tableName)
 		if err != nil {
 			assert.Nil(err, err.Error())
 		}
 		assert.False(ok)
 	}()
 
-	ok, err := CheckTable(db, "good_"+tableName)
+	ok, err := CheckTable(db, tableName)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -285,10 +284,6 @@ func TestDb(t *testing.T) {
 		assert.Nil(err, ErrInvalidResultPtr)
 	}
 	assert.Empty(result)
-
-	// test GetTablePrefix
-	prefix := db.GetTablePrefix()
-	assert.Equal(prefix, conf[0].Prefix)
 
 	// test error
 	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{1, "name"}, &result)

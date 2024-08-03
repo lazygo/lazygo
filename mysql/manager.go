@@ -17,7 +17,6 @@ type Config struct {
 	Port            int    `json:"port" toml:"port"`
 	DbName          string `json:"dbname" toml:"dbname"`
 	Charset         string `json:"charset" toml:"charset"`
-	Prefix          string `json:"prefix" toml:"prefix"`
 	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
 	MaxIdleConns    int    `json:"max_idle_conns" toml:"max_idle_conns"`
 	ConnMaxLifetime int    `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
@@ -47,7 +46,6 @@ func (m *Manager) init(conf []Config) error {
 		m.Store(item.Name, &DB{
 			DB:     db,
 			name:   item.Name,
-			prefix: item.Prefix,
 			before: func(query string, args ...any) func() { return func() {} },
 		})
 	}

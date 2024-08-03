@@ -9,7 +9,6 @@ import (
 type DB struct {
 	*sql.DB
 	name   string // 数据库名称
-	prefix string // 表前缀
 	before func(string, ...any) func()
 }
 
@@ -42,11 +41,6 @@ func (r *ResultData) ToMap() map[string]any {
 
 // Table 获取查询构建器
 func (d *DB) Table(table string) *builder {
-	return newBuilder(d, d.prefix+table)
-}
-
-// TableRaw 获取查询构建器
-func (d *DB) TableRaw(table string) *builder {
 	return newBuilder(d, table)
 }
 
@@ -147,9 +141,4 @@ func (d *DB) Transaction(fn func() error) (err error) {
 		}
 	}
 	return tx.Commit()
-}
-
-// GetTablePrefix 获取表前缀
-func (d *DB) GetTablePrefix() string {
-	return d.prefix
 }
