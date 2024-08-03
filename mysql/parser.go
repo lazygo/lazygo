@@ -3,7 +3,13 @@ package mysql
 import (
 	"database/sql"
 	"reflect"
+	"strings"
 )
+
+type reflectField struct {
+	Tag   string
+	Value reflect.Value
+}
 
 // parseData 解析结果集
 func parseData(rows *sql.Rows, result any) (int, error) {
@@ -165,20 +171,10 @@ func getResultPtr(columns []string) ([]any, []sql.RawBytes, map[string]int64) {
 
 // getFieldPtr 获取结果集指针数组
 func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
+	fieldArr := StructFields(rv)
+
 	fCount := len(columns)
-
 	fieldPtr := make([]any, fCount)
-
-	resultFieldNum := rv.NumField()
-	fieldArr := make(map[string]any, resultFieldNum)
-	for i := 0; i < resultFieldNum; i++ {
-		field := rv.Type().Field(i).Tag.Get("json")
-		if field == "" {
-			continue
-		}
-		fieldArr[field] = rv.Field(i).Addr().Interface()
-	}
-
 	for k, v := range columns {
 		if fv, ok := fieldArr[v]; ok {
 			fieldPtr[k] = fv
@@ -188,4 +184,43 @@ func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 	}
 
 	return fieldPtr, nil
+}
+
+func StructFields(rv reflect.Value) map[string]any {
+	if !rv.CanAddr() {
+		panic("can not addr")
+	}
+	fieldArr := make(map[string]any)
+	stack := []reflectField{
+		{Tag: "", Value: rv},
+	}
+	var path []string
+	for len(stack) > 0 {
+		rv := stack[len(stack)-1]
+		stack = stack[:len(stack)-1]
+		if rv.Tag != "" {
+			path = append(path, rv.Tag)
+		}
+
+		isLeaf := true
+		for i := 0; i < rv.Value.NumField(); i++ {
+			rtField := rv.Value.Type().Field(i)
+			rvField := rv.Value.Field(i)
+			field := rtField.Tag.Get("json")
+			if rvField.Kind() == reflect.Struct {
+				stack = append(stack, reflectField{Tag: field, Value: rvField})
+				isLeaf = false
+				continue
+			}
+			if field == "" {
+				continue
+			}
+			p := strings.Join(append(path, field), ".")
+			fieldArr[p] = rvField.Addr().Interface()
+		}
+		if rv.Tag != "" && len(path) > 0 && isLeaf {
+			path = path[:len(path)-1]
+		}
+	}
+	return fieldArr
 }
