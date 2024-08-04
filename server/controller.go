@@ -44,7 +44,8 @@ func Controller(h any, methodName ...string) HandlerFunc {
 		if verify.Type().NumIn() > 0 {
 			params = append(params, rCtx)
 		}
-		if err = verify.Call(params)[0].Interface().(error); err != nil {
+		err := verify.Call(params)[0].Interface()
+		if err != nil {
 			if he, ok := err.(*HTTPError); ok {
 				return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
 			}
