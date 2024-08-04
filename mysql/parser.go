@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"reflect"
 	"strings"
+
+	"golang.org/x/exp/maps"
 )
 
 type reflectField struct {
@@ -171,12 +173,12 @@ func getResultPtr(columns []string) ([]any, []sql.RawBytes, map[string]int64) {
 
 // getFieldPtr 获取结果集指针数组
 func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
-	fieldArr := StructFields(rv)
+	fieldArr := getFieldArr(rv)
 
 	fCount := len(columns)
 	fieldPtr := make([]any, fCount)
 	for k, v := range columns {
-		if fv, ok := fieldArr[v]; ok {
+		if fv := fieldArr[v]; fv != nil {
 			fieldPtr[k] = fv
 		} else {
 			fieldPtr[k] = &sql.RawBytes{}
@@ -186,10 +188,13 @@ func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 	return fieldPtr, nil
 }
 
-func StructFields(rv reflect.Value) map[string]any {
-	if !rv.CanAddr() {
-		panic("can not addr")
-	}
+func StructFields(result any) []string {
+	rv := reflect.Indirect(reflect.ValueOf(result))
+	arr := getFieldArr(rv)
+	return maps.Keys(arr)
+}
+
+func getFieldArr(rv reflect.Value) map[string]any {
 	fieldArr := make(map[string]any)
 	stack := []reflectField{
 		{Tag: "", Value: rv},
@@ -216,6 +221,10 @@ func StructFields(rv reflect.Value) map[string]any {
 				continue
 			}
 			p := strings.Join(append(path, field), ".")
+			if !rvField.CanAddr() {
+				fieldArr[p] = nil
+				continue
+			}
 			fieldArr[p] = rvField.Addr().Interface()
 		}
 		if rv.Tag != "" && len(path) > 0 && isLeaf {

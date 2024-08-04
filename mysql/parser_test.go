@@ -10,12 +10,12 @@ import (
 )
 
 type User struct {
-	UID     uint64 `json:"uid"`
-	Name    string `json:"name"`
-	VipInfo `json:"vip"`
+	UID  uint64 `json:"uid"`
+	Name string `json:"name"`
+	Vip  `json:"vip"`
 }
 
-type VipInfo struct {
+type Vip struct {
 	UID      uint64 `json:"uid"`
 	Name     string `json:"name"`
 	Ctime    uint64 `json:"ctime"`
@@ -39,9 +39,21 @@ func TestGetfieldArr(t *testing.T) {
 
 	var data OrderWithUser
 	rv := reflect.ValueOf(&data).Elem()
-	fielsArr := StructFields(rv)
+	fielsArr := getFieldArr(rv)
 
 	keys := maps.Keys(fielsArr)
+	slices.Sort(keys)
+
+	testData := []string{"hh", "O.id", "O.uid", "O.name", "U.vip.uid", "U.vip.name", "U.vip.ctime", "U.vip.deadline", "U.uid", "U.name"}
+	slices.Sort(testData)
+	assert.Equal(keys, testData)
+}
+
+func TestStructFields(t *testing.T) {
+	assert := testify.New(t)
+
+	var data OrderWithUser
+	keys := StructFields(data)
 	slices.Sort(keys)
 
 	testData := []string{"hh", "O.id", "O.uid", "O.name", "U.vip.uid", "U.vip.name", "U.vip.ctime", "U.vip.deadline", "U.uid", "U.name"}

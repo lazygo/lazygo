@@ -26,7 +26,7 @@ func TestWhere(t *testing.T) {
 		WhereRaw("(x=? OR y=?)", "aa", 99).
 		Where("table_name.field", 1)
 
-	data := []any{
+	data := []string{
 		"last_view_time",
 		"last_view_user",
 		"table_name.field",

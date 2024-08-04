@@ -41,7 +41,7 @@ func (r *ResultData) ToMap() map[string]any {
 
 // Table 获取查询构建器
 func (d *DB) Table(table string) *builder {
-	return newBuilder(d, table)
+	return newBuilder(d, Table(table))
 }
 
 // Before sql执行前hook

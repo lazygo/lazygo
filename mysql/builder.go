@@ -3,17 +3,18 @@ package mysql
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
 )
 
 type ReadBuilder interface {
-	MakeQueryString(fields []any) (string, []any, error)
+	MakeQueryString(fields []string) (string, []any, error)
 	Count() (int64, error)
-	Fetch(fields []any, result any) (int, error)
-	FetchRow(fields []any, result any) (int, error)
+	Fetch(fields []string, result any) (int, error)
+	FetchRow(fields []string, result any) (int, error)
 	FetchOne(field string) (string, error)
-	FetchWithPage(fields []any, page int64, pageSize int64) (*ResultData, error)
+	FetchWithPage(fields []string, page int64, pageSize int64) (*ResultData, error)
 }
 
 type WriteBuilder interface {
@@ -51,7 +52,7 @@ type Builder interface {
 // 查询构建器
 type builder struct {
 	handler   *DB
-	table     string
+	table     Table
 	cond      *groupCond // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
 	orderBy   []string
 	groupBy   []string
@@ -63,7 +64,7 @@ type builder struct {
 type Raw string
 
 // newBuilder 实例化查询构建器
-func newBuilder(handler *DB, table string) *builder {
+func newBuilder(handler *DB, table Table) *builder {
 	return &builder{
 		handler: handler,
 		table:   table,
@@ -216,23 +217,25 @@ func buildK(k string) string {
 }
 
 // buildFields 构造查询fields
-func buildFields(fields []any) (string, error) {
+func buildFields(fields []string) (string, error) {
 	arr := make([]string, len(fields), cap(fields))
 	for i, v := range fields {
-		switch v.(type) {
-		case Raw:
-			arr[i] = string(v.(Raw))
-		case string:
-			arr[i] = buildK(v.(string))
-		default:
-			return "", ErrInvalidColumnsArguments
+		v = strings.TrimSpace(v)
+		if isSimple(v) {
+			arr[i] = buildK(v)
+		} else {
+			arr[i] = v
 		}
 	}
 	return strings.Join(arr, ", "), nil
 }
 
+func isSimple(v string) bool {
+	return !strings.ContainsAny(strings.TrimSpace(v), "() `")
+}
+
 // MakeQueryString 拼接查询语句字符串
-func (b *builder) MakeQueryString(fields []any) (string, []any, error) {
+func (b *builder) MakeQueryString(fields []string) (string, []any, error) {
 	defer b.Clear()
 
 	if b.table == "" {
@@ -243,12 +246,13 @@ func (b *builder) MakeQueryString(fields []any) (string, []any, error) {
 		return "", nil, b.lastError
 	}
 
+	slices.Sort(fields)
 	fieldsStr, err := buildFields(fields)
 	if err != nil {
 		return "", nil, err
 	}
 
-	queryString := fmt.Sprintf("SELECT %s FROM `%s`", fieldsStr, strings.Trim(b.table, "`"))
+	queryString := fmt.Sprintf("SELECT %s FROM %s", fieldsStr, b.table)
 
 	// 构建where条件
 	cond, args := b.buildCond()
@@ -297,7 +301,7 @@ func (b *builder) Count() (int64, error) {
 		Num int64 `json:"num"`
 	}{}
 
-	_, err := b.FetchRow([]any{Raw("COUNT(*) AS num")}, result)
+	_, err := b.FetchRow([]string{"COUNT(*) AS num"}, result)
 	if err != nil {
 		return 0, err
 	}
@@ -307,7 +311,7 @@ func (b *builder) Count() (int64, error) {
 
 // Fetch 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Fetch(fields []any, result any) (int, error) {
+func (b *builder) Fetch(fields []string, result any) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
@@ -320,7 +324,7 @@ func (b *builder) Fetch(fields []any, result any) (int, error) {
 // FetchWithPage 查询并返回多条记录，且包含分页信息
 // page 第几页，从1开始
 // limit 结果数量
-func (b *builder) FetchWithPage(fields []any, page int64, pageSize int64) (*ResultData, error) {
+func (b *builder) FetchWithPage(fields []string, page int64, pageSize int64) (*ResultData, error) {
 
 	cond, args := b.buildCond()
 	count, err := b.ClearCond().WhereRaw(cond, args...).Count()
@@ -335,7 +339,7 @@ func (b *builder) FetchWithPage(fields []any, page int64, pageSize int64) (*Resu
 
 // FetchRow 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) FetchRow(fields []any, result any) (int, error) {
+func (b *builder) FetchRow(fields []string, result any) (int, error) {
 
 	queryString, args, err := b.MakeQueryString(fields)
 	if err != nil {
@@ -349,7 +353,7 @@ func (b *builder) FetchRow(fields []any, result any) (int, error) {
 // field string 返回的字段 示例："count(*) AS count"
 func (b *builder) FetchOne(field string) (string, error) {
 
-	queryString, args, err := b.MakeQueryString([]any{field})
+	queryString, args, err := b.MakeQueryString([]string{field})
 	if err != nil {
 		return "", err
 	}
@@ -383,7 +387,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 		values = append(values, "?")
 		args = append(args, value)
 	}
-	queryString := "INSERT INTO `" + strings.Trim(b.table, "`") + "` (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
+	queryString := "INSERT INTO " + b.table.String() + " (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
 
 	// 执行插入语句
 	res, err := b.handler.Exec(queryString, args...)
@@ -429,7 +433,7 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 	args = append(valArgs, args...)
 
 	// 查询字符串
-	queryString := "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + strset + " WHERE " + where
+	queryString := "UPDATE " + b.table.String() + " SET " + strset + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])
@@ -476,7 +480,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	}
 
 	// 查询字符串
-	queryString := "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + set + " WHERE " + where
+	queryString := "UPDATE " + b.table.String() + " SET " + set + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])
@@ -535,9 +539,9 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]any) 
 
 	var queryString = ""
 	if len(set) > 0 && set[0] != nil {
-		queryString = "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + strset + " WHERE " + where
+		queryString = "UPDATE " + b.table.String() + " SET " + strset + " WHERE " + where
 	} else {
-		queryString = "UPDATE `" + strings.Trim(b.table, "`") + "` SET " + extra[0] + " WHERE " + where
+		queryString = "UPDATE " + b.table.String() + " SET " + extra[0] + " WHERE " + where
 	}
 
 	// 执行更新sql语句
@@ -583,7 +587,7 @@ func (b *builder) Delete(limit ...int) (int64, error) {
 	}
 
 	// 拼接删除语句
-	queryString := "DELETE FROM `" + strings.Trim(b.table, "`") + "` WHERE " + where
+	queryString := "DELETE FROM " + b.table.String() + " WHERE " + where
 
 	if len(limit) == 1 && limit[0] > 0 {
 		queryString += " LIMIT " + strconv.Itoa(limit[0])

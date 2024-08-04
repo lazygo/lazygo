@@ -9,10 +9,30 @@ import (
 )
 
 type UserInfo struct {
-	Id    int    `json:"id"`
-	Uid   uint64 `json:"uid"`
-	Name  string `json:"name"`
-	Ctime int64  `json:"ctime"`
+	Id     int    `json:"id"`
+	Uid    uint64 `json:"uid"`
+	Name   string `json:"name"`
+	Mobile string `json:"mobile"`
+	Ctime  int64  `json:"ctime"`
+}
+
+type VipInfo struct {
+	Id       int    `json:"id"`
+	Uid      uint64 `json:"uid"`
+	Name     string `json:"name"`
+	Level    int64  `json:"level"`
+	Deadline int64  `json:"deadline"`
+	Ctime    int64  `json:"ctime"`
+}
+
+type UserVipInfo struct {
+	UserInfo
+	VipInfo
+}
+
+type UserVipInfoWithAlias struct {
+	UserInfo `json:"U"`
+	VipInfo  `json:"V"`
 }
 
 func TestDb(t *testing.T) {
@@ -43,17 +63,31 @@ func TestDb(t *testing.T) {
 	}()
 
 	tableName := "good_unit_test"
+	tableVipName := "good_unit_test_vip"
 
 	tableSql := "CREATE TABLE `good_unit_test` (" +
 		"`id` int(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'primary key'," +
 		"`uid` bigint(20) unsigned NOT NULL COMMENT 'uid'," +
 		"`name` varchar(20) NOT NULL DEFAULT '' COMMENT 'name'," +
+		"`mobile` varchar(20) NOT NULL DEFAULT '' COMMENT 'mobile'," +
 		"`ctime` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'create time'," +
 		"PRIMARY KEY (`id`)," +
 		"UNIQUE KEY `uniq_uid` (`uid`)" +
 		") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='good_unit_test';"
 
+	tableVipSql := "CREATE TABLE `good_unit_test_vip` (" +
+		"`id` int(20) unsigned NOT NULL AUTO_INCREMENT COMMENT 'primary key'," +
+		"`uid` bigint(20) unsigned NOT NULL COMMENT 'uid'," +
+		"`name` varchar(20) NOT NULL DEFAULT '' COMMENT 'name'," +
+		"`level` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'level'," +
+		"`deadline` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'deadline'," +
+		"`ctime` int(10) unsigned NOT NULL DEFAULT 0 COMMENT 'create time'," +
+		"PRIMARY KEY (`id`)," +
+		"UNIQUE KEY `uniq_uid` (`uid`)" +
+		") ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='good_unit_test_vip';"
+
 	dropSql := "DROP TABLE `good_unit_test`;"
+	dropVipSql := "DROP TABLE `good_unit_test_vip`;"
 
 	now := time.Now().Unix()
 
@@ -61,6 +95,11 @@ func TestDb(t *testing.T) {
 	assert.Nil(err)
 
 	_, err = db.Exec(tableSql)
+	if err != nil {
+		assert.Nil(err, err.Error())
+	}
+
+	_, err = db.Exec(tableVipSql)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -75,6 +114,15 @@ func TestDb(t *testing.T) {
 			assert.Nil(err, err.Error())
 		}
 		assert.False(ok)
+		_, err = db.Exec(dropVipSql)
+		if err != nil {
+			assert.Nil(err, err.Error())
+		}
+		ok, err = CheckTable(db, tableVipName)
+		if err != nil {
+			assert.Nil(err, err.Error())
+		}
+		assert.False(ok)
 	}()
 
 	ok, err := CheckTable(db, tableName)
@@ -85,24 +133,63 @@ func TestDb(t *testing.T) {
 
 	// Test Insert
 	data := map[string]any{
-		"uid":   1001,
-		"name":  "测试",
-		"ctime": now,
+		"uid":    1001,
+		"name":   "测试",
+		"mobile": "13812345678",
+		"ctime":  now,
 	}
-	id, err := db.Table(tableName).Insert(data)
+	uid, err := db.Table(tableName).Insert(data)
+	if err != nil {
+		assert.Nil(err, err.Error())
+	}
+	data = map[string]any{
+		"uid":      1001,
+		"name":     "测试vip",
+		"level":    1,
+		"deadline": now + 1000000,
+		"ctime":    now,
+	}
+	id, err := db.Table(tableVipName).Insert(data)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
 
 	// Test FetchRowIn
 	user := &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"uid", "name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", uid).FetchRow([]string{"uid", "name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
 	assert.Equal(user.Uid, uint64(1001))
 	assert.Equal(user.Name, "测试")
 	assert.Equal(user.Ctime, now)
+
+	// Test Join Table
+	uservip := &UserVipInfo{}
+	table := Table(tableName).As("U").LeftJoin(Table(tableVipName).As("V"), "U.uid", "V.uid")
+	_, err = db.Table(table.String()).
+		Where("U.uid", 1001).FetchRow([]string{"*"}, uservip)
+	if err != nil {
+		assert.Nil(err, err.Error())
+	}
+	assert.Equal(user.Uid, uint64(1001))
+	assert.Equal(user.Name, "测试")
+	assert.Equal(user.Ctime, now)
+
+	uservip2 := &UserVipInfoWithAlias{}
+	_, err = db.Table(table.String()).
+		Where("U.uid", 1001).FetchRow(StructFields(uservip2), uservip2)
+	if err != nil {
+		assert.Nil(err, err.Error())
+	}
+	assert.Equal(user.Uid, uint64(1001))
+	assert.Equal(user.Name, "测试")
+	assert.Equal(user.Ctime, now)
+	sql, args, err := db.Table(table.String()).
+		Where("U.uid", 1001).MakeQueryString(StructFields(uservip2))
+	assert.Nil(err, nil)
+	assert.Equal(sql, "SELECT U.`ctime`, U.`id`, U.`mobile`, U.`name`, U.`uid`, V.`ctime`, V.`deadline`, V.`id`, V.`level`, V.`name`, V.`uid` FROM `good_unit_test` AS U LEFT JOIN `good_unit_test_vip` AS V ON U.`uid` = V.`uid` WHERE U.`uid` = ?")
+	assert.Equal(args, []any{1001})
 
 	// Test Update
 	set := map[string]any{
@@ -146,7 +233,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).FetchRow([]string{"name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -163,7 +250,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]any{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).FetchRow([]string{"name", "ctime"}, user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -189,7 +276,7 @@ func TestDb(t *testing.T) {
 	}
 
 	var listSS []UserInfo
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name"}, &listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -202,7 +289,7 @@ func TestDb(t *testing.T) {
 		assert.Equal(listSS[1].Uid, uint64(1002))
 		assert.Equal(listSS[1].Name, "测试2号")
 	}
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name"}, &listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -210,7 +297,7 @@ func TestDb(t *testing.T) {
 
 	// Fetch Map
 	var userMap []map[string]any
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]any{"uid", "name", "ctime"}, &userMap)
+	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name", "ctime"}, &userMap)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -234,7 +321,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
-	dataList, err := db.Table(tableName).Where("id", ">", 0).FetchWithPage([]any{"uid", "name"}, 1, 2)
+	dataList, err := db.Table(tableName).Where("id", ">", 0).FetchWithPage([]string{"uid", "name"}, 1, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -249,7 +336,7 @@ func TestDb(t *testing.T) {
 	cond := map[string]any{
 		"uid": in,
 	}
-	dataList, err = db.Table(tableName).Where(cond).FetchWithPage([]any{"uid", "name"}, 2, 2)
+	dataList, err = db.Table(tableName).Where(cond).FetchWithPage([]string{"uid", "name"}, 2, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -279,15 +366,15 @@ func TestDb(t *testing.T) {
 	assert.Equal(n, int64(1))
 
 	var result []map[string]any
-	_, err = db.Table(tableName).Where("id", id).Fetch([]any{"uid", "name"}, &result)
+	_, err = db.Table(tableName).Where("id", id).Fetch([]string{"uid", "name"}, &result)
 	if err != nil {
 		assert.Nil(err, ErrInvalidResultPtr)
 	}
 	assert.Empty(result)
 
 	// test error
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{1, "name"}, &result)
-	assert.Equal(err, ErrInvalidColumnsArguments)
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"nofound1", "name"}, &result)
+	assert.True(strings.Contains(err.(*SqlError).Unwrap().Error(), "Unknown column 'nofound1' in 'field list'"))
 
 	// test error
 	n, err = db.Table(tableName).Update(map[string]any{"name1": 1})
@@ -331,15 +418,15 @@ func TestDb(t *testing.T) {
 	assert.Equal(n, int64(0))
 
 	resErrType := 0
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{"id", "name"}, &resErrType)
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"id", "name"}, &resErrType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 	var resNilType map[string]any
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]any{"id", "name"}, &resNilType)
+	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"id", "name"}, &resNilType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 	var resErrType2 []map[string]int
-	_, err = db.Table(tableName).Where("id", ">", id).Fetch([]any{"id", "name"}, &resErrType2)
+	_, err = db.Table(tableName).Where("id", ">", id).Fetch([]string{"id", "name"}, &resErrType2)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 }
