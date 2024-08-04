@@ -2,10 +2,9 @@ package mysql
 
 import (
 	"database/sql"
+	"fmt"
 	"reflect"
 	"strings"
-
-	"golang.org/x/exp/maps"
 )
 
 type reflectField struct {
@@ -191,7 +190,14 @@ func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 func StructFields(result any) []string {
 	rv := reflect.Indirect(reflect.ValueOf(result))
 	arr := getFieldArr(rv)
-	return maps.Keys(arr)
+	r := make([]string, 0, len(arr))
+	for k := range arr {
+		if strings.Contains(k, ".") {
+			k += fmt.Sprintf(" AS `%s`", strings.ReplaceAll(k, "`", ""))
+		}
+		r = append(r, k)
+	}
+	return r
 }
 
 func getFieldArr(rv reflect.Value) map[string]any {
