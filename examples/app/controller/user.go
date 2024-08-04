@@ -82,7 +82,7 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 
 	// fetch user
 	mdlUser := dbModel.NewUserModel()
-	fields := []any{"uid", "password"}
+	fields := []string{"uid", "password"}
 
 	cond := map[string]any{}
 	if req.Type == utils.TypeEmail {
@@ -119,7 +119,7 @@ func (ctl *UserController) Profile(req *request.ProfileRequest) error {
 	fmt.Println(ctl.Ctx.UID())
 	fmt.Println(req.UID)
 	mdlUser := dbModel.NewUserModel()
-	user, n, err := mdlUser.FetchByUid([]any{"*"}, req.UID)
+	user, n, err := mdlUser.FetchByUid([]string{"*"}, req.UID)
 	if err != nil {
 		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [uid: %d] [err: %v]", req.UID, err)
 		return errors.ErrInternalServerError
@@ -134,8 +134,7 @@ func (ctl *UserController) Profile(req *request.ProfileRequest) error {
 		ctl.Ctx.Logger().Error("[msg: marshal json fail] [user: %v] [err: %v]", user, err)
 		return errors.ErrInternalServerError
 	}
-	ctl.Ctx.HTMLBlob(200, append([]byte(strconv.FormatUint(ctl.Ctx.UID(), 10)+"\n"), data...))
-	return nil
+	return ctl.Ctx.HTMLBlob(200, append([]byte(strconv.FormatUint(ctl.Ctx.UID(), 10)+"\n"), data...))
 }
 
 func (ctl *UserController) Logout(req *request.LogoutRequest) (any, error) {
