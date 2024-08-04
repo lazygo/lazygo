@@ -39,7 +39,12 @@ func Controller(h any, methodName ...string) HandlerFunc {
 		if err = ctx.Bind(req); err != nil {
 			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
 		}
-		if err = pReq.MethodByName("Verify").Call([]reflect.Value{rCtx})[0].Interface().(error); err != nil {
+		verify := pReq.MethodByName("Verify")
+		var params []reflect.Value
+		if verify.Type().NumIn() > 0 {
+			params = append(params, rCtx)
+		}
+		if err = verify.Call(params)[0].Interface().(error); err != nil {
 			if he, ok := err.(*HTTPError); ok {
 				return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
 			}
