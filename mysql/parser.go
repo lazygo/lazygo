@@ -187,13 +187,18 @@ func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 	return fieldPtr, nil
 }
 
-func StructFields(result any) []string {
+func StructFields(result any, except ...string) []string {
 	rv := reflect.Indirect(reflect.ValueOf(result))
 	arr := getFieldArr(rv)
+	for _, rm := range except {
+		delete(arr, strings.ReplaceAll(rm, "`", ""))
+	}
+
 	r := make([]string, 0, len(arr))
 	for k := range arr {
+		k = buildK(k)
 		if strings.Contains(k, ".") {
-			k = buildK(k) + fmt.Sprintf(" AS `%s`", strings.ReplaceAll(k, "`", ""))
+			k += fmt.Sprintf(" AS `%s`", strings.ReplaceAll(k, "`", ""))
 		}
 		r = append(r, k)
 	}

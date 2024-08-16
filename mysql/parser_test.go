@@ -53,10 +53,10 @@ func TestStructFields(t *testing.T) {
 	assert := testify.New(t)
 
 	var data OrderWithUser
-	keys := StructFields(data)
+	keys := StructFields(data, "O.id")
 	slices.Sort(keys)
 
-	testData := []string{"`O`.`id` AS `O.id`", "`O`.`name` AS `O.name`", "`O`.`uid` AS `O.uid`", "`U`.`name` AS `U.name`", "`U`.`uid` AS `U.uid`", "`U`.`vip`.`ctime` AS `U.vip.ctime`", "`U`.`vip`.`deadline` AS `U.vip.deadline`", "`U`.`vip`.`name` AS `U.vip.name`", "`U`.`vip`.`uid` AS `U.vip.uid`", "hh"}
+	testData := []string{"`O`.`name` AS `O.name`", "`O`.`uid` AS `O.uid`", "`U`.`name` AS `U.name`", "`U`.`uid` AS `U.uid`", "`U`.`vip`.`ctime` AS `U.vip.ctime`", "`U`.`vip`.`deadline` AS `U.vip.deadline`", "`U`.`vip`.`name` AS `U.vip.name`", "`U`.`vip`.`uid` AS `U.vip.uid`", "`hh`"}
 	slices.Sort(testData)
 	assert.Equal(keys, testData)
 }
