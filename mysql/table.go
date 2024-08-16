@@ -5,11 +5,7 @@ import "fmt"
 type Table string
 
 func (t Table) String() string {
-	table := string(t)
-	if isSimple(table) {
-		return buildK(table)
-	}
-	return table
+	return buildK(string(t))
 }
 
 func (t Table) IsValid() bool {
@@ -17,7 +13,7 @@ func (t Table) IsValid() bool {
 }
 
 func (t Table) As(alias string) Table {
-	return Table(t.String() + " AS " + alias)
+	return Table(t.String() + " AS " + buildK(alias))
 }
 
 func (t Table) LeftJoin(table Table, a, b string) Table {

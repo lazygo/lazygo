@@ -164,12 +164,8 @@ func (b *builder) Limit(limit int64) WhereBuilder {
 }
 
 func (b *builder) Select(fields ...string) WhereBuilder {
-	if len(fields) == 0 {
-		b.fields = Fields([]string{"*"})
-	} else {
-		slices.Sort(fields)
-		b.fields = fields
-	}
+	slices.Sort(fields)
+	b.fields = fields
 	return b
 }
 

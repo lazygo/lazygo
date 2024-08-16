@@ -77,36 +77,29 @@ func build(k string, op string) string {
 // buildK key增加反引号
 func buildK(k string) string {
 	k = strings.TrimSpace(k)
-	if k == "*" {
-		return "*"
+	if !isSimple(k) {
+		return k
 	}
-	k = strings.ReplaceAll(k, "`", "")
-	t := ""
-	idx := strings.Index(k, ".")
-	if idx != -1 {
-		t = k[:idx+1]
-		k = k[idx+1:]
-	}
-	return t + "`" + k + "`"
+	return "`" + strings.ReplaceAll(k, ".", "`.`") + "`"
 }
 
 type Fields []string
 
 func (f Fields) String() string {
-	arr := make([]string, len(f), cap(f))
+	l := len(f)
+	if l == 0 {
+		return "*"
+	}
+	arr := make([]string, l, cap(f))
 	for i, v := range f {
 		v = strings.TrimSpace(v)
-		if isSimple(v) {
-			arr[i] = buildK(v)
-		} else {
-			arr[i] = v
-		}
+		arr[i] = buildK(v)
 	}
 	return strings.Join(arr, ", ")
 }
 
 func isSimple(v string) bool {
-	return !strings.ContainsAny(strings.TrimSpace(v), "() `")
+	return !strings.ContainsAny(strings.TrimSpace(v), "() `*")
 }
 
 // ResultData 分页返回数据 - 返回结果定义

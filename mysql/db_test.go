@@ -188,7 +188,7 @@ func TestDb(t *testing.T) {
 	sql, args, err := db.Table(table.String()).
 		Where("U.uid", 1001).Select(StructFields(uservip2)...).QueryString()
 	assert.Nil(err, nil)
-	assert.Equal(sql, "SELECT U.`ctime`, U.`id`, U.`mobile`, U.`name`, U.`uid`, V.`ctime`, V.`deadline`, V.`id`, V.`level`, V.`name`, V.`uid` FROM `good_unit_test` AS U LEFT JOIN `good_unit_test_vip` AS V ON U.`uid` = V.`uid` WHERE U.`uid` = ?")
+	assert.Equal(sql, "SELECT `U`.`ctime` AS `U.ctime`, `U`.`id` AS `U.id`, `U`.`mobile` AS `U.mobile`, `U`.`name` AS `U.name`, `U`.`uid` AS `U.uid`, `V`.`ctime` AS `V.ctime`, `V`.`deadline` AS `V.deadline`, `V`.`id` AS `V.id`, `V`.`level` AS `V.level`, `V`.`name` AS `V.name`, `V`.`uid` AS `V.uid` FROM `good_unit_test` AS `U` LEFT JOIN `good_unit_test_vip` AS `V` ON `U`.`uid` = `V`.`uid` WHERE `U`.`uid` = ?")
 	assert.Equal(args, []any{1001})
 
 	// Test Update

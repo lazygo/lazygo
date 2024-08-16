@@ -193,7 +193,7 @@ func StructFields(result any) []string {
 	r := make([]string, 0, len(arr))
 	for k := range arr {
 		if strings.Contains(k, ".") {
-			k += fmt.Sprintf(" AS `%s`", strings.ReplaceAll(k, "`", ""))
+			k = buildK(k) + fmt.Sprintf(" AS `%s`", strings.ReplaceAll(k, "`", ""))
 		}
 		r = append(r, k)
 	}
