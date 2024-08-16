@@ -156,7 +156,7 @@ func TestDb(t *testing.T) {
 
 	// Test FetchRowIn
 	user := &UserInfo{}
-	_, err = db.Table(tableName).Where("id", uid).FetchRow([]string{"uid", "name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", uid).Select("uid", "name", "ctime").First(user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -168,7 +168,7 @@ func TestDb(t *testing.T) {
 	uservip := &UserVipInfo{}
 	table := Table(tableName).As("U").LeftJoin(Table(tableVipName).As("V"), "U.uid", "V.uid")
 	_, err = db.Table(table.String()).
-		Where("U.uid", 1001).FetchRow([]string{"*"}, uservip)
+		Where("U.uid", 1001).First(uservip)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -178,7 +178,7 @@ func TestDb(t *testing.T) {
 
 	uservip2 := &UserVipInfoWithAlias{}
 	_, err = db.Table(table.String()).
-		Where("U.uid", 1001).FetchRow(StructFields(uservip2), uservip2)
+		Where("U.uid", 1001).Select(StructFields(uservip2)...).First(uservip2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -186,7 +186,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(user.Name, "测试")
 	assert.Equal(user.Ctime, now)
 	sql, args, err := db.Table(table.String()).
-		Where("U.uid", 1001).MakeQueryString(StructFields(uservip2))
+		Where("U.uid", 1001).Select(StructFields(uservip2)...).QueryString()
 	assert.Nil(err, nil)
 	assert.Equal(sql, "SELECT U.`ctime`, U.`id`, U.`mobile`, U.`name`, U.`uid`, V.`ctime`, V.`deadline`, V.`id`, V.`level`, V.`name`, V.`uid` FROM `good_unit_test` AS U LEFT JOIN `good_unit_test_vip` AS V ON U.`uid` = V.`uid` WHERE U.`uid` = ?")
 	assert.Equal(args, []any{1001})
@@ -200,7 +200,7 @@ func TestDb(t *testing.T) {
 		assert.Nil(err, err.Error())
 	}
 	assert.Equal(n, int64(1))
-	name, err := db.Table(tableName).Where("uid", user.Uid).FetchOne("name")
+	name, err := db.Table(tableName).Where("uid", user.Uid).One("name")
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -213,7 +213,7 @@ func TestDb(t *testing.T) {
 		assert.Nil(err, err.Error())
 	}
 	assert.Equal(n, int64(1))
-	name, err = db.Table(tableName).Where("uid", user.Uid).FetchOne("name")
+	name, err = db.Table(tableName).Where("uid", user.Uid).One("name")
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -233,7 +233,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]string{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First(user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -250,7 +250,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).FetchRow([]string{"name", "ctime"}, user)
+	_, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First(user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -258,7 +258,7 @@ func TestDb(t *testing.T) {
 	assert.Equal(user.Ctime, now)
 
 	// Test FetchOne
-	name, err = db.Table(tableName).Where("id", id).FetchOne("name")
+	name, err = db.Table(tableName).Where("id", id).One("name")
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -276,7 +276,7 @@ func TestDb(t *testing.T) {
 	}
 
 	var listSS []UserInfo
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find(&listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -289,7 +289,7 @@ func TestDb(t *testing.T) {
 		assert.Equal(listSS[1].Uid, uint64(1002))
 		assert.Equal(listSS[1].Name, "测试2号")
 	}
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name"}, &listSS)
+	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find(&listSS)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -297,7 +297,7 @@ func TestDb(t *testing.T) {
 
 	// Fetch Map
 	var userMap []map[string]any
-	_, err = db.Table(tableName).Where("id", ">", 0).Fetch([]string{"uid", "name", "ctime"}, &userMap)
+	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name", "ctime").Find(&userMap)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -321,7 +321,7 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
-	dataList, err := db.Table(tableName).Where("id", ">", 0).FetchWithPage([]string{"uid", "name"}, 1, 2)
+	dataList, err := db.Table(tableName).Where("id", ">", 0).Select("uid", "name").FetchWithPage(1, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -336,7 +336,7 @@ func TestDb(t *testing.T) {
 	cond := map[string]any{
 		"uid": in,
 	}
-	dataList, err = db.Table(tableName).Where(cond).FetchWithPage([]string{"uid", "name"}, 2, 2)
+	dataList, err = db.Table(tableName).Where(cond).Select("uid", "name").FetchWithPage(2, 2)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -366,14 +366,14 @@ func TestDb(t *testing.T) {
 	assert.Equal(n, int64(1))
 
 	var result []map[string]any
-	_, err = db.Table(tableName).Where("id", id).Fetch([]string{"uid", "name"}, &result)
+	_, err = db.Table(tableName).Where("id", id).Select("uid", "name").Find(&result)
 	if err != nil {
 		assert.Nil(err, ErrInvalidResultPtr)
 	}
 	assert.Empty(result)
 
 	// test error
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"nofound1", "name"}, &result)
+	_, err = db.Table(tableName).Where("id", ">", id).Select("nofound1", "name").First(&result)
 	assert.True(strings.Contains(err.(*SqlError).Unwrap().Error(), "Unknown column 'nofound1' in 'field list'"))
 
 	// test error
@@ -405,11 +405,11 @@ func TestDb(t *testing.T) {
 	assert.Equal(err, ErrInvalidArguments)
 	assert.Equal(n, int64(0))
 
-	x, err := db.Table(tableName).Where("1=1").OrderBy("1", "2").FetchOne("a")
+	x, err := db.Table(tableName).Where("1=1").OrderBy("1", "2").One("a")
 	assert.Equal(err, ErrInvalidArguments)
 	assert.Equal(x, "")
 
-	x, err = db.Table(tableName).Where("1=1").GroupBy("id").FetchOne("id")
+	x, err = db.Table(tableName).Where("1=1").GroupBy("id").One("id")
 	assert.Equal(err, nil)
 	assert.Equal(x, "2")
 
@@ -418,15 +418,15 @@ func TestDb(t *testing.T) {
 	assert.Equal(n, int64(0))
 
 	resErrType := 0
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"id", "name"}, &resErrType)
+	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").First(&resErrType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 	var resNilType map[string]any
-	_, err = db.Table(tableName).Where("id", ">", id).FetchRow([]string{"id", "name"}, &resNilType)
+	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").First(&resNilType)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 	var resErrType2 []map[string]int
-	_, err = db.Table(tableName).Where("id", ">", id).Fetch([]string{"id", "name"}, &resErrType2)
+	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").Find(&resErrType2)
 	assert.Equal(err, ErrInvalidResultPtr)
 
 }

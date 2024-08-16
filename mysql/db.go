@@ -12,44 +12,18 @@ type DB struct {
 	before func(string, ...any) func()
 }
 
-// ResultData 分页返回数据 - 返回结果定义
-type ResultData struct {
-	List      []map[string]any `json:"list"`
-	Count     int64            `json:"count"`
-	PageSize  int64            `json:"page_size"`
-	Page      int64            `json:"page"`
-	PageCount int64            `json:"page_count"`
-	Start     int64            `json:"start"`
-	Mark      int64            `json:"mark"`
-}
-
-// ToMap 分页结果集转化为map
-func (r *ResultData) ToMap() map[string]any {
-	if r == nil {
-		return map[string]any{}
-	}
-	return map[string]any{
-		"list":       r.List,
-		"count":      r.Count,
-		"page_size":  r.PageSize,
-		"page":       r.Page,
-		"page_count": r.PageCount,
-		"start":      r.Start,
-		"mark":       r.Mark,
-	}
-}
-
 // Table 获取查询构建器
 func (d *DB) Table(table string) *builder {
 	return newBuilder(d, Table(table))
 }
 
 // Before sql执行前hook
-func (d *DB) Before(h func(string, ...any) func()) {
+func (d *DB) Before(h func(string, ...any) func()) *DB {
 	if h == nil {
-		return
+		return d
 	}
 	d.before = h
+	return d
 }
 
 // Query 查询sql并返回结果集
@@ -86,8 +60,8 @@ func (d *DB) Exec(sql string, args ...any) (sql.Result, error) {
 	return result, nil
 }
 
-// GetAll 直接执行sql原生语句并返回多行
-func (d *DB) GetAll(result any, query string, args ...any) (int, error) {
+// Find 直接执行sql原生语句并返回多行
+func (d *DB) Find(result any, query string, args ...any) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return 0, err
@@ -98,8 +72,8 @@ func (d *DB) GetAll(result any, query string, args ...any) (int, error) {
 	return parseData(rows, result)
 }
 
-// GetRow 直接执行sql原生语句并返回1行
-func (d *DB) GetRow(result any, query string, args ...any) (int, error) {
+// First 直接执行sql原生语句并返回1行
+func (d *DB) First(result any, query string, args ...any) (int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
 		return 0, err
@@ -111,7 +85,7 @@ func (d *DB) GetRow(result any, query string, args ...any) (int, error) {
 }
 
 // Transaction 事务
-func (d *DB) Transaction(fn func() error) (err error) {
+func (d *DB) Transaction(fn func(db *DB) error) (err error) {
 	tx, err := d.Begin()
 	if err != nil {
 		if tx != nil {
@@ -133,7 +107,7 @@ func (d *DB) Transaction(fn func() error) (err error) {
 			err = errors.New(fmt.Sprint(e))
 		}
 	}()
-	err = fn()
+	err = fn(d)
 	if err != nil {
 		rbErr := tx.Rollback()
 		if rbErr != nil {

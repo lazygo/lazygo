@@ -42,7 +42,7 @@ func (mdl *UserModel) FetchByUid(fields []string, uid uint64) (*UserData, int, e
 
 func (mdl *UserModel) FetchRow(fields []string, cond map[string]any) (*UserData, int, error) {
 	var data UserData
-	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
+	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -52,7 +52,7 @@ func (mdl *UserModel) FetchRow(fields []string, cond map[string]any) (*UserData,
 func (mdl *UserModel) Exists(cond map[string]any) (bool, error) {
 	fields := []string{"uid"}
 	var data UserData
-	n, err := mdl.QueryBuilder().Where(cond).FetchRow(fields, &data)
+	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
 	if err != nil {
 		return false, err
 	}

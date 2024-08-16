@@ -31,7 +31,7 @@ func TestWhere(t *testing.T) {
 		"last_view_user",
 		"table_name.field",
 	}
-	sql, args, err := builder.MakeQueryString(data)
+	sql, args, err := builder.Select(data...).QueryString()
 	assert.Nil(err, "err.Error()")
 
 	sp := strings.Split(sql, " WHERE ")
@@ -71,7 +71,7 @@ func TestWhere(t *testing.T) {
 		},
 		"d": 4,
 	})
-	sql, args, err = builder.MakeQueryString(data)
+	sql, args, err = builder.Select(data...).QueryString()
 	assert.Nil(err, "err.Error()")
 
 	sp = strings.Split(sql, " WHERE ")

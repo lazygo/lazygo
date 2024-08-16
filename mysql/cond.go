@@ -81,7 +81,7 @@ func (g *groupCond) where(cond ...any) error {
 	switch len(cond) {
 	case 1:
 		switch cond[0].(type) {
-		case string, Raw:
+		case string:
 			// 字符串查询
 			g.whereRaw(cond[0].(string))
 		case map[string]any:
