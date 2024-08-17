@@ -56,7 +56,7 @@ type Builder interface {
 
 // 查询构建器
 type builder struct {
-	handler   *DB
+	tx        *Tx
 	table     Table
 	cond      *groupCond // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
 	fields    Fields
@@ -69,11 +69,11 @@ type builder struct {
 }
 
 // newBuilder 实例化查询构建器
-func newBuilder(handler *DB, table Table) *builder {
+func newBuilder(tx *Tx, table Table) *builder {
 	return &builder{
-		handler: handler,
-		table:   table,
-		cond:    newGroup(AND),
+		tx:    tx,
+		table: table,
+		cond:  newGroup(AND),
 	}
 }
 
@@ -267,7 +267,7 @@ func (b *builder) Find(result any) (int, error) {
 		return 0, err
 	}
 
-	return b.handler.Before(b.before).Find(result, queryString, args...)
+	return b.tx.Before(b.before).Find(result, queryString, args...)
 }
 
 // FetchWithPage 查询并返回多条记录，且包含分页信息
@@ -293,7 +293,7 @@ func (b *builder) First(result any) (int, error) {
 		return 0, err
 	}
 
-	return b.handler.Before(b.before).First(result, queryString, args...)
+	return b.tx.Before(b.before).First(result, queryString, args...)
 }
 
 // One 查询并返回单个字段
@@ -305,7 +305,7 @@ func (b *builder) One(field string) (string, error) {
 	}
 
 	item := map[string]string{}
-	_, err = b.handler.Before(b.before).First(&item, queryString, args...)
+	_, err = b.tx.Before(b.before).First(&item, queryString, args...)
 	if err != nil {
 		return "", err
 	}
@@ -336,7 +336,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 	queryString := "INSERT INTO " + b.table.String() + " (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
 
 	// 执行插入语句
-	res, err := b.handler.Before(b.before).Exec(queryString, args...)
+	res, err := b.tx.Before(b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -386,7 +386,7 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 	}
 
 	// 执行更新语句
-	res, err := b.handler.Before(b.before).Exec(queryString, args...)
+	res, err := b.tx.Before(b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -433,7 +433,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	}
 
 	// 执行更新语句
-	res, err := b.handler.Before(b.before).Exec(queryString, args...)
+	res, err := b.tx.Before(b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -492,7 +492,7 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]any) 
 
 	// 执行更新sql语句
 	args = append(valArgs, args...)
-	res, err := b.handler.Before(b.before).Exec(queryString, args...)
+	res, err := b.tx.Before(b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -540,7 +540,7 @@ func (b *builder) Delete(limit ...int) (int64, error) {
 	}
 
 	// 获取影响的行数
-	res, err := b.handler.Before(b.before).Exec(queryString, args...)
+	res, err := b.tx.Before(b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}

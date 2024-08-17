@@ -3,6 +3,7 @@ package mysql
 import (
 	"database/sql"
 	"fmt"
+	"io"
 	"sync"
 	"time"
 
@@ -43,11 +44,11 @@ func (m *Manager) init(conf []Config) error {
 		if err != nil {
 			return err
 		}
-		m.Store(item.Name, &DB{
-			DB:     db,
-			name:   item.Name,
-			before: func(query string, args ...any) func() { return func() {} },
-		})
+		m.Store(item.Name, &DB{Tx{
+			invoker: db,
+			name:    item.Name,
+			before:  func(query string, args ...any) func() { return func() {} },
+		}})
 	}
 	return nil
 }
@@ -56,7 +57,7 @@ func (m *Manager) init(conf []Config) error {
 func (m *Manager) closeAll() error {
 	var err error
 	m.Range(func(name, db any) bool {
-		err = db.(*DB).Close()
+		err = db.(*DB).invoker.(io.Closer).Close()
 		if err != nil {
 			return false
 		}
