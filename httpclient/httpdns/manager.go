@@ -2,6 +2,8 @@ package httpdns
 
 import (
 	"context"
+	"net"
+	"net/http"
 	"net/netip"
 	"sync"
 
@@ -65,4 +67,15 @@ func Instance(name string) (HTTPDNS, error) {
 		return nil, ErrAdapterUninitialized
 	}
 	return a.(HTTPDNS), nil
+}
+
+var client = &http.Client{
+	Transport: &http.Transport{
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			dialer := &net.Dialer{
+				Resolver: &net.Resolver{},
+			}
+			return dialer.DialContext(ctx, network, addr)
+		},
+	},
 }

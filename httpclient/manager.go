@@ -6,7 +6,6 @@ import (
 	"cmp"
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -16,7 +15,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/lazygo/lazygo/httpdns"
+	"github.com/lazygo/lazygo/httpclient/httpdns"
 	"github.com/patrickmn/go-cache"
 	"go4.org/netipx"
 )
@@ -34,15 +33,12 @@ type Manager struct {
 }
 
 var (
-	ErrRequestApiFail = errors.New("request api fail")
-	ErrRequestFail    = errors.New("request fail")
-	ErrInvaildContent = errors.New("response content error")
-)
-
-var (
 	LogDebug = func(format string, v ...any) { log.Printf(format, v...) }
 	LogError = func(format string, v ...any) { log.Printf(format, v...) }
 )
+
+type specifiedIPCtxKey struct{}
+type SpecifiedIP []netip.Addr
 
 type Config struct {
 	DNSResolverAddr string `json:"dns"`
@@ -54,7 +50,7 @@ func New(conf *Config) *Manager {
 	if conf.DNSResolverAddr != "" {
 		m.resolver = resolver(conf.DNSResolverAddr)
 	}
-	if conf.HTTPDNSAdapter != nil {
+	if conf.HTTPDNSAdapter != "" {
 		httpdns, err := httpdns.Instance(conf.HTTPDNSAdapter)
 		if err != nil {
 			m.httpdns = httpdns
@@ -76,12 +72,17 @@ func (m *Manager) Transport(timeout time.Duration) *http.Transport {
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
 				separator := strings.LastIndex(addr, ":")
-				ips, err := m.lookupHost(ctx, addr[:separator])
-				if err != nil {
-					LogError("resolve dns fail: %v", err)
-					return nil, fmt.Errorf("resolve dns fail: %w", err)
+				if ips, ok := ctx.Value(specifiedIPCtxKey{}).(SpecifiedIP); ok && len(ips) > 0 {
+					// specified ip from request
+					addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
+				} else {
+					ips, err := m.lookupHost(ctx, addr[:separator])
+					if err != nil {
+						LogError("resolve dns fail: %v", err)
+						return nil, fmt.Errorf("resolve dns fail: %w", err)
+					}
+					addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
 				}
-				addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
 			}
 
 			conn, err := dialer.DialContext(ctx, network, addr)
@@ -102,14 +103,14 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 	var addrs []netip.Addr
 
 	if ips, found := dnscache.Get(host); found {
-		LogDebug("lookupHost cache: %s", ips.([]netip.Addr))
+		LogDebug("lookup host found in cache: %s", ips.([]netip.Addr))
 		return ips.([]netip.Addr), nil
 	}
 
 	//获取dns IP
 	ips, err := cmp.Or(m.resolver, net.DefaultResolver).LookupIPAddr(context.Background(), host)
 	if err != nil {
-		LogError("lookupHost %s fail, try httpdns: %v", host, err)
+		LogError("lookup host %s fail, try httpdns: %v", host, err)
 	}
 
 	if err == nil && len(ips) > 0 {
@@ -138,7 +139,7 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 		}
 	}
 
-	return nil, fmt.Errorf("no A record found for %s", host)
+	return nil, fmt.Errorf("no record found for %s", host)
 }
 
 func resolver(dns string) *net.Resolver {
@@ -153,11 +154,10 @@ func resolver(dns string) *net.Resolver {
 	}
 }
 
-func (m *Manager) Client(baseURL string, timeout time.Duration) *Client {
+func (m *Manager) Client(timeout time.Duration) *Client {
 	client := http.Client{Transport: m.Transport(timeout)}
 	client.Timeout = timeout
 	return &Client{
-		Client:  client,
-		baseURL: baseURL,
+		Client: client,
 	}
 }

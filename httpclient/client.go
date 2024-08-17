@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/netip"
 	"strconv"
 	"strings"
 	"time"
@@ -16,43 +17,58 @@ import (
 )
 
 const (
-	RetayTimes = "X-Control-Request-Retry-Times"
-	TimeoutSec = "X-Control-Request-Timeout-Sec"
+	HeaderRetayTimes  = "X-Control-Request-Retry-Times"
+	HeaderTimeoutSec  = "X-Control-Request-Timeout-Sec"
+	HeaderSpecifiedIP = "X-Control-Request-Specified-IP"
 )
 
 type Client struct {
 	http.Client
-	baseURL string
 }
 
-func (hc *Client) Request(ctx context.Context, httpMethod string, uri string, body []byte, headers map[string]string) ([]byte, int, error) {
-
+func (hc *Client) Request(ctx context.Context, httpMethod string, url string, body []byte, headers map[string]string) ([]byte, int, error) {
 	retryTimes := 3
-	if headers[RetayTimes] != "" {
-		retry, err := strconv.Atoi(headers[RetayTimes])
+	if headers[HeaderRetayTimes] != "" {
+		retry, err := strconv.Atoi(headers[HeaderRetayTimes])
 		if err != nil {
-			return nil, 0, fmt.Errorf("%s error: %w", RetayTimes, err)
+			return nil, 0, fmt.Errorf("%s=%s error: %w", HeaderRetayTimes, headers[HeaderRetayTimes], err)
 		}
-		retryTimes = retry
-		delete(headers, RetayTimes)
+		retryTimes = min(max(retry, 0), 10)
+		delete(headers, HeaderRetayTimes)
 	}
-	if headers[TimeoutSec] != "" {
-		sec, err := strconv.Atoi(headers[TimeoutSec])
+	if headers[HeaderTimeoutSec] != "" {
+		sec, err := strconv.Atoi(headers[HeaderTimeoutSec])
 		if err != nil {
-			return nil, 0, fmt.Errorf("%s error: %w", TimeoutSec, err)
+			return nil, 0, fmt.Errorf("%s=%s  error: %w", HeaderTimeoutSec, headers[HeaderTimeoutSec], err)
 		}
 		timeout := time.Duration(sec) * time.Second
-		delete(headers, TimeoutSec)
+		delete(headers, HeaderTimeoutSec)
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, timeout)
 		defer cancel()
 	}
 
+	if headers[HeaderSpecifiedIP] != "" {
+		var ips []netip.Addr
+		iplist := strings.Split(headers[HeaderSpecifiedIP], ",")
+		for _, item := range iplist {
+			ip, err := netip.ParseAddr(item)
+			if err != nil {
+				LogError("parse header %s=%s fail, %v", HeaderSpecifiedIP, headers[HeaderSpecifiedIP], err)
+				continue
+			}
+			ips = append(ips, ip)
+		}
+		if len(ips) > 0 {
+			ctx = context.WithValue(ctx, specifiedIPCtxKey{}, ips)
+		}
+	}
+
 	var resp *http.Response
 
 	// 注意此处不要使用 path.Join，因为BashUrl中可能带有http://，使用path.Join 会导致//合并为/
-	url := strings.TrimRight(hc.baseURL, "/") + "/" + strings.TrimLeft(uri, "/")
-	for i := 1; i <= retryTimes; i++ {
+	// url := strings.TrimRight(hc.baseURL, "/") + "/" + strings.TrimLeft(uri, "/")
+	for i := 0; i <= retryTimes; i++ {
 		req, err := http.NewRequestWithContext(ctx, httpMethod, url, bytes.NewReader(body))
 		if err != nil {
 			return nil, 0, err

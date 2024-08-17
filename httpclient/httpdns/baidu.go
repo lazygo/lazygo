@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
@@ -30,17 +29,6 @@ type BaiduHTTPDNSResp struct {
 	Data      map[string]BaiduDNSData `json:"data"`
 	Msg       string                  `json:"msg"`
 	Timestamp int64                   `json:"timestamp"`
-}
-
-var client = &http.Client{
-	Transport: &http.Transport{
-		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
-			dialer := &net.Dialer{
-				Resolver: &net.Resolver{},
-			}
-			return dialer.DialContext(ctx, network, addr)
-		},
-	},
 }
 
 func baidu(args map[string]string) (HTTPDNS, error) {
