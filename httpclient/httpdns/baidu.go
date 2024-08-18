@@ -38,7 +38,7 @@ func baidu(args map[string]string) (HTTPDNS, error) {
 		return nil, ErrInvalidHTTPDNSAdapterParams
 	}
 	return &BaiduHTTPDNS{
-		Endpoint: "",
+		Endpoint: "http://180.76.76.200/v3/resolve",
 		Account:  account,
 		Secret:   secret,
 	}, nil

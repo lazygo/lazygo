@@ -52,6 +52,13 @@
         adapter = "redis"
         option= {name = "lazygo-rds"}
 
+[httpdns]
+    default = "baidu"
+    [[locker.adapter]]
+        name = "baidu"
+        adapter = "baidu"
+        option= {account = "186529", secret = "kasCXQzsJzjZnsQm3N7v"}
+
 [logger]
     default = "console-log"
     [[logger.adapter]]

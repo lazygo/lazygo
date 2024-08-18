@@ -8,6 +8,7 @@ import (
 	"github.com/lazygo/lazygo/config"
 	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/pkg/cos"
+	"github.com/lazygo/lazygo/httpclient/httpdns"
 	"github.com/lazygo/lazygo/locker"
 	"github.com/lazygo/lazygo/logger"
 	"github.com/lazygo/lazygo/memory"
@@ -27,6 +28,11 @@ type Cache struct {
 type Locker struct {
 	DefaultName string          `json:"default" toml:"default"`
 	Adapter     []locker.Config `json:"adapter" toml:"adapter"`
+}
+
+type HTTPDNS struct {
+	DefaultName string           `json:"default" toml:"default"`
+	Adapter     []httpdns.Config `json:"adapter" toml:"adapter"`
 }
 
 type Server struct {
@@ -93,6 +99,14 @@ func Init(filename string) error {
 	// load locker config
 	err = base.Load("locker", func(conf Locker) error {
 		return locker.Init(conf.Adapter, conf.DefaultName)
+	})
+	if err != nil {
+		return err
+	}
+
+	// load httpdns
+	err = base.Load("httpdns", func(conf HTTPDNS) error {
+		return httpdns.Init(conf.Adapter, conf.DefaultName)
 	})
 	if err != nil {
 		return err
