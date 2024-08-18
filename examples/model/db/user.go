@@ -8,7 +8,7 @@ import (
 )
 
 type UserModel struct {
-	model.DbModel
+	model.DBModel[UserData]
 }
 
 type UserData struct {
@@ -28,35 +28,11 @@ func NewUserModel() *UserModel {
 	return mdl
 }
 
-func (mdl *UserModel) Create(data map[string]any) (int64, error) {
-	data["ctime"] = time.Now().Unix()
-	return mdl.QueryBuilder().Insert(data)
-}
-
-func (mdl *UserModel) FetchByUid(fields []string, uid uint64) (*UserData, int, error) {
+func (mdl *UserModel) FetchByUid(uid uint64, fields ...string) (*UserData, int, error) {
 	cond := map[string]any{
 		"uid": uid,
 	}
-	return mdl.FetchRow(fields, cond)
-}
-
-func (mdl *UserModel) FetchRow(fields []string, cond map[string]any) (*UserData, int, error) {
-	var data UserData
-	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
-	if err != nil {
-		return nil, 0, err
-	}
-	return &data, n, nil
-}
-
-func (mdl *UserModel) Exists(cond map[string]any) (bool, error) {
-	fields := []string{"uid"}
-	var data UserData
-	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
-	if err != nil {
-		return false, err
-	}
-	return n > 0, nil
+	return mdl.First(cond, fields...)
 }
 
 func (mdl *UserModel) UpdateByUid(uid int64, data map[string]any) (int64, error) {

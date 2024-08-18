@@ -35,11 +35,11 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 		if err != nil {
 			return err
 		}
-		lock, err := a.Init(item.Option)
+		httpdns, err := a.Init(item.Option)
 		if err != nil {
 			return err
 		}
-		m.Store(item.Name, lock)
+		m.Store(item.Name, httpdns)
 
 		if defaultName == item.Name {
 			m.defaultName = defaultName

@@ -5,7 +5,7 @@ import (
 )
 
 type UploadModel struct {
-	model.DbModel
+	model.DBModel[UploadData]
 }
 
 const (

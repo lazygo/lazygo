@@ -47,7 +47,7 @@ func (ctl *UserController) Register(req *request.RegisterRequest) (any, error) {
 		return nil, errors.ErrParamsError
 	}
 	user["password"] = passwordHash
-	uid, err := mdlUser.Create(user)
+	uid, err := mdlUser.Insert(user)
 	if err != nil {
 		ctl.Ctx.Logger().Error("[msg: create user fail] [error: db error] [err: %v]", err)
 		return nil, errors.ErrInternalServerError
@@ -82,7 +82,6 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 
 	// fetch user
 	mdlUser := dbModel.NewUserModel()
-	fields := []string{"uid", "password"}
 
 	cond := map[string]any{}
 	if req.Type == utils.TypeEmail {
@@ -91,7 +90,7 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 	if req.Type == utils.TypeMobile {
 		cond["mobile"] = req.Username
 	}
-	user, n, err := mdlUser.FetchRow(fields, cond)
+	user, n, err := mdlUser.First(cond, "uid", "password")
 	if err != nil {
 		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [cond: %v] [err: %v]", cond, err)
 		return nil, "", errors.ErrInternalServerError
@@ -119,7 +118,7 @@ func (ctl *UserController) Profile(req *request.ProfileRequest) error {
 	fmt.Println(ctl.Ctx.UID())
 	fmt.Println(req.UID)
 	mdlUser := dbModel.NewUserModel()
-	user, n, err := mdlUser.FetchByUid([]string{"*"}, req.UID)
+	user, n, err := mdlUser.FetchByUid(req.UID)
 	if err != nil {
 		ctl.Ctx.Logger().Error("[msg: fetch user fail] [error: db error] [uid: %d] [err: %v]", req.UID, err)
 		return errors.ErrInternalServerError
