@@ -288,7 +288,7 @@ func (b *builder) FetchWithPage(page int64, pageSize int64) (*ResultData, error)
 // First 查询并返回单条记录
 // field string 返回的字段 示例："*"
 func (b *builder) First(result any) (int, error) {
-	queryString, args, err := b.QueryString()
+	queryString, args, err := b.Limit(1).QueryString()
 	if err != nil {
 		return 0, err
 	}

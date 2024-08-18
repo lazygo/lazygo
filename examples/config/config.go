@@ -25,6 +25,7 @@ type Cache struct {
 	DefaultName string         `json:"default" toml:"default"`
 	Adapter     []cache.Config `json:"adapter" toml:"adapter"`
 }
+
 type Locker struct {
 	DefaultName string          `json:"default" toml:"default"`
 	Adapter     []locker.Config `json:"adapter" toml:"adapter"`
