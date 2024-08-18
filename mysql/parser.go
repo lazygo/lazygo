@@ -8,8 +8,9 @@ import (
 )
 
 type reflectField struct {
-	Tag   string
-	Value reflect.Value
+	tag    string
+	value  reflect.Value
+	finish bool
 }
 
 // parseData 解析结果集
@@ -207,25 +208,30 @@ func StructFields(result any, except ...string) []string {
 
 func getFieldArr(rv reflect.Value) map[string]any {
 	fieldArr := make(map[string]any)
-	stack := []reflectField{
-		{Tag: "", Value: rv},
+	stack := []*reflectField{
+		{tag: "", value: rv},
 	}
 	var path []string
 	for len(stack) > 0 {
 		rv := stack[len(stack)-1]
-		stack = stack[:len(stack)-1]
-		if rv.Tag != "" {
-			path = append(path, rv.Tag)
+		if rv.finish {
+			stack = stack[:len(stack)-1]
+			if rv.tag != "" && len(path) > 0 {
+				path = path[:len(path)-1]
+			}
+			continue
+		}
+		rv.finish = true
+		if rv.tag != "" {
+			path = append(path, rv.tag)
 		}
 
-		isLeaf := true
-		for i := 0; i < rv.Value.NumField(); i++ {
-			rtField := rv.Value.Type().Field(i)
-			rvField := rv.Value.Field(i)
+		for i := 0; i < rv.value.NumField(); i++ {
+			rtField := rv.value.Type().Field(i)
+			rvField := rv.value.Field(i)
 			field := rtField.Tag.Get("json")
-			if rvField.Kind() == reflect.Struct {
-				stack = append(stack, reflectField{Tag: field, Value: rvField})
-				isLeaf = false
+			if rvField.Kind() == reflect.Struct && rvField.Type().PkgPath() != "database/sql" {
+				stack = append(stack, &reflectField{tag: field, value: rvField})
 				continue
 			}
 			if field == "" {
@@ -238,9 +244,7 @@ func getFieldArr(rv reflect.Value) map[string]any {
 			}
 			fieldArr[p] = rvField.Addr().Interface()
 		}
-		if rv.Tag != "" && len(path) > 0 && isLeaf {
-			path = path[:len(path)-1]
-		}
+
 	}
 	return fieldArr
 }
