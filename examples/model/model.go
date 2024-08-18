@@ -54,7 +54,7 @@ func (mdl *DBModel[T]) First(cond map[string]any, fields ...string) (*T, int, er
 }
 
 func (mdl *DBModel[T]) Exists(cond map[string]any) (bool, error) {
-	var data map[string]any
+	data := map[string]any{}
 	n, err := mdl.QueryBuilder().Where(cond).Select("(0)").First(&data)
 	if err != nil {
 		return false, err
