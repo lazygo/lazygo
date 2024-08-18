@@ -99,7 +99,7 @@ func (f Fields) String() string {
 }
 
 func isSimple(v string) bool {
-	return !strings.ContainsAny(strings.TrimSpace(v), "() `*")
+	return !strings.ContainsAny(strings.TrimSpace(v), "() `*/+-%=&<>!")
 }
 
 // ResultData 分页返回数据 - 返回结果定义
