@@ -299,7 +299,7 @@ func (b *builder) First(result any) (int, error) {
 // One 查询并返回单个字段
 // field string 返回的字段 示例："count(*) AS count"
 func (b *builder) One(field string) (string, error) {
-	queryString, args, err := b.Select(field).QueryString()
+	queryString, args, err := b.Limit(1).Select(field).QueryString()
 	if err != nil {
 		return "", err
 	}

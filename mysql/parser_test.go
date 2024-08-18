@@ -27,7 +27,6 @@ type Order struct {
 	ID   uint64           `json:"id"`
 	UID  string           `json:"uid"`
 	Name sql.Null[string] `json:"name"`
-	// Data sql.Null[string] `json:"data"`
 }
 
 type OrderWithUser struct {

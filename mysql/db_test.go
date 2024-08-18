@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
@@ -9,11 +10,11 @@ import (
 )
 
 type UserInfo struct {
-	Id     int    `json:"id"`
-	Uid    uint64 `json:"uid"`
-	Name   string `json:"name"`
-	Mobile string `json:"mobile"`
-	Ctime  int64  `json:"ctime"`
+	Id     int            `json:"id"`
+	Uid    uint64         `json:"uid"`
+	Name   string         `json:"name"`
+	Mobile sql.NullString `json:"mobile"`
+	Ctime  int64          `json:"ctime"`
 }
 
 type VipInfo struct {
@@ -156,13 +157,14 @@ func TestDb(t *testing.T) {
 
 	// Test FetchRowIn
 	user := &UserInfo{}
-	_, err = db.Table(tableName).Where("id", uid).Select("uid", "name", "ctime").First(user)
+	_, err = db.Table(tableName).Where("id", uid).Select("uid", "name", "ctime", "mobile").First(user)
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
 	assert.Equal(user.Uid, uint64(1001))
 	assert.Equal(user.Name, "测试")
 	assert.Equal(user.Ctime, now)
+	assert.Equal(user.Mobile.String, "13812345678")
 
 	// Test Join Table
 	uservip := &UserVipInfo{}
