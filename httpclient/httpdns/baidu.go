@@ -48,7 +48,7 @@ func (httpdns *BaiduHTTPDNS) LookupIPAddr(ctx context.Context, host string) ([]n
 	params := &url.Values{}
 	params.Set("account_id", httpdns.Account)
 	params.Set("dn", host)
-	timestamp := time.Now().Unix()
+	timestamp := time.Now().Add(time.Minute).Unix()
 	params.Set("t", strconv.FormatInt(timestamp, 10))
 	sign := fmt.Sprintf("%x", md5.Sum([]byte(fmt.Sprintf("%s-%s-%d", host, httpdns.Secret, timestamp))))
 	params.Set("sign", sign)

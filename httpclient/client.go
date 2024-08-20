@@ -39,7 +39,7 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 	if headers[HeaderTimeoutSec] != "" {
 		sec, err := strconv.Atoi(headers[HeaderTimeoutSec])
 		if err != nil {
-			return nil, 0, fmt.Errorf("%s=%s  error: %w", HeaderTimeoutSec, headers[HeaderTimeoutSec], err)
+			return nil, 0, fmt.Errorf("%s=%s error: %w", HeaderTimeoutSec, headers[HeaderTimeoutSec], err)
 		}
 		timeout := time.Duration(sec) * time.Second
 		delete(headers, HeaderTimeoutSec)
