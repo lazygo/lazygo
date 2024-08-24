@@ -90,7 +90,8 @@ func (cm *common) Static(prefix, root string) {
 	}
 
 	h := func(c Context) error {
-		p, err := url.PathUnescape(c.Param("*"))
+		ps, _ := c.Param("*")
+		p, err := url.PathUnescape(ps)
 		if err != nil {
 			return err
 		}

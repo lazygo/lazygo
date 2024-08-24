@@ -45,7 +45,7 @@ type (
 		Bind(any) error
 
 		// Param returns path parameter by name.
-		Param(name string) string
+		Param(name string) (string, bool)
 
 		// ParamValues returns path parameter values.
 		ParamValues() []string
@@ -61,6 +61,7 @@ type (
 		PostUint(name string, defVal ...uint) uint
 		PostUint64(name string, defVal ...uint64) uint64
 
+		Cookie(name string) (string, bool)
 		QueryParam(name string) string
 		FormValue(name string) string
 		FormParams() (url.Values, error)
@@ -73,8 +74,8 @@ type (
 		// SetResponseHeader 设置响应头
 		SetResponseHeader(headerOptions map[string]string) *context
 
-		// GetRequestHeader 获取请求头
-		GetRequestHeader(name string) string
+		// RequestHeader 获取请求头
+		RequestHeader(name string) string
 
 		// JSON sends a JSON response with status code.
 		JSON(code int, i any) error
@@ -212,9 +213,11 @@ func (c *context) Bind(v any) error {
 				case "ctx", "context", "value":
 					val = c.Value(field)
 				case "header":
-					val = c.GetRequestHeader(field)
+					val = c.RequestHeader(field)
+				case "cookie":
+					val, _ = c.Cookie(field)
 				case "param":
-					val = c.Param(field)
+					val, _ = c.Param(field)
 				case "query":
 					val = c.QueryParam(field)
 				case "form":
@@ -259,15 +262,15 @@ func (c *context) Bind(v any) error {
 }
 
 // Param 路由参数
-func (c *context) Param(name string) string {
+func (c *context) Param(name string) (string, bool) {
 	for i, n := range c.pnames {
 		if i < len(c.pvalues) {
 			if n == name {
-				return c.pvalues[i]
+				return c.pvalues[i], true
 			}
 		}
 	}
-	return ""
+	return "", false
 }
 
 // ParamValues 路由参数
@@ -387,9 +390,18 @@ func (c *context) SetResponseHeader(headerOptions map[string]string) *context {
 	return c
 }
 
-// GetRequestHeader 获取请求头
-func (c *context) GetRequestHeader(name string) string {
+// RequestHeader 获取请求头
+func (c *context) RequestHeader(name string) string {
 	return c.request.Header.Get(name)
+}
+
+// Cookie cookie
+func (c *context) Cookie(name string) (string, bool) {
+	val, err := c.request.Cookie(name)
+	if err != nil {
+		return "", false
+	}
+	return val.Value, true
 }
 
 func (c *context) JSON(code int, i any) error {

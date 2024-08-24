@@ -64,7 +64,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 						return he.SetInternal(fmt.Errorf("request fail, req: %v", req))
 
 					}
-					return fmt.Errorf("request fail, req: %v, err: %w", req, err)
+					return fmt.Errorf("request fail, req: %v, err: %v", req, err)
 				}
 			}
 			return nil
@@ -77,7 +77,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 						return he.SetInternal(fmt.Errorf("request fail, req: %v, resp: %v", req, resp))
 
 					}
-					return fmt.Errorf("request fail, req: %v, resp: %v, err: %w", req, resp, err)
+					return fmt.Errorf("request fail, req: %v, resp: %v, err: %v", req, resp, err)
 				}
 			}
 			return ctx.s().HTTPOKHandler(resp, ctx)
