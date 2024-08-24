@@ -46,7 +46,7 @@ func (c *context) RealIP() string {
 		return realIP
 	}
 	// Fall back to legacy behavior
-	if ip := c.GetRequestHeader(server.HeaderXForwardedFor); ip != "" {
+	if ip := c.RequestHeader(server.HeaderXForwardedFor); ip != "" {
 		i := strings.IndexAny(ip, ",")
 		if i > 0 {
 			xffip := strings.TrimSpace(ip[:i])
@@ -56,7 +56,7 @@ func (c *context) RealIP() string {
 		}
 		return ip
 	}
-	if ip := c.GetRequestHeader(server.HeaderXRealIP); ip != "" {
+	if ip := c.RequestHeader(server.HeaderXRealIP); ip != "" {
 		ip = strings.TrimPrefix(ip, "[")
 		ip = strings.TrimSuffix(ip, "]")
 		return ip

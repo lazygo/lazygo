@@ -11,7 +11,7 @@ import (
 func User(next server.HandlerFunc) server.HandlerFunc {
 	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
 		// 从请求中获取token,解析uid,如果没有传递token,uid设置为0
-		token := ctx.GetRequestHeader(server.HeaderAuthorization)
+		token := ctx.RequestHeader(server.HeaderAuthorization)
 
 		cache := cacheModel.NewAuthUserCache()
 		auth, _, err := cache.Get(token)

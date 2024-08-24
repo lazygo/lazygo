@@ -14,7 +14,7 @@ func RequestID(next server.HandlerFunc) server.HandlerFunc {
 	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
 
 		var rid uint64
-		if param := ctx.GetRequestHeader(server.HeaderXRequestID); param != "" {
+		if param := ctx.RequestHeader(server.HeaderXRequestID); param != "" {
 			var err error
 			rid, err = strconv.ParseUint(param, 10, 64)
 			if err != nil {

@@ -230,6 +230,9 @@ func getFieldArr(rv reflect.Value) map[string]any {
 			rtField := rv.value.Type().Field(i)
 			rvField := rv.value.Field(i)
 			field := rtField.Tag.Get("json")
+			if field == "-" {
+				field = ""
+			}
 			if rvField.Kind() == reflect.Struct && rvField.Type().PkgPath() != "database/sql" {
 				stack = append(stack, &reflectField{tag: field, value: rvField})
 				continue
