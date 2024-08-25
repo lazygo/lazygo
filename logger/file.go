@@ -66,8 +66,8 @@ func newFileLogWriter(opt map[string]string) (logWriter, error) {
 		MaxLines:   toInt(opt["max_lines"], 0),
 		MaxFiles:   toInt(opt["max_files"], 999),
 		MaxSize:    toInt(opt["max_size"], 0),
-		Perm:       "0660",
-		DirPerm:    "0770",
+		Perm:       "0777",
+		DirPerm:    "0777",
 		RotatePerm: "0440",
 	}
 	if opt["perm"] != "" {
