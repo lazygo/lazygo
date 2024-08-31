@@ -109,7 +109,7 @@ func (d *DB) Transaction(fn func(tx *Tx) error) (err error) {
 		if e != nil {
 			rbErr := tx.Rollback()
 			if rbErr != nil {
-				err = rbErr
+				err = fmt.Errorf("panic: %v: %w", e, rbErr)
 				return
 			}
 			err = errors.New(fmt.Sprint(e))
@@ -123,8 +123,9 @@ func (d *DB) Transaction(fn func(tx *Tx) error) (err error) {
 	if err != nil {
 		rbErr := tx.Rollback()
 		if rbErr != nil {
-			return rbErr
+			return errors.Join(err, rbErr)
 		}
+		return err
 	}
 	return tx.Commit()
 }
