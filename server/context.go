@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	stdContext "context"
 	"encoding/json"
 	"fmt"
@@ -177,10 +178,13 @@ func (c *context) Bind(v any) error {
 	req := c.Request()
 	ctype := req.Header.Get(HeaderContentType)
 	if strings.HasPrefix(ctype, MIMEApplicationJSON) && req.ContentLength > 0 {
-		err := json.NewDecoder(req.Body).Decode(v)
+		buf := &bytes.Buffer{}
+		err := json.NewDecoder(io.TeeReader(req.Body, buf)).Decode(v)
 		if err != nil {
 			return err
 		}
+		req.Body.Close()
+		req.Body = io.NopCloser(buf)
 	}
 
 	var fill func(rv reflect.Value) error
