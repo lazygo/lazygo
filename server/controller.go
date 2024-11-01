@@ -31,31 +31,38 @@ func Controller(h any, methodName ...string) HandlerFunc {
 			return ErrNotFound.SetInternal(fmt.Errorf(" method name %s not found", name))
 		}
 		rCtx := reflect.ValueOf(ctx)
-		pReq := reflect.New(method.Request)
-		req := pReq.Interface()
-
-		defer pReq.MethodByName("Clear").Call(nil)
-
-		if err = ctx.Bind(req); err != nil {
-			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
-		}
-		verify := pReq.MethodByName("Verify")
-		var params []reflect.Value
-		if verify.Type().NumIn() > 0 {
-			params = append(params, rCtx)
-		}
-		err := verify.Call(params)[0].Interface()
-		if err != nil {
-			if he, ok := err.(*HTTPError); ok {
-				return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
-			}
-			return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
-		}
 
 		pServ := reflect.New(rtServ)
+		args := []reflect.Value{pServ}
+		var req any
+
+		if method.Request != nil {
+			pReq := reflect.New(method.Request)
+			req = pReq.Interface()
+
+			defer pReq.MethodByName("Clear").Call(nil)
+
+			if err = ctx.Bind(req); err != nil {
+				return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
+			}
+			verify := pReq.MethodByName("Verify")
+			var params []reflect.Value
+			if verify.Type().NumIn() > 0 {
+				params = append(params, rCtx)
+			}
+			err := verify.Call(params)[0].Interface()
+			if err != nil {
+				if he, ok := err.(*HTTPError); ok {
+					return he.SetInternal(fmt.Errorf("verify params fail, req: %v", req))
+				}
+				return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
+			}
+			args = append(args, pReq)
+		}
+
 		pServ.Elem().FieldByName("Ctx").Set(rCtx)
 
-		out := method.Method.Func.Call([]reflect.Value{pServ, pReq})
+		out := method.Method.Func.Call(args)
 		numOut := len(out)
 		if numOut == 1 {
 			if ierr := out[0].Interface(); ierr != nil {
