@@ -32,7 +32,8 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 			method := rtp.Method(i)
 			methodName := utils.ToSnakeString(method.Name)
 
-			switch method.Type.NumIn() {
+			numIn := method.Type.NumIn()
+			switch numIn {
 			case 2:
 				if _, ok := method.Type.In(1).MethodByName("Clear"); !ok {
 					return nil, "", errors.New("method second param Request must has func Clear()")
@@ -61,10 +62,11 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 				return nil, "", errors.New("method second return must type error")
 			}
 
-			routes[serviceName][methodName] = Route{
-				Method:  method,
-				Request: method.Type.In(1).Elem(),
+			r := Route{Method: method}
+			if numIn == 2 {
+				r.Request = method.Type.In(1).Elem()
 			}
+			routes[serviceName][methodName] = r
 		}
 	}
 	return rt, serviceName, nil
