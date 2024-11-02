@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"fmt"
 	"reflect"
 
 	"github.com/lazygo/lazygo/utils"
@@ -19,7 +20,7 @@ var routes = make(RouteCache)
 func (RouteCache) Make(h any) (reflect.Type, string, error) {
 	rv := reflect.Indirect(reflect.ValueOf(h))
 	if rv.Kind() != reflect.Struct {
-		return nil, "", errors.New("param not service")
+		return nil, "", errors.New("handler must be a controller")
 	}
 	rt := rv.Type()
 	rtp := reflect.PointerTo(rt)
@@ -36,30 +37,30 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 			switch numIn {
 			case 2:
 				if _, ok := method.Type.In(1).MethodByName("Clear"); !ok {
-					return nil, "", errors.New("method second param Request must has func Clear()")
+					return nil, "", fmt.Errorf("method %s args not implement Request, need func Clear()", methodName)
 				}
 				rf, ok := method.Type.In(1).MethodByName("Verify")
 				if !ok {
-					return nil, "", errors.New("method second param Request must has func Verify(Context) error")
+					return nil, "", fmt.Errorf("method %s args not implement Request, need func Verify(Context) error", methodName)
 				}
 				if rf.Type.NumOut() != 1 || !rf.Type.Out(0).Implements(tError) {
-					return nil, "", errors.New("method second param Request must has func Verify(Context) error")
+					return nil, "", fmt.Errorf("method %s args not implement Request, need func Verify(Context) error", methodName)
 				}
 				fallthrough
 			case 1:
 				if method.Type.In(0).String() != serviceName {
-					return nil, "", errors.New("method first param must type receiver")
+					return nil, "", fmt.Errorf("method %s must has a receiver", methodName)
 				}
 			default:
-				return nil, "", errors.New("method param num error")
+				return nil, "", fmt.Errorf("method %s param num error", methodName)
 			}
 
 			numOut := method.Type.NumOut()
 			if numOut > 2 || numOut < 1 {
-				return nil, "", errors.New("method return num error")
+				return nil, "", fmt.Errorf("method %s must 1 or 2 return args", methodName)
 			}
 			if method.Type.Out(numOut-1).Name() != "error" {
-				return nil, "", errors.New("method second return must type error")
+				return nil, "", fmt.Errorf("method %s last return args must implement error", methodName)
 			}
 
 			r := Route{Method: method}

@@ -39,10 +39,10 @@ func (c *Config) Load(field string, f any) error {
 	rf := reflect.ValueOf(f)
 	tf := rf.Type()
 	if tf.NumIn() != 1 {
-		return errors.New("num in error")
+		return errors.New("func must has an in params")
 	}
 	if tf.NumOut() != 1 {
-		return errors.New("num out error")
+		return errors.New("func must has a out params")
 	}
 	pt := tf.In(0)
 

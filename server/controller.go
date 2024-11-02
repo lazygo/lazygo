@@ -28,7 +28,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 
 		method, ok := routes[serviceName][name]
 		if !ok {
-			return ErrNotFound.SetInternal(fmt.Errorf(" method name %s not found", name))
+			return ErrNotFound.SetInternal(fmt.Errorf("method name %s not found", name))
 		}
 		rCtx := reflect.ValueOf(ctx)
 
