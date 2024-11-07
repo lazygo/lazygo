@@ -39,7 +39,7 @@ type WhereBuilder interface {
 	WhereIn(k string, in []any) WhereBuilder
 	WhereNotIn(k string, in []any) WhereBuilder
 	ClearCond() WhereBuilder
-	GroupBy(k string, ks ...string) WhereBuilder
+	GroupBy(ks ...string) WhereBuilder
 	OrderBy(k string, direct string) WhereBuilder
 	Offset(offset int64) WhereBuilder
 	Limit(limit int64) WhereBuilder
@@ -135,8 +135,7 @@ func (b *builder) Clear() Builder {
 	return b
 }
 
-func (b *builder) GroupBy(k string, ks ...string) WhereBuilder {
-	b.groupBy = append(b.groupBy, buildK(k))
+func (b *builder) GroupBy(ks ...string) WhereBuilder {
 	for _, k := range ks {
 		b.groupBy = append(b.groupBy, buildK(k))
 	}
