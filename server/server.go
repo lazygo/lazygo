@@ -264,7 +264,7 @@ func (s *Server) Shutdown(ctx stdContext.Context) error {
 }
 
 func applyMiddleware(h HandlerFunc, middleware ...MiddlewareFunc) HandlerFunc {
-	if len(middleware) <= 1 {
+	if len(middleware) == 0 {
 		return h
 	}
 	for i := len(middleware) - 1; i >= 0; i-- {
