@@ -31,7 +31,7 @@ func TestBaidu(t *testing.T) {
 	assert.Equal(resp.Code, 404)
 	assert.Equal(resp.Msg, "Not Found")
 
-	_, status, err = c.Request(context.Background(), http.MethodGet, "https://www.39nat.com", nil, nil)
+	_, status, err = c.Request(context.Background(), http.MethodGet, "https://www.p2link.cn", nil, nil)
 	assert.Equal(err, nil)
 	assert.Equal(status, http.StatusOK)
 

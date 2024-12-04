@@ -4,8 +4,10 @@ go 1.22
 
 require (
 	github.com/BurntSushi/toml v1.3.2
+	github.com/andybalholm/brotli v1.1.1
 	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
 	github.com/go-sql-driver/mysql v1.8.1
+	github.com/klauspost/compress v1.17.11
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.5.1
 	github.com/stretchr/testify v1.9.0
