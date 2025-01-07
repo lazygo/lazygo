@@ -3,7 +3,6 @@ package httpclient
 // http client 编译后代码包增加1.94MB
 
 import (
-	"cmp"
 	"context"
 	"crypto/tls"
 	"fmt"
@@ -108,7 +107,11 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 	}
 
 	//获取dns IP
-	ips, err := cmp.Or(m.resolver, net.DefaultResolver).LookupIPAddr(context.Background(), host)
+	resolver := m.resolver
+	if m.resolver == nil {
+		resolver = net.DefaultResolver
+	}
+	ips, err := resolver.LookupIPAddr(context.Background(), host)
 	if err != nil {
 		LogError("lookup host %s fail, try httpdns: %v", host, err)
 	}

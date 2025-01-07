@@ -24,10 +24,10 @@ type Vip struct {
 }
 
 type Order struct {
-	ID   uint64           `json:"id"`
-	UID  string           `json:"uid"`
-	Hh   string           `json:"-"`
-	Name sql.Null[string] `json:"name"`
+	ID   uint64         `json:"id"`
+	UID  string         `json:"uid"`
+	Hh   string         `json:"-"`
+	Name sql.NullString `json:"name"`
 }
 
 type OrderWithUser struct {

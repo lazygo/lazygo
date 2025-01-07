@@ -68,7 +68,13 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 		if err != nil {
 			return nil, 0, fmt.Errorf("%s=%s error: %w", HeaderRetayTimes, headers[HeaderRetayTimes], err)
 		}
-		retryTimes = min(max(retry, 0), 10)
+		retryTimes = retry
+		if retryTimes <0  {
+			retryTimes = 0
+		}
+		if retryTimes > 10 {
+			retryTimes = 10
+		}
 		delete(headers, HeaderRetayTimes)
 	}
 	if headers[HeaderTimeoutSec] != "" {
