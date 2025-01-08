@@ -2,11 +2,11 @@ package request
 
 import (
 	"path"
-	"slices"
 
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/server"
+	"golang.org/x/exp/slices"
 )
 
 type ToolsUploadRequest struct {

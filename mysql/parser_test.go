@@ -3,11 +3,11 @@ package mysql
 import (
 	"database/sql"
 	"reflect"
-	"slices"
 	"testing"
 
 	testify "github.com/stretchr/testify/assert"
 	"golang.org/x/exp/maps"
+	"golang.org/x/exp/slices"
 )
 
 type User struct {
