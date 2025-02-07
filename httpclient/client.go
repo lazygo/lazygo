@@ -54,7 +54,7 @@ func (hc *Client) ReadResponse(resp *http.Response) ([]byte, error) {
 		}
 		body = r.IOReadCloser()
 	case "compress":
-		body = lzw.NewReader(body, lzw.LSB, 8)
+		body = lzw.NewReader(resp.Body, lzw.LSB, 8)
 	default:
 	}
 
