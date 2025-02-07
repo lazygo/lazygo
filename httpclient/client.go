@@ -31,24 +31,24 @@ type Client struct {
 	http.Client
 }
 
-func (hc *Client) ReadBody(resp *http.Response) ([]byte, error) {
+func (hc *Client) ReadResponse(resp *http.Response) ([]byte, error) {
 
-	var body io.Reader = resp.Body
+	var body io.ReadCloser = resp.Body
 
-	switch resp.Header.Get("Content-Encoding") {
+	switch resp.Header.Get(server.HeaderContentEncoding) {
 	case "gzip":
 		var err error
-		body, err = gzip.NewReader(body)
+		body, err = gzip.NewReader(resp.Body)
 		if err != nil {
 			return nil, err
 		}
 	case "deflate":
-		body = flate.NewReader(body)
+		body = flate.NewReader(resp.Body)
 	case "br":
-		body = io.NopCloser(brotli.NewReader(body))
+		body = io.NopCloser(brotli.NewReader(resp.Body))
 	case "zstd":
 		var err error
-		r, err := zstd.NewReader(body)
+		r, err := zstd.NewReader(resp.Body)
 		if err != nil {
 			return nil, err
 		}
@@ -58,7 +58,49 @@ func (hc *Client) ReadBody(resp *http.Response) ([]byte, error) {
 	default:
 	}
 
+	defer body.Close()
+
 	return io.ReadAll(body)
+}
+
+func (hc *Client) ReadRequest(data []byte, encoding string) (io.Reader, error) {
+	var buf bytes.Buffer
+	switch encoding {
+	case "gzip":
+		w := gzip.NewWriter(&buf)
+		defer w.Close()
+		_, err := w.Write(data)
+		return &buf, err
+	case "deflate":
+		w, err := flate.NewWriter(&buf, flate.DefaultCompression)
+		if err != nil {
+			return nil, err
+		}
+		defer w.Close()
+		_, err = w.Write(data)
+		return &buf, err
+	case "br":
+		w := brotli.NewWriter(&buf)
+		defer w.Close()
+		_, err := w.Write(data)
+		return &buf, err
+	case "zstd":
+		w, err := zstd.NewWriter(&buf)
+		if err != nil {
+			return nil, err
+		}
+		defer w.Close()
+		_, err = w.Write(data)
+		return &buf, err
+	case "compress":
+		w := lzw.NewWriter(&buf, lzw.LSB, 8)
+		defer w.Close()
+		_, err := w.Write(data)
+		return &buf, err
+	default:
+	}
+	return bytes.NewReader(data), nil
+
 }
 
 func (hc *Client) Request(ctx context.Context, httpMethod string, url string, body []byte, headers map[string]string) ([]byte, int, error) {
@@ -69,7 +111,7 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 			return nil, 0, fmt.Errorf("%s=%s error: %w", HeaderRetayTimes, headers[HeaderRetayTimes], err)
 		}
 		retryTimes = retry
-		if retryTimes <0  {
+		if retryTimes < 0 {
 			retryTimes = 0
 		}
 		if retryTimes > 10 {
@@ -115,7 +157,11 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 	// 注意此处不要使用 path.Join，因为BashUrl中可能带有http://，使用path.Join 会导致//合并为/
 	// url := strings.TrimRight(hc.baseURL, "/") + "/" + strings.TrimLeft(uri, "/")
 	for i := 0; i <= retryTimes; i++ {
-		req, err := http.NewRequestWithContext(ctx, httpMethod, url, bytes.NewReader(body))
+		reqBody, err := hc.ReadRequest(body, headers[server.HeaderContentEncoding])
+		if err != nil {
+			return nil, 0, err
+		}
+		req, err := http.NewRequestWithContext(ctx, httpMethod, url, reqBody)
 		if err != nil {
 			return nil, 0, err
 		}
@@ -144,6 +190,6 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 	}
 
 	defer resp.Body.Close()
-	respBody, err := hc.ReadBody(resp)
+	respBody, err := hc.ReadResponse(resp)
 	return respBody, resp.StatusCode, err
 }
