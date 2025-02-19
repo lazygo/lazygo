@@ -176,7 +176,7 @@ func (c *context) Bind(v any) error {
 	}
 
 	req := c.Request()
-	ctype := req.Header.Get(HeaderContentType)
+	ctype := strings.ToLower(req.Header.Get(HeaderContentType))
 	if strings.HasPrefix(ctype, MIMEApplicationJSON) && req.ContentLength > 0 {
 		buf := &bytes.Buffer{}
 		err := json.NewDecoder(io.TeeReader(req.Body, buf)).Decode(v)
@@ -211,6 +211,7 @@ func (c *context) Bind(v any) error {
 			}
 
 			binds := strings.Split(tField.Tag.Get("bind"), ",")
+			procList := strings.Split(tField.Tag.Get("process"), ",")
 			var val any
 			for _, bind := range binds {
 				switch strings.TrimSpace(strings.ToLower(bind)) {
@@ -237,21 +238,20 @@ func (c *context) Bind(v any) error {
 						val = &File{file, fileHeader}
 					}
 				default:
-					if tField.Type.Kind() == reflect.String && !rv.Field(i).IsZero() {
-						// 兼容json解析的字段的process处理
-						val = rv.Field(i).Interface().(string)
-					}
 					continue
 				}
 				if val != "" && val != nil {
 					break
 				}
 			}
+			if len(procList) > 0 && tField.Type.Kind() == reflect.String && !rv.Field(i).IsZero() {
+				// 兼容json解析的字段的process处理
+				val = rv.Field(i).Interface().(string)
+			}
 			if val == nil || val == "" {
 				continue
 			}
 
-			procList := strings.Split(tField.Tag.Get("process"), ",")
 			if to, ok := toType(val, tField.Type, procList); ok {
 				rv.Field(i).Set(reflect.ValueOf(to))
 			}
