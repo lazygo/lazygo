@@ -196,8 +196,8 @@ func (c *context) Bind(v any) error {
 			tField := rv.Type().Field(i)
 			field := tField.Tag.Get("json")
 			if field == "" {
-				// 如果时嵌套结构体，则递归子结构体进行绑定
-				if tField.Type.Kind() == reflect.Pointer {
+				// 如果是嵌套结构体，则递归子结构体进行绑定
+				if tField.Type.Kind() == reflect.Pointer && rv.Field(i).IsNil() {
 					rv.Field(i).Set(reflect.New(tField.Type.Elem()))
 				}
 
@@ -208,6 +208,7 @@ func (c *context) Bind(v any) error {
 				if err := fill(subrv); err != nil {
 					return err
 				}
+				continue
 			}
 
 			binds := strings.Split(tField.Tag.Get("bind"), ",")
@@ -244,6 +245,7 @@ func (c *context) Bind(v any) error {
 					break
 				}
 			}
+
 			if len(procList) > 0 && tField.Type.Kind() == reflect.String && !rv.Field(i).IsZero() {
 				// 兼容json解析的字段的process处理
 				val = rv.Field(i).Interface().(string)
@@ -252,6 +254,7 @@ func (c *context) Bind(v any) error {
 				continue
 			}
 
+			fmt.Println(val, tField.Type, procList)
 			if to, ok := toType(val, tField.Type, procList); ok {
 				rv.Field(i).Set(reflect.ValueOf(to))
 			}
@@ -559,12 +562,11 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 	}
 	rv := reflect.ValueOf(val)
 
-	if (typeKind == reflect.Array || typeKind == reflect.Interface || typeKind == reflect.Map || typeKind == reflect.Slice || typeKind == reflect.Struct) && rv.Kind() == reflect.String {
-		returnVal := reflect.New(rType)
+	if rv.Kind() == reflect.String && (typeKind == reflect.Array || typeKind == reflect.Interface || typeKind == reflect.Map || typeKind == reflect.Slice || typeKind == reflect.Struct) {
+		rVal := reflect.New(rType)
 		strVal := utils.ToString(val)
-		if err := json.Unmarshal([]byte(strVal), returnVal.Interface()); err == nil {
-			val = returnVal.Elem().Interface()
-			rv = returnVal.Elem()
+		if err := json.Unmarshal([]byte(strVal), rVal.Interface()); err == nil {
+			return rVal.Elem().Interface(), true
 		}
 	}
 
@@ -576,120 +578,110 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 		return utils.ToInt(val), true
 	case "[]int":
 		returnVal := make([]int, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, utils.ToInt(str))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, utils.ToInt(str))
+			}
 		}
 		return returnVal, true
 	case "int8":
 		return int8(utils.ToInt(val)), true
 	case "[]int8":
 		returnVal := make([]int8, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, int8(utils.ToInt(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, int8(utils.ToInt(str)))
+			}
 		}
 		return returnVal, true
 	case "int16":
 		return int16(utils.ToInt(val)), true
 	case "[]int16":
 		returnVal := make([]int16, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, int16(utils.ToInt(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, int16(utils.ToInt(str)))
+			}
 		}
 		return returnVal, true
 	case "int32":
 		return int32(utils.ToInt(val)), true
 	case "[]int32":
 		returnVal := make([]int32, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, int32(utils.ToInt(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, int32(utils.ToInt(str)))
+			}
 		}
 		return returnVal, true
 	case "int64":
 		return utils.ToInt64(val), true
 	case "[]int64":
 		returnVal := make([]int64, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, utils.ToInt64(str))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, utils.ToInt64(str))
+			}
 		}
 		return returnVal, true
 	case "uint":
 		return utils.ToUint(val), true
 	case "[]uint":
 		returnVal := make([]uint, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, utils.ToUint(str))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, utils.ToUint(str))
+			}
 		}
 		return returnVal, true
 	case "uint8":
 		return uint8(utils.ToUint(val)), true
 	case "[]uint8":
 		returnVal := make([]uint8, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, uint8(utils.ToUint(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, uint8(utils.ToUint(str)))
+			}
 		}
 		return returnVal, true
 	case "uint16":
 		return uint16(utils.ToUint(val)), true
 	case "[]uint16":
 		returnVal := make([]uint16, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, uint16(utils.ToUint(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, uint16(utils.ToUint(str)))
+			}
 		}
 		return returnVal, true
 	case "uint32":
 		return uint32(utils.ToUint(val)), true
 	case "[]uint32":
 		returnVal := make([]uint32, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, uint32(utils.ToUint(str)))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, uint32(utils.ToUint(str)))
+			}
 		}
 		return returnVal, true
 	case "uint64":
 		return utils.ToUint64(val), true
 	case "[]uint64":
 		returnVal := make([]uint64, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
-		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, utils.ToUint64(str))
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, utils.ToUint64(str))
+			}
 		}
 		return returnVal, true
 	case "float32":
@@ -700,13 +692,13 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 		return process(utils.ToString(val), procList), true
 	case "[]string":
 		returnVal := make([]string, 0)
-		strVal := utils.ToString(val)
-		if len(strVal) == 0 {
-			return returnVal, true
+		strVal := strings.TrimSpace(utils.ToString(val))
+		if len(strVal) > 0 {
+			for _, str := range strings.Split(strVal, ",") {
+				returnVal = append(returnVal, process(utils.ToString(str), procList))
+			}
 		}
-		for _, str := range strings.Split(strVal, ",") {
-			returnVal = append(returnVal, process(utils.ToString(str), procList))
-		}
+		return returnVal, true
 	default:
 		valType := rv.Type().String()
 		if valType == typeName {
@@ -716,8 +708,8 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 			val = rv.Elem().Interface()
 			return val, true
 		}
+		return val, false
 	}
-	return val, false
 }
 
 func process(str string, procList []string) string {
