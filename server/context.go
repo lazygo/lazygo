@@ -237,6 +237,10 @@ func (c *context) Bind(v any) error {
 						val = &File{file, fileHeader}
 					}
 				default:
+					if tField.Type.Kind() == reflect.String && !rv.Field(i).IsZero() {
+						// 兼容json解析的字段的process处理
+						val = rv.Field(i).Interface().(string)
+					}
 					continue
 				}
 				if val != "" && val != nil {
