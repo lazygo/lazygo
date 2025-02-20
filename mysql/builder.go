@@ -42,6 +42,7 @@ type WhereBuilder interface {
 	ClearCond() WhereBuilder
 	GroupBy(ks ...string) WhereBuilder
 	OrderBy(k string, direct string) WhereBuilder
+	OrderByRand() WhereBuilder
 	Offset(offset int64) WhereBuilder
 	Limit(limit int64) WhereBuilder
 	Select(fields ...string) WhereBuilder
@@ -142,6 +143,12 @@ func (b *builder) GroupBy(ks ...string) WhereBuilder {
 	}
 	return b
 }
+
+func (b *builder) OrderByRand() WhereBuilder {
+	b.orderBy = append(b.orderBy, "RAND()")
+	return b
+}
+
 func (b *builder) OrderBy(k string, direct string) WhereBuilder {
 	direct = strings.ToUpper(direct)
 	if direct != "ASC" && direct != "DESC" {
