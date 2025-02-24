@@ -254,7 +254,6 @@ func (c *context) Bind(v any) error {
 				continue
 			}
 
-			fmt.Println(val, tField.Type, procList)
 			if to, ok := toType(val, tField.Type, procList); ok {
 				rv.Field(i).Set(reflect.ValueOf(to))
 			}

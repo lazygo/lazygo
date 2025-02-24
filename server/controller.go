@@ -43,7 +43,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 			defer pReq.MethodByName("Clear").Call(nil)
 
 			if err = ctx.Bind(req); err != nil {
-				return ErrBadRequest.SetInternal(fmt.Errorf("params error, req: %v, err: %v", req, err))
+				return ErrBadRequest.SetInternal(fmt.Errorf("bind params error, req: %v, err: %v", req, err))
 			}
 			verify := pReq.MethodByName("Verify")
 			var params []reflect.Value
