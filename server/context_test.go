@@ -13,6 +13,7 @@ type testEmbedStruct struct {
 }
 
 type testBindStruct struct {
+	UID     int    `json:"uid" bind:"ctx"`
 	Name    string `json:"name" bind:"query,form"`
 	Age     int    `json:"age" bind:"query,form"`
 	Email   string `json:"email" bind:"header"`
@@ -42,8 +43,9 @@ func TestContextBind(t *testing.T) {
 			name:        "bind json",
 			contentType: MIMEApplicationJSON,
 			setup:       func(c *context) {},
-			input:       `{"name":"test","age":18}`,
+			input:       `{"uid":12, "name":"test","age":18}`,
 			want: testBindStruct{
+				UID:  0,
 				Name: "test",
 				Age:  18,
 			},

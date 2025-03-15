@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/lazygo/lazygo/utils"
+	"golang.org/x/exp/slices"
 )
 
 type (
@@ -251,7 +252,12 @@ func (c *context) Bind(v any) error {
 				val = rv.Field(i).Interface().(string)
 			}
 			if val == nil || val == "" {
-				continue
+				if !slices.ContainsFunc(binds, func(value string) bool {
+					return slices.Contains([]string{"ctx", "context", "value"}, value)
+				}) {
+					// 对于context类型的，需要强制覆盖，避免用户通过json请求注入
+					continue
+				}
 			}
 
 			if to, ok := toType(val, tField.Type, procList); ok {
