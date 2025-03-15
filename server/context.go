@@ -225,7 +225,7 @@ func (c *context) Bind(v any) error {
 					val, _ = c.Cookie(field)
 				case "param":
 					val, _ = c.Param(field)
-				case "query":
+				case "query", "url":
 					val = c.QueryParam(field)
 				case "form":
 					if strings.HasPrefix(ctype, MIMEApplicationForm) || strings.HasPrefix(ctype, MIMEMultipartForm) {
