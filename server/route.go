@@ -20,9 +20,12 @@ var routes = make(RouteCache)
 func (RouteCache) Make(h any) (reflect.Type, string, error) {
 	rv := reflect.Indirect(reflect.ValueOf(h))
 	if rv.Kind() != reflect.Struct {
-		return nil, "", errors.New("handler must be a controller")
+		return nil, "", errors.New(rv.Type().Name() + " must be a controller struct")
 	}
 	rt := rv.Type()
+	if _, ok := rt.FieldByName("Ctx"); !ok {
+		return nil, "", errors.New(rt.Name() + " must have a Ctx field")
+	}
 	rtp := reflect.PointerTo(rt)
 	serviceName := rtp.String()
 	num := rtp.NumMethod()
