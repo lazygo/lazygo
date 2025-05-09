@@ -132,10 +132,13 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 		dnscache.Set(host, addrs, cache.DefaultExpiration)
 		return addrs, nil
 	}
-	LogDebug("resolve dns fail, try httpdns")
 	// 请求其他的DNS服务
 	if m.httpdns != nil {
+		LogDebug("resolve dns fail, try httpdns")
 		addrs, err = m.httpdns.LookupIPAddr(ctx, host)
+		if err != nil {
+			LogError("resolve httpdns fail")
+		}
 		if err == nil && len(addrs) > 0 {
 			dnscache.Set(host, addrs, cache.DefaultExpiration)
 			return addrs, nil
