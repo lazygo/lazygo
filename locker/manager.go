@@ -48,7 +48,7 @@ type Manager struct {
 	defaultName string
 }
 
-var registry = internal.Register[Locker]{}
+var registry = internal.Register[Locker, map[string]string]{}
 
 var manager = &Manager{}
 

@@ -16,7 +16,7 @@ type Config struct {
 	Option  map[string]string `json:"option" toml:"option"`
 }
 
-var registry = internal.Register[HTTPDNS]{}
+var registry = internal.Register[HTTPDNS, map[string]string]{}
 
 type Manager struct {
 	sync.Map

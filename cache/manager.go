@@ -26,7 +26,7 @@ type Manager struct {
 	defaultName string
 }
 
-var registry = internal.Register[Cache]{}
+var registry = internal.Register[Cache, map[string]string]{}
 
 var manager = &Manager{}
 

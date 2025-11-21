@@ -9,30 +9,30 @@ var (
 	ErrAdapterUndefined = errors.New("undefined adapter")
 )
 
-type Adapter[T any] interface {
-	Init(map[string]string) (T, error)
+type Adapter[T any, O any] interface {
+	Init(O) (T, error)
 }
 
-type adapterFunc[T any] func(map[string]string) (T, error)
+type adapterFunc[T any, O any] func(O) (T, error)
 
-func (fn adapterFunc[T]) Init(opt map[string]string) (T, error) {
+func (fn adapterFunc[T, O]) Init(opt O) (T, error) {
 	return fn(opt)
 }
 
-type Register[T any] struct {
+type Register[T any, O any] struct {
 	sync.Map
 }
 
 // Add 注册适配器
-func (r *Register[T]) Add(name string, f func(map[string]string) (T, error)) {
-	r.Store(name, adapterFunc[T](f))
+func (r *Register[T, O]) Add(name string, f func(O) (T, error)) {
+	r.Store(name, adapterFunc[T, O](f))
 }
 
 // Get 获取适配器实例
-func (r *Register[T]) Get(name string) (Adapter[T], error) {
+func (r *Register[T, O]) Get(name string) (Adapter[T, O], error) {
 	// 获取适配器
 	if a, ok := r.Load(name); ok {
-		return a.(Adapter[T]), nil
+		return a.(Adapter[T, O]), nil
 	}
 	return nil, ErrAdapterUndefined
 }

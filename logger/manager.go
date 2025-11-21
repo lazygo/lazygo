@@ -43,7 +43,7 @@ type Config struct {
 	Option    map[string]string `json:"option" toml:"option"`
 }
 
-var registry = internal.Register[logWriter]{}
+var registry = internal.Register[logWriter, map[string]string]{}
 
 type logWriter interface {
 	Write([]byte, time.Time, string) (int, error)

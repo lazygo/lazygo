@@ -11,6 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/netip"
+	"net/url"
 	"strings"
 	"time"
 
@@ -44,6 +45,13 @@ type Config struct {
 	HTTPDNSAdapter  string `json:"httpdns"`
 }
 
+type HttpConfig struct {
+	Timeout       time.Duration
+	TLSConfig     *tls.Config
+	ProxyURL      *url.URL
+	DialerTimeout time.Duration
+}
+
 func New(conf *Config) *Manager {
 	m := &Manager{}
 	if conf.DNSResolverAddr != "" {
@@ -58,16 +66,23 @@ func New(conf *Config) *Manager {
 	return m
 }
 
-func (m *Manager) Transport(timeout time.Duration) *http.Transport {
-	connTimeout := 5 * time.Second
+func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 	dialer := &net.Dialer{
-		Timeout:  connTimeout,
+		Timeout:  config.DialerTimeout,
 		Resolver: m.resolver,
 	}
+	if config.DialerTimeout == 0 {
+		dialer.Timeout = 5 * time.Second
+	}
 
-	return &http.Transport{
+	tlsClientConfig := &tls.Config{InsecureSkipVerify: true}
+	if config.TLSConfig != nil {
+		tlsClientConfig = config.TLSConfig
+	}
+
+	tr := &http.Transport{
 		MaxIdleConnsPerHost: -1,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:     tlsClientConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
 				separator := strings.LastIndex(addr, ":")
@@ -88,13 +103,23 @@ func (m *Manager) Transport(timeout time.Duration) *http.Transport {
 			if err != nil {
 				return nil, err
 			}
-			err = conn.SetDeadline(time.Now().Add(timeout))
+			err = conn.SetDeadline(time.Now().Add(dialer.Timeout))
 			if err != nil {
 				return nil, err
 			}
 			return conn, nil
 		},
 	}
+
+	if config.ProxyURL != nil {
+		if strings.HasPrefix(strings.ToLower(config.ProxyURL.Scheme), "env") {
+			tr.Proxy = http.ProxyFromEnvironment
+		} else {
+			tr.Proxy = http.ProxyURL(config.ProxyURL)
+		}
+	}
+
+	return tr
 }
 
 func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, error) {
@@ -160,9 +185,9 @@ func resolver(dns string) *net.Resolver {
 	}
 }
 
-func (m *Manager) Client(timeout time.Duration) *Client {
-	client := http.Client{Transport: m.Transport(timeout)}
-	client.Timeout = timeout
+func (m *Manager) Client(config *HttpConfig) *Client {
+	client := http.Client{Transport: m.Transport(config)}
+	client.Timeout = config.Timeout
 	return &Client{
 		Client: client,
 	}

@@ -50,5 +50,5 @@ func newhttpdns() *Client {
 	conf := &Config{
 		HTTPDNSAdapter: "baidu",
 	}
-	return New(conf).Client(30 * time.Second)
+	return New(conf).Client(&HttpConfig{Timeout: 30 * time.Second})
 }

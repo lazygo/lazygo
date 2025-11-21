@@ -102,5 +102,5 @@ func DefaultClient() *httpclient.Client {
 	return httpclient.New(&httpclient.Config{
 		// DNSResolverAddr:"",
 		HTTPDNSAdapter: "baidu",
-	}).Client(30 * time.Second)
+	}).Client(&httpclient.HttpConfig{Timeout: 30 * time.Second})
 }
