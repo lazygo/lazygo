@@ -107,6 +107,12 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 						addrs = append(addrs, netip.AddrPortFrom(ip, uint16(port)))
 					}
 				}
+			} else {
+				addrs = append(addrs, ipp)
+			}
+
+			if len(addrs) == 0 {
+				return nil, fmt.Errorf("no record found for %s", addr)
 			}
 
 			var conn net.Conn
