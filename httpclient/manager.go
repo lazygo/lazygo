@@ -7,11 +7,11 @@ import (
 	"crypto/tls"
 	"fmt"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 	"net/netip"
 	"net/url"
+	"strconv"
 	"strings"
 	"time"
 
@@ -84,29 +84,41 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 		MaxIdleConnsPerHost: -1,
 		TLSClientConfig:     tlsClientConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			separator := strings.LastIndex(addr, ":")
+			port := 0
+			if separator > 0 {
+				port, _ = strconv.Atoi(addr[separator+1:])
+			}
+			addrs := make([]netip.AddrPort, 0)
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
-				separator := strings.LastIndex(addr, ":")
 				if ips, ok := ctx.Value(specifiedIPCtxKey{}).(SpecifiedIP); ok && len(ips) > 0 {
 					// specified ip from request
-					addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
+					// addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
+					for _, ip := range ips {
+						addrs = append(addrs, netip.AddrPortFrom(ip, uint16(port)))
+					}
 				} else {
 					ips, err := m.lookupHost(ctx, addr[:separator])
 					if err != nil {
 						LogError("resolve dns fail: %v", err)
 						return nil, fmt.Errorf("resolve dns fail: %w", err)
 					}
-					addr = ips[rand.Intn(len(ips))].String() + addr[separator:]
+					for _, ip := range ips {
+						addrs = append(addrs, netip.AddrPortFrom(ip, uint16(port)))
+					}
 				}
 			}
 
-			conn, err := dialer.DialContext(ctx, network, addr)
-			if err != nil {
-				return nil, err
+			var conn net.Conn
+			var err error
+			for _, addr := range addrs {
+				conn, err = dialer.DialContext(ctx, network, addr.String())
+				if err != nil {
+					continue
+				}
+				break
 			}
-			err = conn.SetDeadline(time.Now().Add(dialer.Timeout))
-			if err != nil {
-				return nil, err
-			}
+
 			return conn, nil
 		},
 	}
