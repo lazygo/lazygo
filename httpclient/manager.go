@@ -127,7 +127,7 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 	var addrs []netip.Addr
 
 	if ips, found := dnscache.Get(host); found {
-		LogDebug("lookup host found in cache: %s", ips.([]netip.Addr))
+		LogDebug("lookup host %s found in cache: %s", host, ips.([]netip.Addr))
 		return ips.([]netip.Addr), nil
 	}
 
@@ -143,14 +143,13 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 
 	if err == nil && len(ips) > 0 {
 		for _, ip := range ips {
-			LogDebug("lookupHost: %s", ip.String())
+			LogDebug("lookup host %s: %s", host, ip.String())
 			addr, ok := netipx.FromStdIP(ip.IP)
 			if !ok {
-				LogError("lookupHost: %s", ip.String())
+				LogError("lookup host %s fail: %s", host, ip.String())
 				continue
 			}
 			addrs = append(addrs, addr)
-
 		}
 	}
 	if len(addrs) > 0 {
