@@ -124,6 +124,9 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 				}
 				break
 			}
+			if err != nil {
+				return conn, err
+			}
 
 			return conn, nil
 		},
