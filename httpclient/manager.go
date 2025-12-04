@@ -46,10 +46,11 @@ type Config struct {
 }
 
 type HttpConfig struct {
-	Timeout       time.Duration
-	TLSConfig     *tls.Config
-	ProxyURL      *url.URL
-	DialerTimeout time.Duration
+	Timeout             time.Duration
+	TLSConfig           *tls.Config
+	ProxyURL            *url.URL
+	DialerTimeout       time.Duration
+	MaxIdleConnsPerHost int
 }
 
 func New(conf *Config) *Manager {
@@ -81,7 +82,7 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 	}
 
 	tr := &http.Transport{
-		MaxIdleConnsPerHost: -1,
+		MaxIdleConnsPerHost: config.MaxIdleConnsPerHost,
 		TLSClientConfig:     tlsClientConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			separator := strings.LastIndex(addr, ":")
