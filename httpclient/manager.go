@@ -88,7 +88,11 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 			separator := strings.LastIndex(addr, ":")
 			port := 0
 			if separator > 0 {
-				port, _ = strconv.Atoi(addr[separator+1:])
+				var err error
+				port, err = strconv.Atoi(addr[separator+1:])
+				if err != nil {
+					return nil, fmt.Errorf("parse port fail: %w", err)
+				}
 			}
 			addrs := make([]netip.AddrPort, 0)
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
