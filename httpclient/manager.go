@@ -5,7 +5,6 @@ package httpclient
 import (
 	"context"
 	"crypto/tls"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -88,7 +87,7 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			separator := strings.LastIndex(addr, ":")
 			if separator == -1 {
-				return nil, errors.New("invalid address")
+				return nil, fmt.Errorf("invalid address: %s", addr)
 			}
 			port, err := strconv.Atoi(addr[separator+1:])
 			if err != nil {
