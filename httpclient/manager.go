@@ -5,6 +5,7 @@ package httpclient
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -86,13 +87,12 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 		TLSClientConfig:     tlsClientConfig,
 		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
 			separator := strings.LastIndex(addr, ":")
-			port := 0
-			if separator > 0 {
-				var err error
-				port, err = strconv.Atoi(addr[separator+1:])
-				if err != nil {
-					return nil, fmt.Errorf("parse port fail: %w", err)
-				}
+			if separator == -1 {
+				return nil, errors.New("invalid address")
+			}
+			port, err := strconv.Atoi(addr[separator+1:])
+			if err != nil {
+				return nil, fmt.Errorf("parse port fail: %w", err)
 			}
 			addrs := make([]netip.AddrPort, 0)
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
@@ -121,7 +121,6 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 			}
 
 			var conn net.Conn
-			var err error
 			for _, addr := range addrs {
 				conn, err = dialer.DialContext(ctx, network, addr.String())
 				if err != nil {
