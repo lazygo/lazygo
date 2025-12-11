@@ -91,7 +91,7 @@ func (m *Manager) Transport(config *HttpConfig) *http.Transport {
 			}
 			port, err := strconv.Atoi(addr[separator+1:])
 			if err != nil {
-				return nil, fmt.Errorf("parse port fail: %w", err)
+				return nil, fmt.Errorf("parse port %s fail: %w", addr[separator+1:], err)
 			}
 			addrs := make([]netip.AddrPort, 0)
 			if ipp, err := netip.ParseAddrPort(addr); err != nil || !ipp.IsValid() {
