@@ -38,7 +38,7 @@ func main() {
 	// Start server
 	go func() {
 		fmt.Println("Listen " + config.ServerConfig.Addr)
-		err = router.Init(app).Start(config.ServerConfig.Addr)
+		err = router.Init(app).Start(context.Background(), config.ServerConfig.Addr)
 		if err != nil && err != http.ErrServerClosed {
 			log.Printf("[msg: shutting down the server] [err: %v]", err)
 			app.Logger.Fatal("shutting down the server")

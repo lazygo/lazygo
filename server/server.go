@@ -229,18 +229,21 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 }
 
 // Start starts an HTTP server.
-func (s *Server) Start(address string) error {
+func (s *Server) Start(ctx stdContext.Context, address string) error {
 	s.Http.Addr = address
-	return s.StartServer(s.Http)
+	return s.StartServer(ctx, s.Http)
 }
 
 // StartServer starts a custom http server.
-func (s *Server) StartServer(h *http.Server) (err error) {
+func (s *Server) StartServer(ctx stdContext.Context, h *http.Server) (err error) {
 	// Setup
 	if s.Logger != nil {
 		h.ErrorLog = s.Logger
 	}
 	h.Handler = s
+	h.BaseContext = func(l net.Listener) stdContext.Context {
+		return ctx
+	}
 
 	if s.Listener == nil {
 		s.Listener, err = newListener(h.Addr, s.ListenerNetwork)
