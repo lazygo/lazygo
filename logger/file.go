@@ -310,19 +310,26 @@ func (fl *fileLogWriter) doRotate(logTime time.Time) error {
 
 	// only when one of them be setted, then the file would be splited
 	if fl.MaxLines > 0 || fl.MaxSize > 0 {
-		for ; err == nil && num <= fl.MaxFiles; num++ {
+		for ; num <= fl.MaxFiles; num++ {
 			fName = fl.fileNameOnly + fmt.Sprintf(".%s.%03d%s", logTime.Format(format), num, fl.suffix)
 			_, err = os.Lstat(fName)
+			if err != nil && os.IsNotExist(err) {
+				// found available number
+				break
+			}
 		}
+		if err == nil {
+			// return error if the last file checked still existed
+			// There is no available slot
+			return fmt.Errorf("Rotate: Cannot find free log number to rename %s", fl.Filename)
+		}
+		fl.MaxFilesCurFiles = num
 	} else {
 		fName = fl.fileNameOnly + fmt.Sprintf(".%s%s", openTime.Format(format), fl.suffix)
 		_, err = os.Lstat(fName)
+		// This is not a fatal error: if the file exists, it will be overwritten by Rename
+		// Store how many have rotated for non-split rotation
 		fl.MaxFilesCurFiles = num
-	}
-
-	// return error if the last file checked still existed
-	if err == nil {
-		return fmt.Errorf("Rotate: Cannot find free log number to rename %s", fl.Filename)
 	}
 
 	// close fileWriter before rename
