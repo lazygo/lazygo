@@ -1,6 +1,8 @@
 package server
 
 import (
+	"bufio"
+	"net"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -255,4 +257,38 @@ func TestContextBindNested(t *testing.T) {
 			}
 		})
 	}
+}
+
+type hrw struct {
+}
+
+func (h *hrw) Write(p []byte) (n int, err error) {
+	return len(p), nil
+}
+
+func (h *hrw) WriteHeader(statusCode int) {
+}
+
+func (h *hrw) Header() http.Header {
+	return http.Header{}
+}
+
+func (h *hrw) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	return nil, nil, nil
+}
+
+func (h *hrw) Flush() {
+}
+
+func TestContextResponseWriter(t *testing.T) {
+
+	resp := NewResponseWriter(&hrw{})
+	resp.Write([]byte("test"))
+	resp.WriteHeader(http.StatusOK)
+	resp.Flush()
+	resp.Hijack()
+	resp.Write([]byte("test"))
+	resp.WriteHeader(http.StatusOK)
+	resp.Flush()
+	resp.Hijack()
 }
