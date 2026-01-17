@@ -75,14 +75,16 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.patch = h
 	case http.MethodPost:
 		n.methodHandler.post = h
-	case PROPFIND:
+	case MethodPropfind:
 		n.methodHandler.propfind = h
 	case http.MethodPut:
 		n.methodHandler.put = h
 	case http.MethodTrace:
 		n.methodHandler.trace = h
-	case REPORT:
+	case MethodReport:
 		n.methodHandler.report = h
+	case MethodWebSocket:
+		n.methodHandler.websocket = h
 	}
 }
 
@@ -102,14 +104,16 @@ func (n *node) findHandler(method string) HandlerFunc {
 		return n.methodHandler.patch
 	case http.MethodPost:
 		return n.methodHandler.post
-	case PROPFIND:
+	case MethodPropfind:
 		return n.methodHandler.propfind
 	case http.MethodPut:
 		return n.methodHandler.put
 	case http.MethodTrace:
 		return n.methodHandler.trace
-	case REPORT:
+	case MethodReport:
 		return n.methodHandler.report
+	case MethodWebSocket:
+		return n.methodHandler.websocket
 	default:
 		return nil
 	}

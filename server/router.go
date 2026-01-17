@@ -14,17 +14,18 @@ type (
 	}
 	kind          uint8
 	methodHandler struct {
-		connect  HandlerFunc
-		delete   HandlerFunc
-		get      HandlerFunc
-		head     HandlerFunc
-		options  HandlerFunc
-		patch    HandlerFunc
-		post     HandlerFunc
-		propfind HandlerFunc
-		put      HandlerFunc
-		trace    HandlerFunc
-		report   HandlerFunc
+		connect   HandlerFunc
+		delete    HandlerFunc
+		get       HandlerFunc
+		head      HandlerFunc
+		options   HandlerFunc
+		patch     HandlerFunc
+		post      HandlerFunc
+		propfind  HandlerFunc
+		put       HandlerFunc
+		trace     HandlerFunc
+		report    HandlerFunc
+		websocket HandlerFunc
 	}
 
 	pair struct {

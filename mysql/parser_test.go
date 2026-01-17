@@ -3,11 +3,10 @@ package mysql
 import (
 	"database/sql"
 	"reflect"
+	"slices"
 	"testing"
 
 	testify "github.com/stretchr/testify/assert"
-	"golang.org/x/exp/maps"
-	"golang.org/x/exp/slices"
 )
 
 type User struct {
@@ -43,7 +42,10 @@ func TestGetfieldArr(t *testing.T) {
 	rv := reflect.ValueOf(&data).Elem()
 	fielsArr := getFieldArr(rv)
 
-	keys := maps.Keys(fielsArr)
+	var keys []string
+	for k := range fielsArr {
+		keys = append(keys, k)
+	}
 	slices.Sort(keys)
 
 	testData := []string{"hh", "O.id", "O.uid", "O.name", "U.vip.uid", "U.vip.name", "U.vip.ctime", "U.vip.deadline", "U.uid", "U.name"}

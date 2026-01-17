@@ -66,6 +66,12 @@ func (cm *common) Trace(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(http.MethodTrace, path, h, m...)
 }
 
+// WebSocket registers a new WEBSOCKET route for a path with matching handler in the
+// router with optional route-level middleware.
+func (cm *common) WebSocket(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	cm.add(MethodWebSocket, path, h, m...)
+}
+
 // Any registers a new route for all HTTP methods and path with matching handler
 // in the router with optional route-level middleware.
 func (cm *common) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {

@@ -1,19 +1,19 @@
 module github.com/lazygo/lazygo
 
-go 1.21
+go 1.25
 
 require (
 	github.com/BurntSushi/toml v1.6.0
-	github.com/andybalholm/brotli v1.1.1
-	github.com/bradfitz/gomemcache v0.0.0-20230905024940-24af94b03874
+	github.com/andybalholm/brotli v1.2.0
+	github.com/bradfitz/gomemcache v0.0.0-20250403215159-8d39553ac7cf
+	github.com/coder/websocket v1.8.14
 	github.com/go-sql-driver/mysql v1.9.3
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.18.3
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.17.2
-	github.com/stretchr/testify v1.9.0
+	github.com/stretchr/testify v1.11.1
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba
-	golang.org/x/crypto v0.33.0
-	golang.org/x/exp v0.0.0-20240719175910-8a7402abbf56
+	golang.org/x/crypto v0.47.0
 )
 
 require (

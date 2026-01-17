@@ -54,10 +54,11 @@ var (
 		http.MethodOptions,
 		http.MethodPatch,
 		http.MethodPost,
-		PROPFIND,
+		MethodPropfind,
 		http.MethodPut,
 		http.MethodTrace,
-		REPORT,
+		MethodReport,
+		MethodWebSocket,
 	}
 )
 

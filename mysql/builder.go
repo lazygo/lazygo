@@ -3,10 +3,9 @@ package mysql
 import (
 	"fmt"
 	"math"
+	"slices"
 	"strconv"
 	"strings"
-
-	"golang.org/x/exp/slices"
 )
 
 // RBuilder read builder (R)

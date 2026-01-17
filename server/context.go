@@ -12,13 +12,13 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"slices"
 	"strconv"
 	"strings"
 	"sync"
 	"time"
 
 	"github.com/lazygo/lazygo/utils"
-	"golang.org/x/exp/slices"
 )
 
 type (
@@ -109,6 +109,9 @@ type (
 
 		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
+
+		// WebSocket 获取websocket对象
+		WebSocket(name string) WebSocket
 
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
@@ -505,6 +508,11 @@ func (c *context) Error(err error) {
 
 func (c *context) Handler() HandlerFunc {
 	return c.handler
+}
+
+// WebSocket 获取websocket对象
+func (c *context) WebSocket(name string) WebSocket {
+	return wsManager.Get(name)
 }
 
 func (c *context) IsDebug() bool {

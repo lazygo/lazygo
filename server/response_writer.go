@@ -2,7 +2,9 @@ package server
 
 import (
 	"bufio"
+	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 )
@@ -13,7 +15,7 @@ type (
 	ResponseWriter struct {
 		beforeFuncs []func()
 		afterFuncs  []func()
-		Writer      http.ResponseWriter
+		Writer      io.Writer
 		Status      int
 		Size        int64
 		Committed   bool
@@ -21,7 +23,7 @@ type (
 )
 
 // NewResponseWriter creates a new instance of Response.
-func NewResponseWriter(w http.ResponseWriter) (r *ResponseWriter) {
+func NewResponseWriter(w io.Writer) (r *ResponseWriter) {
 	return &ResponseWriter{Writer: w}
 }
 
@@ -31,7 +33,10 @@ func NewResponseWriter(w http.ResponseWriter) (r *ResponseWriter) {
 // the "Trailer" header before the call to WriteHeader (see example)
 // To suppress implicit response headers, set their value to nil.
 func (r *ResponseWriter) Header() http.Header {
-	return r.Writer.Header()
+	if w, ok := r.Writer.(http.ResponseWriter); ok {
+		return w.Header()
+	}
+	return http.Header{}
 }
 
 // Before registers a function which is called just before the response is written.
@@ -58,7 +63,9 @@ func (r *ResponseWriter) WriteHeader(code int) {
 		fn()
 	}
 	r.Status = code
-	r.Writer.WriteHeader(code)
+	if w, ok := r.Writer.(http.ResponseWriter); ok {
+		w.WriteHeader(code)
+	}
 	r.Committed = true
 }
 
@@ -81,13 +88,18 @@ func (r *ResponseWriter) Write(b []byte) (n int, err error) {
 // Flush implements the http.Flusher interface to allow an HTTP handler to flush
 // buffered data to the client.
 func (r *ResponseWriter) Flush() {
-	r.Writer.(http.Flusher).Flush()
+	if flusher, ok := r.Writer.(http.Flusher); ok {
+		flusher.Flush()
+	}
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
 // take over the connection.
 func (r *ResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return r.Writer.(http.Hijacker).Hijack()
+	if hijacker, ok := r.Writer.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+	return nil, nil, errors.New("hijacker not supported")
 }
 
 func (r *ResponseWriter) reset(w http.ResponseWriter) {
