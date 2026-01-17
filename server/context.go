@@ -511,8 +511,8 @@ func (c *context) Handler() HandlerFunc {
 }
 
 // WebSocket 获取websocket对象
-func (c *context) WebSocket(channel string) WebSocket {
-	return wsManager.Get(channel)
+func (c *context) WebSocket(subject string) WebSocket {
+	return wsManager.Get(subject)
 }
 
 func (c *context) IsDebug() bool {
