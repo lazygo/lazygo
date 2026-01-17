@@ -111,7 +111,7 @@ type (
 		Error(err error)
 
 		// WebSocket 获取websocket对象
-		WebSocket(name string) WebSocket
+		WebSocket(subject string) WebSocket
 
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
@@ -511,8 +511,8 @@ func (c *context) Handler() HandlerFunc {
 }
 
 // WebSocket 获取websocket对象
-func (c *context) WebSocket(name string) WebSocket {
-	return wsManager.Get(name)
+func (c *context) WebSocket(channel string) WebSocket {
+	return wsManager.Get(channel)
 }
 
 func (c *context) IsDebug() bool {

@@ -23,8 +23,8 @@ type WSManager struct {
 	ws sync.Map
 }
 
-func (w *WSManager) Get(name string) WebSocket {
-	ws, _ := w.ws.LoadOrStore(name, &websocketImpl{
+func (w *WSManager) Get(subject string) WebSocket {
+	ws, _ := w.ws.LoadOrStore(subject, &websocketImpl{
 		ws: make(map[uint64]*websocket.Conn),
 	})
 	return ws.(*websocketImpl)
