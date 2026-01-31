@@ -208,7 +208,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	h := func(c Context) error {
 		// premiddleware 在路由查找之前加载
 		// 可以在premiddleware中处理url路径等参数以改变路由查找的行为
-		s.router.Find(r.Method, r.URL.EscapedPath(), ctx.(*context))
+		s.router.Find(r.Method, r.URL.EscapedPath(), ctx.c())
 		h := c.Handler()
 		h = applyMiddleware(h, s.middleware...)
 		ctx = c

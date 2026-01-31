@@ -31,6 +31,7 @@ type (
 	// response objects, path, path parameters, data and registered handler.
 	Context interface {
 		s() *Server
+		c() *context
 
 		stdContext.Context
 		// Request returns `*http.Request`.
@@ -149,6 +150,10 @@ func (c *context) writeContentType(value string) {
 
 func (c *context) s() *Server {
 	return c.server
+}
+
+func (c *context) c() *context {
+	return c
 }
 
 func (c *context) Request() *http.Request {
