@@ -77,12 +77,10 @@ func (r *ResponseWriter) Write(b []byte) (n int, err error) {
 		}
 		r.WriteHeader(r.Status)
 	}
-	if w, ok := r.Writer.(io.Writer); ok {
-		n, err = w.Write(b)
-		r.Size += int64(n)
-		for _, fn := range r.afterFuncs {
-			fn()
-		}
+	n, err = r.Writer.Write(b)
+	r.Size += int64(n)
+	for _, fn := range r.afterFuncs {
+		fn()
 	}
 	return
 }
