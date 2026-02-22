@@ -111,8 +111,8 @@ type (
 		// Error invokes the registered HTTP error handler. Generally used by middleware.
 		Error(err error)
 
-		// WebSocket 获取websocket对象
-		WebSocket(subject string) WebSocket
+		// Event 获取event对象
+		Event(subject string) Event
 
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
@@ -516,8 +516,8 @@ func (c *context) Handler() HandlerFunc {
 }
 
 // WebSocket 获取websocket对象
-func (c *context) WebSocket(subject string) WebSocket {
-	return wsManager.Get(subject)
+func (c *context) Event(subject string) Event {
+	return eventManager.Get(subject)
 }
 
 func (c *context) IsDebug() bool {
