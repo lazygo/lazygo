@@ -36,6 +36,7 @@ type Server struct {
 	router           *Router
 	notFoundHandler  HandlerFunc
 	pool             sync.Pool
+	eventManager     *EventManager
 	Http             *http.Server
 	Listener         net.Listener
 	Debug            bool
@@ -70,6 +71,7 @@ func New() (s *Server) {
 		ListenerNetwork: "tcp",
 	}
 	s.common.add = s.Add
+	s.eventManager = &EventManager{}
 	s.Http.Handler = s
 	s.HTTPOKHandler = s.DefaultHTTPOKHandler
 	s.HTTPErrorHandler = s.DefaultHTTPErrorHandler
@@ -227,6 +229,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if err := h(c); err != nil {
 		s.HTTPErrorHandler(err, ctx)
 	}
+}
+
+func (s *Server) Event(subject string) *Event {
+	return s.eventManager.Get(subject)
 }
 
 // Start starts an HTTP server.

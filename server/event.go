@@ -15,8 +15,6 @@ import (
 	"sync"
 )
 
-var eventManager = &EventManager{}
-
 type EventManager struct {
 	event sync.Map
 }

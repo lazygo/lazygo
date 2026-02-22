@@ -180,7 +180,7 @@ func (c *context) Bind(v any) error {
 	// result pointer value
 	rpv := reflect.ValueOf(v)
 	if rpv.Kind() != reflect.Ptr || rpv.IsNil() {
-		c.server.Logger.Println("bind value not a pointer")
+		c.s().Logger.Println("bind value not a pointer")
 		return ErrInternalServerError
 	}
 
@@ -278,7 +278,7 @@ func (c *context) Bind(v any) error {
 	// result value
 	rv := rpv.Elem()
 	if rv.Kind() != reflect.Struct {
-		c.server.Logger.Println("bind value not a struct pointer")
+		c.s().Logger.Println("bind value not a struct pointer")
 		return ErrInternalServerError
 	}
 
@@ -508,7 +508,7 @@ func (c *context) Redirect(code int, url string) error {
 }
 
 func (c *context) Error(err error) {
-	c.server.HTTPErrorHandler(err, c)
+	c.s().HTTPErrorHandler(err, c)
 }
 
 func (c *context) Handler() HandlerFunc {
@@ -517,11 +517,11 @@ func (c *context) Handler() HandlerFunc {
 
 // WebSocket 获取websocket对象
 func (c *context) Event(subject string) *Event {
-	return eventManager.Get(subject)
+	return c.s().Event(subject)
 }
 
 func (c *context) IsDebug() bool {
-	return c.server.Debug
+	return c.s().Debug
 }
 
 // Deadline returns that there is no deadline (ok==false) when c.Request has no Context.
@@ -566,7 +566,7 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	c.pnames = nil
 	c.query = nil
 	// NOTE: Don't reset because it has to have length c.engine.maxParam at all times
-	for i := 0; i < *c.server.maxParam; i++ {
+	for i := 0; i < *c.s().maxParam; i++ {
 		c.pvalues[i] = ""
 	}
 }
