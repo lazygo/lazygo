@@ -21,17 +21,16 @@ type EventManager struct {
 	event sync.Map
 }
 
-func (e *EventManager) Get(subject string) Event {
+func (e *EventManager) Get(subject string) *Event {
 	ev, _ := e.event.LoadOrStore(subject, &Event{
-		mu:      &sync.RWMutex{},
 		subject: subject,
 		rwc:     make(map[uint64]io.ReadWriteCloser),
 	})
-	return ev.(Event)
+	return ev.(*Event)
 }
 
 type Event struct {
-	mu      *sync.RWMutex
+	mu      sync.RWMutex
 	subject string
 	rwc     map[uint64]io.ReadWriteCloser
 }
