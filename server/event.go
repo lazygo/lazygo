@@ -80,7 +80,9 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 		case <-ctx.Done():
 			return ctx.Err()
 		default:
-			w := &eventResponseWriter{ctx, rwc}
+			// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
+			buf := &bytes.Buffer{}
+			w := &eventResponseWriter{ctx: ctx, Writer: buf, header: http.Header{}}
 			r, err := newEventRequest(ctx, rwc)
 			if err != nil {
 				c := s.AcquireContext()
@@ -89,10 +91,17 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 				c.SetResponseWriter(NewResponseWriter(w))
 				c.Error(err)
 				s.Logger.Printf("[msg: new websocket request error] [err: %v]", err)
+				if buf.Len() > 0 {
+					_, _ = rwc.Write(buf.Bytes())
+				}
 				continue
 			}
 
 			s.ServeHTTP(w, r)
+			// 整份响应作为一条 WebSocket 消息发送，保证不被截断
+			if buf.Len() > 0 {
+				_, _ = rwc.Write(buf.Bytes())
+			}
 		}
 	}
 }
@@ -100,10 +109,11 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 type eventResponseWriter struct {
 	ctx Context
 	io.Writer
+	header http.Header
 }
 
 func (w *eventResponseWriter) Header() http.Header {
-	return http.Header{}
+	return w.header
 }
 
 func (w *eventResponseWriter) WriteHeader(int) {}

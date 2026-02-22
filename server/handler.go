@@ -1,10 +1,15 @@
 package server
 
 import (
+	stdContext "context"
 	"embed"
+	"io"
 	"io/fs"
+	"net"
 	"net/http"
 	"path"
+
+	"github.com/coder/websocket"
 )
 
 // WrapHandler wraps `http.Handler` into `HandlerFunc`.
@@ -53,4 +58,53 @@ func AssetHandler(prefix string, assets embed.FS, root string) HandlerFunc {
 	})
 
 	return WrapHandler(http.StripPrefix(prefix, http.FileServer(http.FS(handler))))
+}
+
+func WebSocketWrapper(ctx stdContext.Context, conn *websocket.Conn) io.ReadWriteCloser {
+	return &wsBridge{ctx: ctx, conn: conn}
+}
+
+type wsBridge struct {
+	ctx  stdContext.Context
+	conn *websocket.Conn
+	// buffer stores remaining unread data from the last msg
+	buffer []byte
+}
+
+func (b *wsBridge) Read(p []byte) (n int, err error) {
+	// If buffer has leftover data, serve from buffer first
+	if len(b.buffer) > 0 {
+		n = copy(p, b.buffer)
+		b.buffer = b.buffer[n:]
+		return n, nil
+	}
+
+	io.Pipe()
+	net.Pipe()
+	_, msg, err := b.conn.Read(b.ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	n = copy(p, msg)
+	// If msg not fully read, save the rest into buffer
+	if n < len(msg) {
+		b.buffer = append(b.buffer[:0], msg[n:]...)
+	} else {
+		b.buffer = b.buffer[:0]
+	}
+	return n, nil
+}
+
+func (b *wsBridge) Write(p []byte) (n int, err error) {
+	// 这里已作出相应处理保证p为一次完整的响应，不会被截断
+	err = b.conn.Write(b.ctx, websocket.MessageText, p)
+	if err != nil {
+		return 0, err
+	}
+	return len(p), nil
+}
+
+func (b *wsBridge) Close() error {
+	return b.conn.Close(websocket.StatusNormalClosure, "normal closure")
 }
