@@ -124,7 +124,7 @@ func (w *eventResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 	return nil, nil, errors.New("hijack not supported")
 }
 
-type eventRequest struct {
+type EventRequest struct {
 	RID    uint64            `json:"rid"`
 	URI    string            `json:"uri"`
 	Header map[string]string `json:"header"`
@@ -132,7 +132,7 @@ type eventRequest struct {
 }
 
 func newEventRequest(ctx Context, method string, r io.Reader) (*http.Request, error) {
-	var e eventRequest
+	var e EventRequest
 	err := json.NewDecoder(r).Decode(&e)
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
