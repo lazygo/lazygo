@@ -72,6 +72,12 @@ func (cm *common) WebSocket(path string, h HandlerFunc, m ...MiddlewareFunc) {
 	cm.add(MethodWebSocket, path, h, m...)
 }
 
+// Call registers a new CALL route for a path with matching handler in the
+// router with optional route-level middleware.
+func (cm *common) Call(path string, h HandlerFunc, m ...MiddlewareFunc) {
+	cm.add(MethodCall, path, h, m...)
+}
+
 // Any registers a new route for all HTTP methods and path with matching handler
 // in the router with optional route-level middleware.
 func (cm *common) Any(path string, handler HandlerFunc, middleware ...MiddlewareFunc) {

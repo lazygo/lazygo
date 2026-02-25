@@ -231,8 +231,8 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func (s *Server) Event(subject string) *Event {
-	return s.eventManager.Get(subject)
+func (s *Server) Event(method, subject string) *Event {
+	return s.eventManager.Get(method, subject)
 }
 
 // Start starts an HTTP server.

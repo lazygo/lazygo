@@ -81,10 +81,12 @@ func (n *node) addHandler(method string, h HandlerFunc) {
 		n.methodHandler.put = h
 	case http.MethodTrace:
 		n.methodHandler.trace = h
-	case MethodReport:
-		n.methodHandler.report = h
 	case MethodWebSocket:
 		n.methodHandler.websocket = h
+	case MethodCall:
+		n.methodHandler.call = h
+	case MethodReport:
+		n.methodHandler.report = h
 	}
 }
 
@@ -110,10 +112,12 @@ func (n *node) findHandler(method string) HandlerFunc {
 		return n.methodHandler.put
 	case http.MethodTrace:
 		return n.methodHandler.trace
-	case MethodReport:
-		return n.methodHandler.report
 	case MethodWebSocket:
 		return n.methodHandler.websocket
+	case MethodCall:
+		return n.methodHandler.call
+	case MethodReport:
+		return n.methodHandler.report
 	default:
 		return nil
 	}

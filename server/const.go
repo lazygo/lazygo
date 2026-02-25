@@ -29,6 +29,8 @@ const (
 	MethodReport = "REPORT"
 	// MethodWebSocket can be used to establish a WebSocket connection.
 	MethodWebSocket = "WEBSOCKET"
+	// MethodCall can be used to call a function.
+	MethodCall = "CALL"
 )
 
 // Headers

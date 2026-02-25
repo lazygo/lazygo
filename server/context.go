@@ -112,7 +112,7 @@ type (
 		Error(err error)
 
 		// Event 获取event对象
-		Event(subject string) *Event
+		Event(method, subject string) *Event
 
 		// Handler returns the matched handler by router.
 		Handler() HandlerFunc
@@ -516,8 +516,8 @@ func (c *context) Handler() HandlerFunc {
 }
 
 // WebSocket 获取websocket对象
-func (c *context) Event(subject string) *Event {
-	return c.s().Event(subject)
+func (c *context) Event(method, subject string) *Event {
+	return c.s().Event(method, subject)
 }
 
 func (c *context) IsDebug() bool {

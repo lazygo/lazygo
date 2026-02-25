@@ -24,8 +24,9 @@ type (
 		propfind  HandlerFunc
 		put       HandlerFunc
 		trace     HandlerFunc
-		report    HandlerFunc
 		websocket HandlerFunc
+		call      HandlerFunc
+		report    HandlerFunc
 	}
 
 	pair struct {

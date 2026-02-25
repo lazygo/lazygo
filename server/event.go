@@ -19,8 +19,9 @@ type EventManager struct {
 	event sync.Map
 }
 
-func (e *EventManager) Get(subject string) *Event {
-	ev, _ := e.event.LoadOrStore(subject, &Event{
+func (e *EventManager) Get(method, subject string) *Event {
+	ev, _ := e.event.LoadOrStore(fmt.Sprintf("%s:%s", method, subject), &Event{
+		method:  method,
 		subject: subject,
 		rwc:     make(map[uint64]io.ReadWriteCloser),
 	})
@@ -29,6 +30,7 @@ func (e *EventManager) Get(subject string) *Event {
 
 type Event struct {
 	mu      sync.RWMutex
+	method  string
 	subject string
 	rwc     map[uint64]io.ReadWriteCloser
 }
@@ -83,7 +85,7 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 			// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
 			buf := &bytes.Buffer{}
 			w := &eventResponseWriter{ctx: ctx, Writer: buf, header: http.Header{}}
-			r, err := newEventRequest(ctx, rwc)
+			r, err := newEventRequest(ctx, e.method, rwc)
 			if err != nil {
 				c := s.AcquireContext()
 				defer s.ReleaseContext(c)
@@ -129,7 +131,7 @@ type eventRequest struct {
 	Body   json.RawMessage   `json:"body"`
 }
 
-func newEventRequest(ctx Context, r io.Reader) (*http.Request, error) {
+func newEventRequest(ctx Context, method string, r io.Reader) (*http.Request, error) {
 	var e eventRequest
 	err := json.NewDecoder(r).Decode(&e)
 	if err != nil {
@@ -152,7 +154,7 @@ func newEventRequest(ctx Context, r io.Reader) (*http.Request, error) {
 	for k, v := range e.Header {
 		req.Header.Set(k, v)
 	}
-	req.Method = MethodWebSocket
+	req.Method = method
 	req.RequestURI = uri.RequestURI()
 	req.URL.Path = uri.Path
 	req.Header.Set(HeaderXRequestID, strconv.FormatUint(e.RID, 10))
