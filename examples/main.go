@@ -11,9 +11,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/lazygo/lazygo/examples/config"
-	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/router"
+	"github.com/lazygo-dev/lazygo/examples/app/worker"
+	"github.com/lazygo-dev/lazygo/examples/config"
+	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo-dev/lazygo/examples/router"
 )
 
 func init() {
@@ -32,28 +33,32 @@ func main() {
 		log.Fatalf("[msg: load config file error] [err: %v]", err)
 	}
 
-	app := framework.App()
-	app.Debug = config.ServerConfig.Debug
+	appServer := framework.Server()
+	appServer.Debug = config.ServerConfig.Debug
+
+	ctx := context.Background()
 
 	// Start server
 	go func() {
 		fmt.Println("Listen " + config.ServerConfig.Addr)
-		err = router.Init(app).Start(context.Background(), config.ServerConfig.Addr)
+		err = router.Init(appServer).Start(ctx, config.ServerConfig.Addr)
 		if err != nil && err != http.ErrServerClosed {
 			log.Printf("[msg: shutting down the server] [err: %v]", err)
-			app.Logger.Fatal("shutting down the server")
+			appServer.Logger.Fatal("shutting down the server")
 		}
 	}()
+
+	worker.Bootstrap(framework.NewStdoutContext(ctx, appServer))
 
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, os.Interrupt)
 	<-quit
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := app.Shutdown(ctx); err != nil {
+	if err := appServer.Shutdown(ctx); err != nil {
 		log.Printf("[msg: shutting down the server] [err: %v]", err)
-		app.Logger.Fatal(err)
+		appServer.Logger.Fatal(err)
 	}
 }

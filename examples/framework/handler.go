@@ -1,12 +1,31 @@
 package framework
 
 import (
+	stdContext "context"
+	"fmt"
+	"net/http"
+
 	"github.com/lazygo/lazygo/server"
 )
 
 type HandlerFunc func(Context) error
 type HTTPErrorHandler func(error, Context)
 type HTTPOKHandler func(any, Context) error
+
+type stdoutResponseWriter struct{}
+
+func (w *stdoutResponseWriter) Write(p []byte) (n int, err error) {
+	fmt.Println(string(p))
+	return len(p), nil
+}
+
+func (w *stdoutResponseWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (w *stdoutResponseWriter) WriteHeader(statusCode int) {
+	fmt.Println("WriteHeader", statusCode)
+}
 
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
@@ -38,6 +57,18 @@ func ExtendContextMiddleware(h server.HandlerFunc) server.HandlerFunc {
 		cc := &context{c}
 		return h(cc)
 	}
+}
+
+func NewStdoutContext(ctx stdContext.Context, app *server.Server) Context {
+	c := app.NewContext(FakeRequest(ctx), &stdoutResponseWriter{})
+	return &context{c}
+}
+
+func FakeRequest(ctx stdContext.Context) *http.Request {
+	req := &http.Request{
+		Header: make(http.Header),
+	}
+	return req.WithContext(ctx)
 }
 
 // HandleSucc 返回成功

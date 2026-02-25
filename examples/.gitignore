@@ -4,26 +4,33 @@
 *.iws
 .idea/
 .vscode/
+.vercel/
 
 # go.gitignore from https://github.com/github/gitignore/blob/master/Go.gitignore
 # Binaries for programs and plugins
 *.exe
 *.exe~
 *.dll
+*.dmg
 *.so
 *.dylib
+*.syso
 *.log
 *.zip
 *.tar
 *.gz
 *.xz
+*.a
+*.tmp
+tmp_*
+__debug*
 
 # Test binary, built with `go test -c`
 *.test
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
-release/
+/release/
 out/
 
 ## .gitignore for mac os x
@@ -33,7 +40,10 @@ out/
 Icon
 
 # Dependency directories (remove the comment below to include it)
-# vendor/
+vendor/
 log
 logs
 output
+
+## sum
+go.sum

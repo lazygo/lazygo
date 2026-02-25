@@ -1,15 +1,18 @@
 package middleware
 
 import (
+	"bytes"
 	"fmt"
+	"io"
 	"os"
-	"runtime"
 	"runtime/debug"
 	"sync/atomic"
 	"time"
 
-	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo-dev/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/server"
+	"github.com/lazygo/pkg/monitor"
+	"github.com/shirou/gopsutil/v4/process"
 )
 
 var rnum int32 = 0
@@ -23,6 +26,19 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 		code := ctx.ResponseWriter().Status
 		st := time.Now()
 
+		if ctx.IsDebug() {
+			req := ctx.Request()
+			buffer := &bytes.Buffer{}
+			reader := io.TeeReader(req.Body, buffer)
+			body, err := io.ReadAll(reader)
+			if err != nil {
+				ctx.Logger().Error(">>> :%+v\n, err:%+v", body, err)
+			}
+			ctx.Logger().Debug(">>> body:%+v", string(body))
+
+			req.Body = io.NopCloser(buffer)
+		}
+
 		atomic.AddInt32(&rnum, 1)
 		defer atomic.AddInt32(&rnum, -1)
 
@@ -31,20 +47,26 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 			if rec != nil {
 				ctx.Logger().Alert("%v", rec)
 				ctx.Logger().Error("%s", string(debug.Stack()))
-				framework.App().HTTPErrorHandler(fmt.Errorf("%v", rec), ctx)
+				framework.Server().HTTPErrorHandler(fmt.Errorf("%v", rec), ctx)
 				errno = 500
 			}
 
-			var m runtime.MemStats
-			runtime.ReadMemStats(&m)
+			sysInfo, err := monitor.ReportSysMonitor(ctx)
+			if err != nil {
+				ctx.Logger().Warn("report sys monitor fail %v", err)
+				sysInfo = &monitor.SysMontor{MemInfo: &process.MemoryInfoStat{}}
+			}
 			ctx.Logger().Notice(
-				"[pid: %d] [goroutine: %d] [sys: %.2fM] [alloc: %.2fM] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [ip: %s] [request_uri: %s]",
+				"[pid: %d] [threads: %d] [goroutine: %d] [mem: %.2fM %.1f%%] [cpu: %.1f%%] [fds: %d] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [ip: %s] [request_uri: %s]",
 				os.Getegid(),
-				runtime.NumGoroutine(),
-				float64(m.Sys)/1024/1024,
-				float64(m.Alloc)/1024/1024,
+				sysInfo.NumThreads,
+				sysInfo.NumGoroutine,
+				float64(sysInfo.MemInfo.RSS)/1024/1024,
+				sysInfo.MemPercent,
+				sysInfo.CPUPercent,
+				sysInfo.NumFDs,
 				atomic.LoadInt32(&rnum),
-				float64(time.Now().Sub(st).Microseconds())/1000,
+				float64(time.Since(st).Microseconds())/1000,
 				code,
 				errno,
 				ctx.RealIP(),

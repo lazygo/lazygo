@@ -1,6 +1,8 @@
 package request
 
-import "github.com/lazygo/lazygo/examples/framework"
+import (
+	"github.com/lazygo-dev/lazygo/examples/framework"
+)
 
 type LogoutRequest struct {
 	Authorization string `json:"authorization" bind:"header" process:"trim,cut(32)"`

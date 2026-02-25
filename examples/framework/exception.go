@@ -9,7 +9,7 @@ import (
 )
 
 func AppHTTPErrorHandler(err error, ctx Context) {
-	ctx.Logger().Error("http return error: url: %s, headers: %+v, err: %+v", ctx.Request().RequestURI, ctx.Request().Header, err)
+	ctx.Logger().Notice("[http return error] [url: %s] [headers: %+v] [err: %+v]", ctx.Request().RequestURI, ctx.Request().Header, err)
 	if ctx.ResponseWriter().Committed {
 		return
 	}
@@ -68,10 +68,10 @@ func AppHTTPErrorHandler(err error, ctx Context) {
 	if ctx.Request().Method == http.MethodHead {
 		err = ctx.NoContent(he.Code)
 	} else {
-		err = ctx.JSON(code, message)
+		err = ctx.JSON(200, message)
 	}
 	if err != nil {
-		ctx.Logger().Error("", err)
+		ctx.Logger().Error("%v", err)
 	}
 
 }

@@ -5,7 +5,14 @@ import (
 	"strings"
 	"time"
 
+	stdContext "context"
+
 	"github.com/lazygo/lazygo/server"
+)
+
+var (
+	_ Context            = (*context)(nil)
+	_ stdContext.Context = (*context)(nil)
 )
 
 type Context interface {
@@ -42,7 +49,7 @@ func (c *context) UID() uint64 {
 
 // RealIP 获取请求客户端IP
 func (c *context) RealIP() string {
-	if realIP, ok := c.Value("real_ip").(string); ok {
+	if realIP, ok := c.Value(server.HeaderXRealIP).(string); ok {
 		return realIP
 	}
 	// Fall back to legacy behavior

@@ -21,7 +21,7 @@ type BaseResp struct {
 func TestBaidu(t *testing.T) {
 	assert := testify.New(t)
 	c := newhttpdns()
-	body, status, err := c.Request(context.Background(), http.MethodGet, "https://sh1.p2link.cn", nil, nil)
+	body, status, err := c.Request(context.Background(), http.MethodGet, "https://sh1.lazygo.dev", nil, nil)
 	assert.Equal(err, nil)
 	assert.Equal(status, http.StatusNotFound)
 
@@ -31,7 +31,7 @@ func TestBaidu(t *testing.T) {
 	assert.Equal(resp.Code, 404)
 	assert.Equal(resp.Msg, "Not Found")
 
-	_, status, err = c.Request(context.Background(), http.MethodGet, "https://www.p2link.cn", nil, nil)
+	_, status, err = c.Request(context.Background(), http.MethodGet, "https://www.lazygo.dev", nil, nil)
 	assert.Equal(err, nil)
 	assert.Equal(status, http.StatusOK)
 

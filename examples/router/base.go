@@ -3,8 +3,8 @@ package router
 import (
 	"github.com/lazygo/lazygo/server"
 
-	"github.com/lazygo/lazygo/examples/app/middleware"
-	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo-dev/lazygo/examples/app/middleware"
+	"github.com/lazygo-dev/lazygo/examples/framework"
 )
 
 func Init(app *server.Server) *server.Server {
@@ -21,12 +21,25 @@ func Init(app *server.Server) *server.Server {
 	// 添加TrustProxies
 	app.Use(middleware.TrustProxies)
 
+	// 支持解压body
+	app.Use(middleware.DecompressRequest)
+
 	// 增加访问日志记录
 	app.Use(middleware.AccessLog)
 
+	// Debug 模式开启跨域支持
+	if app.Debug {
+		app.Use(middleware.Debug)
+	}
+
 	app.Get("/", server.NotFoundHandler)
 
-	UserRouter()
+	InnerRouter(app.Group("/internal"))
+	RestRouter(app.Group("/api/rest"))
+	AuthRouter(app.Group("/api/auth"))
+	ThirdRouter(app.Group("/api/third"))
+	OpenRouter(app.Group("/api/open"))
+	EventRouter(app.Group("/event"))
 
 	return app
 }

@@ -1,10 +1,11 @@
-package cache
+package model
 
 import (
 	"fmt"
 
-	"github.com/lazygo/lazygo/examples/model"
-	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo-dev/lazygo/examples/model"
+	"github.com/lazygo-dev/lazygo/examples/utils"
 )
 
 type AuthUserCache struct {
@@ -13,10 +14,11 @@ type AuthUserCache struct {
 }
 
 type AuthUserData struct {
-	UID uint64 `json:"uid"`
+	UID   uint64 `json:"uid"`
+	Appid int    `json:"appid"`
 }
 
-func NewAuthUserCache() *AuthUserCache {
+func NewAuthUserCache(ctx framework.Context) *AuthUserCache {
 	cacheAuthUser := &AuthUserCache{
 		ttl: 3600 * 24 * 365,
 	}
@@ -40,12 +42,13 @@ func (mdl *AuthUserCache) Forget(token string) error {
 	return mdl.Cache.Forget(key)
 }
 
-func (mdl *AuthUserCache) Set(uid uint64) (string, error) {
+func (mdl *AuthUserCache) Set(appid int, uid uint64) (string, error) {
 	token := utils.RandStr(32)
 	key := fmt.Sprintf(utils.CacheAuthToken, token)
 
 	info := AuthUserData{
-		UID: uid,
+		UID:   uid,
+		Appid: appid,
 	}
 	err := mdl.Cache.Set(key, info, mdl.ttl)
 	if err != nil {

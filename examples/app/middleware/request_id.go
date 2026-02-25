@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo-dev/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/server"
 )
 
@@ -36,12 +36,16 @@ func RequestID(next server.HandlerFunc) server.HandlerFunc {
 }
 
 func generator() uint64 {
-	var x = strconv.Itoa(time.Now().Nanosecond() / 1000)
-	res, errParseInt := strconv.ParseInt(x, 10, 64)
-	if errParseInt != nil {
+	var x = strconv.Itoa(time.Now().Nanosecond() / 10000)
+	res, err := strconv.ParseInt(x, 10, 64)
+	if err != nil {
 		return 0
 	}
 	r := rand.New(rand.NewSource(time.Now().UnixNano()))
-	id := ((time.Now().Unix()*100000+res)&0xFFFFFFFF)*1000000000 + 100000000 + r.Int63n(899999999)
+	id := ((time.Now().Unix()*10000+res)&0xFFFFFFFF)*1000000 + 100000 + r.Int63n(899999)
+	if id%10 == 0 {
+		// 避免最后一位是0
+		id++
+	}
 	return uint64(id)
 }
