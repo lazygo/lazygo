@@ -14,6 +14,7 @@ import (
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/mysql"
+	"github.com/lazygo/pkg/goutils"
 	"github.com/lazygo/pkg/sms"
 	"github.com/lazygo/pkg/token/jwt"
 	"golang.org/x/crypto/bcrypt"
@@ -42,10 +43,10 @@ func (ctl *UserController) Regist(req *request.RegisterRequest) (any, error) {
 	user := map[string]any{
 		"appid": dbModel.AppidMain,
 	}
-	if req.Type == utils.TypeEmail {
+	if req.Type == goutils.TypeEmail {
 		user["email"] = req.Username
 	}
-	if req.Type == utils.TypeMobile {
+	if req.Type == goutils.TypeMobile {
 		user["mobile"] = req.Username
 	}
 	ok, err = mdlUser.Exists(user)
@@ -117,10 +118,10 @@ func (ctl *UserController) Forget(req *request.ForgetRequest) (any, error) {
 	cond := map[string]any{
 		"appid": dbModel.AppidMain,
 	}
-	if req.Type == utils.TypeEmail {
+	if req.Type == goutils.TypeEmail {
 		cond["email"] = req.Username
 	}
-	if req.Type == utils.TypeMobile {
+	if req.Type == goutils.TypeMobile {
 		cond["mobile"] = req.Username
 	}
 	user, n, err := mdlUser.First(cond, "uid")
@@ -196,10 +197,10 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 	mdlUser := dbModel.NewUserModel(ctl.Ctx)
 
 	cond := map[string]any{}
-	if req.Type == utils.TypeEmail {
+	if req.Type == goutils.TypeEmail {
 		cond["email"] = req.Username
 	}
-	if req.Type == utils.TypeMobile {
+	if req.Type == goutils.TypeMobile {
 		cond["mobile"] = req.Username
 	}
 	user, n, err := mdlUser.First(cond, "uid", "appid", "password")
@@ -252,10 +253,10 @@ func (ctl *UserController) Profile(req *request.ProfileRequest) (any, error) {
 	}
 
 	resp := &request.ProfileResponse{}
-	resp.Email = utils.Mask(user.Email.String, 2, 3)
-	resp.Mobile = utils.Mask(user.Mobile.String, 2, 3)
-	resp.UserName = utils.Mask(cmp.Or(resp.Mobile, resp.Email), 2, 3)
-	resp.UserID = utils.EncryptUID(req.UID)
+	resp.Email = goutils.Mask(user.Email.String, 2, 3)
+	resp.Mobile = goutils.Mask(user.Mobile.String, 2, 3)
+	resp.UserName = goutils.Mask(cmp.Or(resp.Mobile, resp.Email), 2, 3)
+	resp.UserID = goutils.EncryptUID(req.UID)
 	resp.RegisterTime = time.Unix(user.CTime, 0).Format(time.DateOnly)
 	return resp, nil
 }
@@ -316,7 +317,7 @@ func (ctl *UserController) SendCaptcha(req *request.CaptchaRequest) (any, error)
 	auditInfo["type"] = req.Type
 	auditInfo["username"] = req.Username
 	switch req.Type {
-	case utils.TypeMobile:
+	case goutils.TypeMobile:
 		res, err := sms.SmsTo(req.Username, cacheModel.SmsTpl[req.Opname], []string{code, "30"})
 		if err != nil {
 			ctl.Ctx.Logger().Error("[msg: send sms fail] [resp: %s] [err: %v]", res, err)
@@ -324,7 +325,7 @@ func (ctl *UserController) SendCaptcha(req *request.CaptchaRequest) (any, error)
 		}
 		auditInfo["res"] = res
 
-	case utils.TypeEmail:
+	case goutils.TypeEmail:
 		err := mailTemplates.SendRegisterCode(req.Username, code, req.Opname)
 		if err != nil {
 			ctl.Ctx.Logger().Error("[msg: send email fail] [err: %v]", err)

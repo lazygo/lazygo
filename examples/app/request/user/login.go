@@ -4,8 +4,8 @@ import (
 	"cmp"
 
 	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
+	"github.com/lazygo/pkg/goutils"
 )
 
 // 设备登录时复用此方法，即支持json请求也支持来自设备的formdata请求
@@ -23,8 +23,8 @@ type TokenResponse struct {
 }
 
 func (r *LoginRequest) Verify(ctx framework.Context) error {
-	r.Type = utils.UsernameType(r.Username)
-	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
+	r.Type = goutils.UsernameType(r.Username)
+	if r.Type != goutils.TypeEmail && r.Type != goutils.TypeMobile {
 		return errors.ErrUsernameInvalid
 	}
 

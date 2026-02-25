@@ -76,8 +76,8 @@ github.com/klauspost/compress v1.18.4 h1:RPhnKRAQ4Fh8zU2FY/6ZFDwTVTxgJ/EMydqSTzE
 github.com/klauspost/compress v1.18.4/go.mod h1:R0h/fSBs8DE4ENlcrlib3PsXS61voFxhIs2DeRhCvJ4=
 github.com/klauspost/cpuid/v2 v2.0.9 h1:lgaqFMSdTdQYdZ04uHyN2d/eKdOMyi2YLSvlQIBFYa4=
 github.com/klauspost/cpuid/v2 v2.0.9/go.mod h1:FInQzS24/EEf25PyTYn52gqo7WaD8xa0213Md/qVLRg=
-github.com/lazygo/pkg v0.0.0-20260225071858-44d9e84fb365 h1:01LybpzVc7e6fCIIJ6x+JfSLTfpiJxg/RSRKjW9/chY=
-github.com/lazygo/pkg v0.0.0-20260225071858-44d9e84fb365/go.mod h1:fz2+cEU/venqyAgxXetw1DSqsWH/li0MyTDlKuprCEk=
+github.com/lazygo/pkg v0.0.0-20260225080253-7e41fc581c0e h1:0ch6reREtUP4ExM/y/6GV9AD9K7v/3gJd/0/H/9t0n4=
+github.com/lazygo/pkg v0.0.0-20260225080253-7e41fc581c0e/go.mod h1:FS3AjOTG2DvD2OE1TQ2ZsbR5ekOCC8pBJIWuvobB6Kk=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 h1:6E+4a0GO5zZEnZ81pIr0yLvtUWk2if982qA3F3QD6H4=
 github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0/go.mod h1:zJYVVT2jmtg6P3p1VtQj7WsuWi/y4VnjVBn7F8KPB3I=
 github.com/mitchellh/mapstructure v1.4.3 h1:OVowDSCllw/YjdLkam3/sm7wEtOy59d8ndGgCcyj8cs=

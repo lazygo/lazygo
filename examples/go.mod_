@@ -4,12 +4,11 @@ go 1.26
 
 require (
 	github.com/coder/websocket v1.8.14
-	github.com/lazygo/lazygo latest
-	github.com/lazygo/pkg latest
+	github.com/lazygo/lazygo v0.7.9
+	github.com/lazygo/pkg v0.0.0-20260225080253-7e41fc581c0e
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/shirou/gopsutil/v4 v4.26.1
 	golang.org/x/crypto v0.48.0
-	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa
 )
 
 require (
@@ -27,7 +26,7 @@ require (
 	github.com/go-redis/redis/v8 v8.11.5 // indirect
 	github.com/go-sql-driver/mysql v1.9.3 // indirect
 	github.com/google/go-querystring v1.0.0 // indirect
-	github.com/klauspost/compress v1.18.3 // indirect
+	github.com/klauspost/compress v1.18.4 // indirect
 	github.com/lufia/plan9stats v0.0.0-20211012122336-39d0f177ccd0 // indirect
 	github.com/mitchellh/mapstructure v1.4.3 // indirect
 	github.com/mozillazg/go-httpheader v0.2.1 // indirect
@@ -47,5 +46,6 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go4.org/netipx v0.0.0-20231129151722-fdeea329fbba // indirect
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
 	golang.org/x/sys v0.41.0 // indirect
 )

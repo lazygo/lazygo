@@ -4,8 +4,8 @@ import (
 	"cmp"
 
 	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type RegisterRequest struct {
@@ -19,8 +19,8 @@ type RegisterRequest struct {
 }
 
 func (r *RegisterRequest) Verify(ctx framework.Context) error {
-	r.Type = utils.UsernameType(r.Username)
-	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
+	r.Type = goutils.UsernameType(r.Username)
+	if r.Type != goutils.TypeEmail && r.Type != goutils.TypeMobile {
 		return errors.ErrUsernameInvalid
 	}
 	r.Password = cmp.Or(r.Password, r.Loginpass)

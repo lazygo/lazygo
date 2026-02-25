@@ -8,7 +8,7 @@ import (
 	request "github.com/lazygo/lazygo/examples/app/request/audit"
 	"github.com/lazygo/lazygo/examples/framework"
 	dbModel "github.com/lazygo/lazygo/examples/model/db"
-	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 // AuditController 审计
@@ -39,7 +39,7 @@ func (ctl *AuditController) List(req *request.ListRequest) (*request.ListRespons
 				delete(contentMap, k)
 			}
 			if slices.Contains([]string{"username", "mobile", "email", "phone", "ip"}, k) {
-				contentMap[k] = utils.Mask(fmt.Sprintf("%v", v), 3, 3)
+				contentMap[k] = goutils.Mask(fmt.Sprintf("%v", v), 3, 3)
 			}
 		}
 		contentJson, err := json.Marshal(contentMap)

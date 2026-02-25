@@ -89,5 +89,6 @@ func (ctl *CommonController) Connection(req *request.ConnectionRequest) error {
 	}
 
 	sub := fmt.Sprintf("uid:%d", req.UID)
-	return ctl.Ctx.Event(server.MethodWebSocket, sub).Serve(ctl.Ctx, ctl.Ctx.RequestID(), server.WebSocketWrapper(ctl.Ctx, conn))
+	ev := ctl.Ctx.Event(server.MethodWebSocket, sub)
+	return ev.Serve(ctl.Ctx, ctl.Ctx.RequestID(), server.WebSocketWrapper(ctl.Ctx, conn))
 }

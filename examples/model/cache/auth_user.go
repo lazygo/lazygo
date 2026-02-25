@@ -6,6 +6,7 @@ import (
 	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/model"
 	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type AuthUserCache struct {
@@ -43,7 +44,7 @@ func (mdl *AuthUserCache) Forget(token string) error {
 }
 
 func (mdl *AuthUserCache) Set(appid int, uid uint64) (string, error) {
-	token := utils.RandStr(32)
+	token := goutils.RandStr(32)
 	key := fmt.Sprintf(utils.CacheAuthToken, token)
 
 	info := AuthUserData{

@@ -13,10 +13,10 @@ import (
 
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/httpclient"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
+	"github.com/lazygo/pkg/goutils"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -220,7 +220,7 @@ func (mdl *TxModel[T]) Create(data *T, pk ...string) (int64, error) {
 	if len(pk) == 0 {
 		pk = []string{"id"}
 	}
-	set, _ := utils.Struct2Map(data, pk...)
+	set, _ := goutils.Struct2Map(data, pk...)
 	now := time.Now().Unix()
 	set["ctime"] = now
 	set["mtime"] = now
@@ -231,7 +231,7 @@ func (mdl *TxModel[T]) Modify(data *T, pk ...string) (int64, error) {
 	if len(pk) == 0 {
 		pk = []string{"id"}
 	}
-	set, pkset := utils.Struct2Map(data, pk...)
+	set, pkset := goutils.Struct2Map(data, pk...)
 	now := time.Now().Unix()
 	set["mtime"] = now
 	return mdl.QueryBuilder().Where("id", pkset["id"]).Update(set)

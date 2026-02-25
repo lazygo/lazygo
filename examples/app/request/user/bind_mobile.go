@@ -2,8 +2,8 @@ package request
 
 import (
 	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type BindMobileRequest struct {
@@ -16,7 +16,7 @@ type BindMobileResponse struct {
 }
 
 func (r *BindMobileRequest) Verify(ctx framework.Context) error {
-	if utils.UsernameType(r.Mobile) != utils.TypeMobile {
+	if goutils.UsernameType(r.Mobile) != goutils.TypeMobile {
 		return errors.ErrInvalidMobile
 	}
 	return nil

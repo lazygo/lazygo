@@ -2,8 +2,8 @@ package request
 
 import (
 	"github.com/lazygo/lazygo/examples/framework"
-	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type ForgetRequest struct {
@@ -14,8 +14,8 @@ type ForgetRequest struct {
 }
 
 func (r *ForgetRequest) Verify(ctx framework.Context) error {
-	r.Type = utils.UsernameType(r.Username)
-	if r.Type != utils.TypeEmail && r.Type != utils.TypeMobile {
+	r.Type = goutils.UsernameType(r.Username)
+	if r.Type != goutils.TypeEmail && r.Type != goutils.TypeMobile {
 		return errors.ErrUsernameInvalid
 	}
 	if len(r.Password) < 6 {
