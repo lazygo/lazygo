@@ -248,7 +248,7 @@ func (ctl *UserController) Profile(req *request.ProfileRequest) (any, error) {
 	mdl := dbModel.NewUserModel(ctl.Ctx)
 	user, _, err := mdl.FetchByUid(req.UID)
 	if err != nil {
-		ctl.Ctx.Logger().Warn("[msg: get user:%d failed] [err: %v]", user, err)
+		ctl.Ctx.Logger().Warn("[msg: get user:%d failed] [err: %v]", req.UID, err)
 		return nil, errors.ErrDBError
 	}
 
