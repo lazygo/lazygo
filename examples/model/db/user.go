@@ -4,8 +4,8 @@ import (
 	"database/sql"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
 	"github.com/lazygo/lazygo/mysql"
 )
 

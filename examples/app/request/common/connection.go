@@ -1,6 +1,6 @@
 package request
 
-import "github.com/lazygo-dev/lazygo/examples/framework"
+import "github.com/lazygo/lazygo/examples/framework"
 
 type ConnectionRequest struct {
 	UID uint64 `json:"uid" bind:"context"`

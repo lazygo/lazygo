@@ -3,9 +3,9 @@ package model
 import (
 	"fmt"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
-	"github.com/lazygo-dev/lazygo/examples/utils"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
+	"github.com/lazygo/lazygo/examples/utils"
 )
 
 type AuthUserCache struct {

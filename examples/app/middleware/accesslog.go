@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/server"
 	"github.com/lazygo/pkg/monitor"
 	"github.com/shirou/gopsutil/v4/process"

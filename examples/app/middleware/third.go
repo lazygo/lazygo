@@ -3,9 +3,9 @@ package middleware
 import (
 	"strings"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	dbModel "github.com/lazygo-dev/lazygo/examples/model/db"
-	"github.com/lazygo-dev/lazygo/examples/utils"
+	"github.com/lazygo/lazygo/examples/framework"
+	dbModel "github.com/lazygo/lazygo/examples/model/db"
+	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/server"
 	"github.com/lazygo/pkg/token/jwt"
 )

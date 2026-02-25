@@ -1,7 +1,7 @@
 package request
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/framework"
 )
 
 // 设备登录时复用此方法，即支持json请求也支持来自设备的formdata请求

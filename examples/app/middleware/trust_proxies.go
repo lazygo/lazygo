@@ -6,6 +6,7 @@ import (
 )
 
 var ipExtractor = trustip.ExtractIPFromXFFHeader(
+	trustip.XffsHeader(server.HeaderXForwardedFor),
 	trustip.TrustIPRange("100.64.0.0/10"),
 )
 

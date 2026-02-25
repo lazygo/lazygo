@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/model"
+	"github.com/lazygo/lazygo/examples/model"
 )
 
 type WechatCache struct {

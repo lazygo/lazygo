@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"io"
 
-	request "github.com/lazygo-dev/lazygo/examples/app/request/debug"
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	request "github.com/lazygo/lazygo/examples/app/request/debug"
+	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/server"
 )
 

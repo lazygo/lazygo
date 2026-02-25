@@ -3,8 +3,8 @@ package router
 import (
 	"github.com/lazygo/lazygo/server"
 
-	"github.com/lazygo-dev/lazygo/examples/app/middleware"
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/app/middleware"
+	"github.com/lazygo/lazygo/examples/framework"
 )
 
 func Init(app *server.Server) *server.Server {

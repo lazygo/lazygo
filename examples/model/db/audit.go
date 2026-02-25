@@ -3,8 +3,8 @@ package db
 import (
 	"encoding/json"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
 )
 
 const (

@@ -3,9 +3,9 @@ package db
 import (
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
-	cacheModel "github.com/lazygo-dev/lazygo/examples/model/cache"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
+	cacheModel "github.com/lazygo/lazygo/examples/model/cache"
 )
 
 var ThirdMap = map[string]cacheModel.AuthUserData{

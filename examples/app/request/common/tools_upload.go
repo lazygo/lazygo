@@ -4,8 +4,8 @@ import (
 	"path"
 	"slices"
 
-	"github.com/lazygo-dev/lazygo/examples/utils"
-	"github.com/lazygo-dev/lazygo/examples/utils/errors"
+	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/server"
 )
 

@@ -1,7 +1,7 @@
 package request
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/framework"
 )
 
 type LogoutRequest struct {

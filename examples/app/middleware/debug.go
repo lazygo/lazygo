@@ -3,7 +3,7 @@ package middleware
 import (
 	"github.com/lazygo/lazygo/server"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/framework"
 )
 
 // DEBUG

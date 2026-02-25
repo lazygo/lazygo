@@ -1,10 +1,10 @@
 package request
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	cacheModel "github.com/lazygo-dev/lazygo/examples/model/cache"
-	"github.com/lazygo-dev/lazygo/examples/utils"
-	"github.com/lazygo-dev/lazygo/examples/utils/errors"
+	"github.com/lazygo/lazygo/examples/framework"
+	cacheModel "github.com/lazygo/lazygo/examples/model/cache"
+	"github.com/lazygo/lazygo/examples/utils"
+	"github.com/lazygo/lazygo/examples/utils/errors"
 )
 
 type CaptchaRequest struct {

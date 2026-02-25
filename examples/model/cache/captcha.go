@@ -5,8 +5,8 @@ import (
 	"math/rand"
 	"strconv"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
 )
 
 var (

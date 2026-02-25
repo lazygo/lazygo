@@ -3,8 +3,8 @@ package middleware
 import (
 	"github.com/lazygo/lazygo/server"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/utils/errors"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/utils/errors"
 )
 
 // AuthUser 用户端登录校验

@@ -9,10 +9,10 @@ import (
 	"time"
 
 	"github.com/coder/websocket"
-	request "github.com/lazygo-dev/lazygo/examples/app/request/common"
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	dbModel "github.com/lazygo-dev/lazygo/examples/model/db"
-	"github.com/lazygo-dev/lazygo/examples/utils/errors"
+	request "github.com/lazygo/lazygo/examples/app/request/common"
+	"github.com/lazygo/lazygo/examples/framework"
+	dbModel "github.com/lazygo/lazygo/examples/model/db"
+	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/server"
 	"github.com/lazygo/pkg/cos"
 )

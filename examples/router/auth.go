@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/app/controller"
-	"github.com/lazygo-dev/lazygo/examples/app/middleware"
+	"github.com/lazygo/lazygo/examples/app/controller"
+	"github.com/lazygo/lazygo/examples/app/middleware"
 	"github.com/lazygo/lazygo/server"
 )
 

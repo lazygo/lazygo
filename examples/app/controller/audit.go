@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"slices"
 
-	request "github.com/lazygo-dev/lazygo/examples/app/request/audit"
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	dbModel "github.com/lazygo-dev/lazygo/examples/model/db"
-	"github.com/lazygo-dev/lazygo/examples/utils"
+	request "github.com/lazygo/lazygo/examples/app/request/audit"
+	"github.com/lazygo/lazygo/examples/framework"
+	dbModel "github.com/lazygo/lazygo/examples/model/db"
+	"github.com/lazygo/lazygo/examples/utils"
 )
 
 // AuditController 审计

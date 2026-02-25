@@ -2,9 +2,9 @@
 package request
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/model"
-	dbModel "github.com/lazygo-dev/lazygo/examples/model/db"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/model"
+	dbModel "github.com/lazygo/lazygo/examples/model/db"
 )
 
 type ListRequest struct {

@@ -5,7 +5,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/server"
 )
 

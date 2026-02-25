@@ -11,10 +11,10 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/app/worker"
-	"github.com/lazygo-dev/lazygo/examples/config"
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/router"
+	"github.com/lazygo/lazygo/examples/app/worker"
+	"github.com/lazygo/lazygo/examples/config"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/router"
 )
 
 func init() {

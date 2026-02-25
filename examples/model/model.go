@@ -11,9 +11,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/cache"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/httpclient"
 	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"

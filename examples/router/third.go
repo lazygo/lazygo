@@ -1,8 +1,8 @@
 package router
 
 import (
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	"github.com/lazygo-dev/lazygo/examples/utils/errors"
+	"github.com/lazygo/lazygo/examples/framework"
+	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/server"
 )
 

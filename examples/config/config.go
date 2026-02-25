@@ -5,10 +5,10 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/lazygo-dev/lazygo/examples/framework"
-	cacheModel "github.com/lazygo-dev/lazygo/examples/model/cache"
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/config"
+	"github.com/lazygo/lazygo/examples/framework"
+	cacheModel "github.com/lazygo/lazygo/examples/model/cache"
 	"github.com/lazygo/lazygo/httpclient/httpdns"
 	"github.com/lazygo/lazygo/locker"
 	"github.com/lazygo/lazygo/logger"
