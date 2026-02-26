@@ -126,7 +126,7 @@ func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, b
 type CallBridge interface {
 	PipeWriter() io.Writer
 	Receiver(ctx stdContext.Context, id string) func() ([]byte, error)
-	Close() error
+	io.ReadWriteCloser
 }
 
 type callBridge struct {
