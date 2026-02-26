@@ -3,13 +3,16 @@ package server
 import (
 	stdContext "context"
 	"embed"
+	"encoding/json"
 	"io"
 	"io/fs"
 	"net"
 	"net/http"
 	"path"
+	"strconv"
 
 	"github.com/coder/websocket"
+	"github.com/lazygo/pkg/receiver"
 )
 
 // WrapHandler wraps `http.Handler` into `HandlerFunc`.
@@ -107,4 +110,63 @@ func (b *wsBridge) Write(p []byte) (n int, err error) {
 
 func (b *wsBridge) Close() error {
 	return b.conn.Close(websocket.StatusNormalClosure, "normal closure")
+}
+
+func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, body []byte)) *callBridge {
+	pipeReader, pipeWriter := io.Pipe()
+	return &callBridge{
+		ctx:        ctx,
+		pipeReader: pipeReader,
+		pipeWriter: pipeWriter,
+		callback:   callback,
+		receiver:   receiver.NewReceiver[[]byte](),
+	}
+}
+
+type callBridge struct {
+	ctx        stdContext.Context
+	pipeReader *io.PipeReader
+	pipeWriter *io.PipeWriter
+	callback   func(rid uint64, uri string, body []byte)
+	receiver   *receiver.Receiver[[]byte]
+}
+
+func (b *callBridge) PipeWriter() io.Writer {
+	return b.pipeWriter
+}
+
+func (b *callBridge) Receiver(ctx stdContext.Context, id string) func() ([]byte, error) {
+	return b.receiver.Get(ctx, id)
+}
+
+func (b *callBridge) Read(p []byte) (n int, err error) {
+	return b.pipeReader.Read(p)
+}
+
+func (b *callBridge) Write(p []byte) (n int, err error) {
+	// 解析数据判断是给cb还是写入给pipe
+	req := EventRequest{}
+	err = json.Unmarshal(p, &req)
+	if err != nil {
+		return 0, err
+	}
+	if req.RID > 0 {
+		ok, err := b.receiver.Put(b.ctx, strconv.FormatUint(req.RID, 10), p)
+		if err != nil {
+			return 0, err
+		}
+		if ok {
+			// 写入成功，直接返回
+			return len(p), nil
+		}
+	}
+	// rid = 0 或 put失败，则写入pipe
+	b.callback(req.RID, req.URI, req.Body)
+	return len(req.Body), nil
+}
+
+func (b *callBridge) Close() error {
+	b.pipeWriter.Close()
+	b.pipeReader.Close()
+	return nil
 }

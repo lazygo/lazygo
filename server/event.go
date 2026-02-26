@@ -10,32 +10,34 @@ import (
 	"io"
 	"net"
 	"net/http"
-	"net/url"
 	"strconv"
 	"sync"
 )
 
 type EventManager struct {
-	event sync.Map
+	event  sync.Map
+	server *Server
 }
 
-func (e *EventManager) Get(method, subject string) *Event {
-	ev, _ := e.event.LoadOrStore(fmt.Sprintf("%s:%s", method, subject), &Event{
+func (em *EventManager) Get(method, subject string) *Event {
+	e, _ := em.event.LoadOrStore(fmt.Sprintf("%s:%s", method, subject), &Event{
+		server:  em.server,
 		method:  method,
 		subject: subject,
 		rwc:     make(map[uint64]io.ReadWriteCloser),
 	})
-	return ev.(*Event)
+	return e.(*Event)
 }
 
 type Event struct {
 	mu      sync.RWMutex
+	server  *Server
 	method  string
 	subject string
 	rwc     map[uint64]io.ReadWriteCloser
 }
 
-func (e *Event) Serve(ctx Context, cid uint64, rwc io.ReadWriteCloser) error {
+func (e *Event) Serve(ctx stdContext.Context, cid uint64, rwc io.ReadWriteCloser) error {
 	e.mu.Lock()
 	if _, ok := e.rwc[cid]; ok {
 		e.mu.Unlock()
@@ -75,8 +77,7 @@ func (e *Event) Broadcast(ctx stdContext.Context, msg []byte) error {
 	return nil
 }
 
-func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
-	s := ctx.s()
+func (e *Event) serve(ctx stdContext.Context, rwc io.ReadWriteCloser) error {
 	for {
 		select {
 		case <-ctx.Done():
@@ -87,19 +88,19 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 			w := &eventResponseWriter{ctx: ctx, Writer: buf, header: http.Header{}}
 			r, err := newEventRequest(ctx, e.method, rwc)
 			if err != nil {
-				c := s.AcquireContext()
-				defer s.ReleaseContext(c)
+				c := e.server.AcquireContext()
+				defer e.server.ReleaseContext(c)
 				c.SetRequest(r)
 				c.SetResponseWriter(NewResponseWriter(w))
 				c.Error(err)
-				s.Logger.Printf("[msg: new websocket request error] [err: %v]", err)
+				e.server.Logger.Printf("[msg: new websocket request error] [err: %v]", err)
 				if buf.Len() > 0 {
 					_, _ = rwc.Write(buf.Bytes())
 				}
 				continue
 			}
 
-			s.ServeHTTP(w, r)
+			e.server.ServeHTTP(w, r)
 			// 整份响应作为一条 WebSocket 消息发送，保证不被截断
 			if buf.Len() > 0 {
 				_, _ = rwc.Write(buf.Bytes())
@@ -109,7 +110,7 @@ func (e *Event) serve(ctx Context, rwc io.ReadWriteCloser) error {
 }
 
 type eventResponseWriter struct {
-	ctx Context
+	ctx stdContext.Context
 	io.Writer
 	header http.Header
 }
@@ -131,7 +132,7 @@ type EventRequest struct {
 	Body   json.RawMessage   `json:"body"`
 }
 
-func newEventRequest(ctx Context, method string, r io.Reader) (*http.Request, error) {
+func newEventRequest(ctx stdContext.Context, method string, r io.Reader) (*http.Request, error) {
 	var e EventRequest
 	err := json.NewDecoder(r).Decode(&e)
 	if err != nil {
@@ -145,27 +146,17 @@ func newEventRequest(ctx Context, method string, r io.Reader) (*http.Request, er
 	if e.URI == "" {
 		return nil, fmt.Errorf("uri is required")
 	}
-	uri, err := url.Parse(e.URI)
-	if err != nil {
-		return nil, fmt.Errorf("invalid uri: %w", err)
-	}
 
-	req := ctx.Request().Clone(ctx)
+	req, err := http.NewRequestWithContext(ctx, method, e.URI, bytes.NewReader(e.Body))
+	if err != nil {
+		return nil, fmt.Errorf("invalid request: %w", err)
+	}
+	req.ContentLength = int64(len(e.Body))
 	for k, v := range e.Header {
 		req.Header.Set(k, v)
 	}
-	req.Method = method
-	req.RequestURI = uri.RequestURI()
-	req.URL.Path = uri.Path
-	if req.URL == nil {
-		req.URL = uri
-	} else {
-		req.URL.Path = uri.Path
-	}
 	req.Header.Set(HeaderXRequestID, strconv.FormatUint(e.RID, 10))
 	req.Header.Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
-	req.Body = io.NopCloser(bytes.NewReader(e.Body))
-	req.ContentLength = int64(len(e.Body))
 
 	return req, nil
 }

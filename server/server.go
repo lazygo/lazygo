@@ -72,7 +72,7 @@ func New() (s *Server) {
 		ListenerNetwork: "tcp",
 	}
 	s.common.add = s.Add
-	s.eventManager = &EventManager{}
+	s.eventManager = &EventManager{server: s}
 	s.Http.Handler = s
 	s.HTTPOKHandler = s.DefaultHTTPOKHandler
 	s.HTTPErrorHandler = s.DefaultHTTPErrorHandler
