@@ -66,7 +66,7 @@ func NewStdoutContext(ctx stdContext.Context, app *server.Server) Context {
 
 func FakeRequest(ctx stdContext.Context) *http.Request {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "internal://fake-uri", nil)
-	return req.WithContext(ctx)
+	return req
 }
 
 // HandleSucc 返回成功
