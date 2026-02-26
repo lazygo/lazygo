@@ -33,22 +33,22 @@ func main() {
 		log.Fatalf("[msg: load config file error] [err: %v]", err)
 	}
 
-	appServer := framework.Server()
-	appServer.Debug = config.ServerConfig.Debug
+	httpServer := framework.Server()
+	httpServer.Debug = config.ServerConfig.Debug
 
 	ctx := context.Background()
 
 	// Start server
 	go func() {
 		fmt.Println("Listen " + config.ServerConfig.Addr)
-		err = router.Init(appServer).Start(ctx, config.ServerConfig.Addr)
+		err = router.Init(httpServer).Start(ctx, config.ServerConfig.Addr)
 		if err != nil && err != http.ErrServerClosed {
 			log.Printf("[msg: shutting down the server] [err: %v]", err)
-			appServer.Logger.Fatal("shutting down the server")
+			httpServer.Logger.Fatal("shutting down the server")
 		}
 	}()
 
-	worker.Bootstrap(framework.WrapContext(appServer.NewIOWriterContext(ctx, os.Stdout)))
+	worker.Bootstrap(framework.WrapContext(httpServer.NewIOWriterContext(ctx, os.Stdout)))
 
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify
@@ -57,8 +57,8 @@ func main() {
 	<-quit
 	ctx, cancel := context.WithTimeout(ctx, 10*time.Second)
 	defer cancel()
-	if err := appServer.Shutdown(ctx); err != nil {
+	if err := httpServer.Shutdown(ctx); err != nil {
 		log.Printf("[msg: shutting down the server] [err: %v]", err)
-		appServer.Logger.Fatal(err)
+		httpServer.Logger.Fatal(err)
 	}
 }
