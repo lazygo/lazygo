@@ -112,7 +112,7 @@ func (b *wsBridge) Close() error {
 	return b.conn.Close(websocket.StatusNormalClosure, "normal closure")
 }
 
-func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, body []byte)) *callBridge {
+func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, body []byte)) CallBridge {
 	pipeReader, pipeWriter := io.Pipe()
 	return &callBridge{
 		ctx:        ctx,
@@ -121,6 +121,12 @@ func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, b
 		callback:   callback,
 		receiver:   receiver.NewReceiver[[]byte](),
 	}
+}
+
+type CallBridge interface {
+	PipeWriter() io.Writer
+	Receiver(ctx stdContext.Context, id string) func() ([]byte, error)
+	Close() error
 }
 
 type callBridge struct {
