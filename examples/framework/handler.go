@@ -40,6 +40,7 @@ func ExtendContextMiddleware(h server.HandlerFunc) server.HandlerFunc {
 	}
 }
 
+// WrapContext 包装 Context
 func WrapContext(c server.Context) Context {
 	return &context{c}
 }
