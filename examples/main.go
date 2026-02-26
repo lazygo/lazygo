@@ -15,6 +15,7 @@ import (
 	"github.com/lazygo/lazygo/examples/config"
 	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/router"
+	"github.com/lazygo/lazygo/server"
 )
 
 func init() {
@@ -48,7 +49,7 @@ func main() {
 		}
 	}()
 
-	worker.Bootstrap(framework.NewStdoutContext(ctx, appServer))
+	worker.Bootstrap(framework.WrapContext(server.NewIoWriterContext(ctx, appServer, os.Stdout)))
 
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify

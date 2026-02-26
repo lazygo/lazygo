@@ -2,11 +2,16 @@ package server
 
 import (
 	"bufio"
+	stdContext "context"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
+)
+
+const (
+	InternalFakeURI = "internal://fake-uri"
 )
 
 type (
@@ -109,4 +114,25 @@ func (r *ResponseWriter) reset(w http.ResponseWriter) {
 	r.Size = 0
 	r.Status = http.StatusOK
 	r.Committed = false
+}
+
+func FakeRequest(ctx stdContext.Context) *http.Request {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, InternalFakeURI, nil)
+	return req
+}
+
+type ioWriterResponseWriter struct {
+	io.Writer
+}
+
+func (w *ioWriterResponseWriter) Header() http.Header {
+	return http.Header{}
+}
+
+func (w *ioWriterResponseWriter) WriteHeader(statusCode int) {
+	fmt.Println("Header:", statusCode)
+}
+
+func NewIoWriterContext(ctx stdContext.Context, app *Server, w io.Writer) Context {
+	return app.NewContext(FakeRequest(ctx), &ioWriterResponseWriter{Writer: w})
 }

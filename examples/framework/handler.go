@@ -1,31 +1,12 @@
 package framework
 
 import (
-	stdContext "context"
-	"fmt"
-	"net/http"
-
 	"github.com/lazygo/lazygo/server"
 )
 
 type HandlerFunc func(Context) error
 type HTTPErrorHandler func(error, Context)
 type HTTPOKHandler func(any, Context) error
-
-type stdoutResponseWriter struct{}
-
-func (w *stdoutResponseWriter) Write(p []byte) (n int, err error) {
-	fmt.Println(string(p))
-	return len(p), nil
-}
-
-func (w *stdoutResponseWriter) Header() http.Header {
-	return http.Header{}
-}
-
-func (w *stdoutResponseWriter) WriteHeader(statusCode int) {
-	fmt.Println("WriteHeader", statusCode)
-}
 
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
@@ -54,19 +35,13 @@ func BaseHTTPOKHandler(h HTTPOKHandler) server.HTTPOKHandler {
 // ExtendContextMiddleware Context 拓展中间件
 func ExtendContextMiddleware(h server.HandlerFunc) server.HandlerFunc {
 	return func(c server.Context) error {
-		cc := &context{c}
+		cc := WrapContext(c)
 		return h(cc)
 	}
 }
 
-func NewStdoutContext(ctx stdContext.Context, app *server.Server) Context {
-	c := app.NewContext(FakeRequest(ctx), &stdoutResponseWriter{})
+func WrapContext(c server.Context) Context {
 	return &context{c}
-}
-
-func FakeRequest(ctx stdContext.Context) *http.Request {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "internal://fake-uri", nil)
-	return req
 }
 
 // HandleSucc 返回成功
