@@ -49,7 +49,7 @@ func main() {
 		}
 	}()
 
-	worker.Bootstrap(framework.WrapContext(server.NewIoWriterContext(ctx, appServer, os.Stdout)))
+	worker.Bootstrap(framework.WrapContext(server.NewIOWriterContext(ctx, appServer, os.Stdout)))
 
 	// Wait for interrupt signal to gracefully shutdown the server with a timeout of 10 seconds.
 	// Use a buffered channel to avoid missing signals as recommended for signal.Notify

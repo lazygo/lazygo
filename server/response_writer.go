@@ -133,6 +133,6 @@ func (w *ioWriterResponseWriter) WriteHeader(statusCode int) {
 	fmt.Println("Header:", statusCode)
 }
 
-func NewIoWriterContext(ctx stdContext.Context, app *Server, w io.Writer) Context {
+func NewIOWriterContext(ctx stdContext.Context, app *Server, w io.Writer) Context {
 	return app.NewContext(FakeRequest(ctx), &ioWriterResponseWriter{Writer: w})
 }
