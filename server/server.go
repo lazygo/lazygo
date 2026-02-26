@@ -3,6 +3,7 @@ package server
 import (
 	stdContext "context"
 	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -76,14 +77,14 @@ func New() (s *Server) {
 	s.HTTPOKHandler = s.DefaultHTTPOKHandler
 	s.HTTPErrorHandler = s.DefaultHTTPErrorHandler
 	s.pool.New = func() any {
-		return s.NewContext(nil, nil)
+		return s.newContext(nil, nil)
 	}
 	s.router = NewRouter(s)
 	return
 }
 
-// NewContext returns a Context instance.
-func (s *Server) NewContext(r *http.Request, w http.ResponseWriter) Context {
+// newContext returns a Context instance.
+func (s *Server) newContext(r *http.Request, w http.ResponseWriter) Context {
 	return &context{
 		request:        r,
 		responseWriter: NewResponseWriter(w),
@@ -195,6 +196,10 @@ func (s *Server) AcquireContext() Context {
 // You must call it after `AcquireContext()`.
 func (s *Server) ReleaseContext(c Context) {
 	s.pool.Put(c)
+}
+
+func (s *Server) NewIOWriterContext(ctx stdContext.Context, w io.Writer) Context {
+	return s.newContext(FakeRequest(ctx), &ioWriterResponseWriter{Writer: w})
 }
 
 // ServeHTTP implements `http.Handler` interface, which serves HTTP requests.

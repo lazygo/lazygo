@@ -132,7 +132,3 @@ func (w *ioWriterResponseWriter) Header() http.Header {
 func (w *ioWriterResponseWriter) WriteHeader(statusCode int) {
 	fmt.Println("Header:", statusCode)
 }
-
-func NewIOWriterContext(ctx stdContext.Context, app *Server, w io.Writer) Context {
-	return app.NewContext(FakeRequest(ctx), &ioWriterResponseWriter{Writer: w})
-}
