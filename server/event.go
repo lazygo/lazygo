@@ -157,6 +157,11 @@ func newEventRequest(ctx Context, method string, r io.Reader) (*http.Request, er
 	req.Method = method
 	req.RequestURI = uri.RequestURI()
 	req.URL.Path = uri.Path
+	if req.URL == nil {
+		req.URL = uri
+	} else {
+		req.URL.Path = uri.Path
+	}
 	req.Header.Set(HeaderXRequestID, strconv.FormatUint(e.RID, 10))
 	req.Header.Set(HeaderContentType, MIMEApplicationJSONCharsetUTF8)
 	req.Body = io.NopCloser(bytes.NewReader(e.Body))

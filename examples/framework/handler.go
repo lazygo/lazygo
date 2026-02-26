@@ -65,9 +65,7 @@ func NewStdoutContext(ctx stdContext.Context, app *server.Server) Context {
 }
 
 func FakeRequest(ctx stdContext.Context) *http.Request {
-	req := &http.Request{
-		Header: make(http.Header),
-	}
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "internal://fake-uri", nil)
 	return req.WithContext(ctx)
 }
 
