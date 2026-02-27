@@ -4,15 +4,19 @@ import (
 	stdContext "context"
 	"embed"
 	"encoding/json"
-	"io"
+	"errors"
 	"io/fs"
-	"net"
 	"net/http"
 	"path"
 	"strconv"
 
 	"github.com/coder/websocket"
-	"github.com/lazygo/pkg/receiver"
+	"github.com/lazygo/pkg/waiter"
+)
+
+var (
+	_ SendReceiveCloser = (*wsBridge)(nil)
+	_ SendReceiveCloser = (*callBridge)(nil)
 )
 
 // WrapHandler wraps `http.Handler` into `HandlerFunc`.
@@ -63,116 +67,112 @@ func AssetHandler(prefix string, assets embed.FS, root string) HandlerFunc {
 	return WrapHandler(http.StripPrefix(prefix, http.FileServer(http.FS(handler))))
 }
 
-func WebSocketWrapper(ctx stdContext.Context, conn *websocket.Conn) io.ReadWriteCloser {
+func WebSocketWrapper(ctx stdContext.Context, conn *websocket.Conn) SendReceiveCloser {
 	return &wsBridge{ctx: ctx, conn: conn}
 }
 
 type wsBridge struct {
 	ctx  stdContext.Context
 	conn *websocket.Conn
-	// buffer stores remaining unread data from the last msg
-	buffer []byte
 }
 
-func (b *wsBridge) Read(p []byte) (n int, err error) {
-	// If buffer has leftover data, serve from buffer first
-	if len(b.buffer) > 0 {
-		n = copy(p, b.buffer)
-		b.buffer = b.buffer[n:]
-		return n, nil
-	}
+func (b *wsBridge) Receive(ctx stdContext.Context) (*EventData, error) {
 
-	io.Pipe()
-	net.Pipe()
 	_, msg, err := b.conn.Read(b.ctx)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
 
-	n = copy(p, msg)
-	// If msg not fully read, save the rest into buffer
-	if n < len(msg) {
-		b.buffer = append(b.buffer[:0], msg[n:]...)
-	} else {
-		b.buffer = b.buffer[:0]
+	var req EventData
+	err = json.Unmarshal(msg, &req)
+	if err != nil {
+		return nil, err
 	}
-	return n, nil
+
+	return &req, nil
 }
 
-func (b *wsBridge) Write(p []byte) (n int, err error) {
-	// 这里已作出相应处理保证p为一次完整的响应，不会被截断
-	err = b.conn.Write(b.ctx, websocket.MessageText, p)
+func (b *wsBridge) Send(data *EventData) error {
+	msg, err := json.Marshal(data)
 	if err != nil {
-		return 0, err
+		return err
 	}
-	return len(p), nil
+	err = b.conn.Write(b.ctx, websocket.MessageText, msg)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 func (b *wsBridge) Close() error {
 	return b.conn.Close(websocket.StatusNormalClosure, "normal closure")
 }
 
-func CallWrapper(ctx stdContext.Context, callback func(rid uint64, uri string, body []byte)) CallBridge {
-	pipeReader, pipeWriter := io.Pipe()
+func CallWrapper(ctx stdContext.Context, callback func(*EventData)) CallBridge {
 	return &callBridge{
-		ctx:        ctx,
-		pipeReader: pipeReader,
-		pipeWriter: pipeWriter,
-		callback:   callback,
-		receiver:   receiver.NewReceiver[[]byte](),
+		ctx:      ctx,
+		ch:       make(chan *EventData),
+		callback: callback,
+		waiter:   waiter.NewWaiter[*EventData](),
 	}
 }
 
 type CallBridge interface {
-	io.ReadWriteCloser
-	PipeWriter() io.Writer
-	Receiver(ctx stdContext.Context, id string) func() ([]byte, error)
+	SendReceiveCloser
+	SendRequest(ctx stdContext.Context, req *EventData) error
+	Waiter(ctx stdContext.Context, id string) func() (*EventData, error)
 }
 
 type callBridge struct {
-	ctx        stdContext.Context
-	pipeReader *io.PipeReader
-	pipeWriter *io.PipeWriter
-	callback   func(rid uint64, uri string, body []byte)
-	receiver   *receiver.Receiver[[]byte]
+	ctx      stdContext.Context
+	ch       chan *EventData
+	callback func(*EventData)
+	waiter   *waiter.Waiter[*EventData]
 }
 
-func (b *callBridge) PipeWriter() io.Writer {
-	return b.pipeWriter
-}
-
-func (b *callBridge) Receiver(ctx stdContext.Context, id string) func() ([]byte, error) {
-	return b.receiver.Get(ctx, id)
-}
-
-func (b *callBridge) Read(p []byte) (n int, err error) {
-	return b.pipeReader.Read(p)
-}
-
-func (b *callBridge) Write(p []byte) (n int, err error) {
-	// 解析数据判断是给cb还是写入给pipe
-	req := EventRequest{}
-	err = json.Unmarshal(p, &req)
-	if err != nil {
-		return 0, err
+func (b *callBridge) SendRequest(ctx stdContext.Context, req *EventData) error {
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case b.ch <- req:
+		return nil
 	}
+}
+
+func (b *callBridge) Waiter(ctx stdContext.Context, id string) func() (*EventData, error) {
+	return b.waiter.Get(ctx, id)
+}
+
+func (b *callBridge) Receive(ctx stdContext.Context) (*EventData, error) {
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case data, ok := <-b.ch:
+		if !ok {
+			return nil, errors.New("channel closed")
+		}
+		return data, nil
+	}
+}
+
+func (b *callBridge) Send(req *EventData) error {
+	// 解析数据判断是给cb还是写入给pipe
 	if req.RID > 0 {
-		ok, err := b.receiver.Put(b.ctx, strconv.FormatUint(req.RID, 10), p)
+		ok, err := b.waiter.Put(b.ctx, strconv.FormatUint(req.RID, 10), req)
 		if err != nil {
-			return 0, err
+			return err
 		}
 		if ok {
 			// 写入成功，直接返回
-			return len(p), nil
+			return nil
 		}
 	}
 	// rid = 0 或 put失败，则写入pipe
-	b.callback(req.RID, req.URI, req.Body)
-	return len(req.Body), nil
+	b.callback(req)
+	return nil
 }
 
 func (b *callBridge) Close() error {
-	b.pipeWriter.Close()
-	b.pipeReader.Close()
+	close(b.ch)
 	return nil
 }
