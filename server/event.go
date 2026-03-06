@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"strconv"
 	"sync"
+	"time"
 
 	"github.com/lazygo/pkg/waiter"
 )
@@ -116,42 +117,55 @@ func (e *Event) serve(ctx stdContext.Context, src SendReceiveCloser) error {
 			if req == nil {
 				continue
 			}
-			// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
-			buf := &bytes.Buffer{}
-			w := &eventResponseWriter{ctx: ctx, Writer: buf, header: http.Header{}}
-			r, err := newEventRequest(ctx, e.method, req)
-			if err != nil {
-
-				c := e.server.AcquireContext()
-				c.SetRequest(r)
-				c.SetResponseWriter(NewResponseWriter(w))
-				c.Error(err)
-				e.server.ReleaseContext(c)
-
-				e.server.Logger.Printf("[msg: new websocket request error] [err: %v]", err)
-				if buf.Len() > 0 {
-					_ = src.Send(&EventData{
-						RID:    req.RID,
-						URI:    req.URI,
-						Header: w.Header(),
-						Body:   buf.Bytes(),
-					})
-				}
-				continue
-			}
-
-			e.server.ServeHTTP(w, r)
-			// 整份响应作为一条 WebSocket 消息发送，保证不被截断
-			if buf.Len() > 0 {
-				_ = src.Send(&EventData{
-					RID:    req.RID,
-					URI:    req.URI,
-					Header: w.Header(),
-					Body:   buf.Bytes(),
-				})
-			}
+			go e.handle(ctx, src, req)
 		}
 	}
+}
+
+func (e *Event) handle(ctx stdContext.Context, src SendReceiveCloser, req *EventData) error {
+	ctxT, cancel := stdContext.WithTimeout(ctx, time.Second)
+	defer cancel()
+	ok, err := e.waiter.Put(ctxT, strconv.FormatUint(req.RID, 10), req)
+	if err != nil {
+		return err
+	}
+	if ok {
+		return nil
+	}
+	// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
+	buf := &bytes.Buffer{}
+	w := &eventResponseWriter{ctx: ctx, Writer: buf, header: http.Header{}}
+	r, err := newEventRequest(ctx, e.method, req)
+	if err != nil {
+		c := e.server.AcquireContext()
+		c.SetRequest(r)
+		c.SetResponseWriter(NewResponseWriter(w))
+		c.Error(err)
+		e.server.ReleaseContext(c)
+
+		e.server.Logger.Printf("[msg: new websocket request error] [err: %v]", err)
+		if buf.Len() > 0 {
+			_ = src.Send(&EventData{
+				RID:    req.RID,
+				URI:    req.URI,
+				Header: w.Header(),
+				Body:   buf.Bytes(),
+			})
+		}
+		return err
+	}
+
+	e.server.ServeHTTP(w, r)
+	// 整份响应作为一条 WebSocket 消息发送，保证不被截断
+	if buf.Len() > 0 {
+		_ = src.Send(&EventData{
+			RID:    req.RID,
+			URI:    req.URI,
+			Header: w.Header(),
+			Body:   buf.Bytes(),
+		})
+	}
+	return nil
 }
 
 type eventResponseWriter struct {
