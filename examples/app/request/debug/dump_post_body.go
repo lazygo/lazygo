@@ -1,4 +1,4 @@
-package debug
+package request
 
 import (
 	"github.com/lazygo/lazygo/examples/framework"
