@@ -28,6 +28,7 @@ func (em *EventManager) Get(method, subject string) *Event {
 		method:  method,
 		subject: subject,
 		src:     make(map[uint64]SendReceiveCloser),
+		waiter:  waiter.NewWaiter[*EventData](),
 	})
 	return e.(*Event)
 }
