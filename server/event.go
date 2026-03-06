@@ -10,7 +10,10 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"strconv"
 	"sync"
+
+	"github.com/lazygo/pkg/waiter"
 )
 
 type EventManager struct {
@@ -40,6 +43,7 @@ type Event struct {
 	method  string
 	subject string
 	src     map[uint64]SendReceiveCloser
+	waiter  *waiter.Waiter[*EventData]
 }
 
 func (e *Event) Serve(ctx stdContext.Context, cid uint64, src SendReceiveCloser) error {
@@ -81,6 +85,22 @@ func (e *Event) Broadcast(ctx stdContext.Context, data *EventData) error {
 		}
 	}
 	return errs
+}
+
+func (e *Event) Request(ctx stdContext.Context, cid uint64, data *EventData) (func() (*EventData, error), error) {
+	e.mu.RLock()
+	src, ok := e.src[cid]
+	e.mu.RUnlock()
+	if !ok {
+		return nil, errors.New("cid not found")
+	}
+	wait, cancel := e.waiter.Get(ctx, strconv.FormatUint(data.RID, 10))
+	err := src.Send(data)
+	if err != nil {
+		cancel()
+		return nil, err
+	}
+	return wait, nil
 }
 
 func (e *Event) serve(ctx stdContext.Context, src SendReceiveCloser) error {

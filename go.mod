@@ -9,7 +9,7 @@ require (
 	github.com/coder/websocket v1.8.14
 	github.com/go-sql-driver/mysql v1.9.3
 	github.com/klauspost/compress v1.18.4
-	github.com/lazygo/pkg v0.0.0-20260305040347-e707e385371e
+	github.com/lazygo/pkg v0.0.0-20260306112839-e841e7ec62ad
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.18.0
 	github.com/shirou/gopsutil/v4 v4.26.1

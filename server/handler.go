@@ -120,7 +120,7 @@ func CallWrapper(ctx stdContext.Context, callback func(*EventData)) CallBridge {
 type CallBridge interface {
 	SendReceiveCloser
 	SendRequest(ctx stdContext.Context, req *EventData) error
-	Waiter(ctx stdContext.Context, id string) func() (*EventData, error)
+	Waiter(ctx stdContext.Context, id string) (func() (*EventData, error), func())
 }
 
 type callBridge struct {
@@ -139,7 +139,7 @@ func (b *callBridge) SendRequest(ctx stdContext.Context, req *EventData) error {
 	}
 }
 
-func (b *callBridge) Waiter(ctx stdContext.Context, id string) func() (*EventData, error) {
+func (b *callBridge) Waiter(ctx stdContext.Context, id string) (func() (*EventData, error), func()) {
 	return b.waiter.Get(ctx, id)
 }
 
