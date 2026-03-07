@@ -188,7 +188,7 @@ func (w *eventResponseWriter) Hijack() (net.Conn, *bufio.ReadWriter, error) {
 type EventData struct {
 	RID    uint64          `json:"rid"`
 	URI    string          `json:"uri"`
-	Header http.Header     `json:"header"`
+	Header http.Header     `json:"header,omitempty"`
 	Body   json.RawMessage `json:"body"`
 }
 
