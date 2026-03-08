@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"path"
 	"strconv"
+	"strings"
 
 	"github.com/coder/websocket"
 	"github.com/lazygo/pkg/waiter"
@@ -77,19 +78,24 @@ type wsBridge struct {
 }
 
 func (b *wsBridge) Receive(ctx stdContext.Context) (*EventData, error) {
+	for {
+		_, msg, err := b.conn.Read(b.ctx)
+		if err != nil {
+			return nil, err
+		}
 
-	_, msg, err := b.conn.Read(b.ctx)
-	if err != nil {
-		return nil, err
+		if len(msg) > 4 && strings.ToUpper(string(msg[:4])) == "ping" {
+			b.conn.Write(b.ctx, websocket.MessageText, []byte("pong"))
+			continue
+		}
+
+		var req EventData
+		err = json.Unmarshal(msg, &req)
+		if err != nil {
+			continue
+		}
+		return &req, nil
 	}
-
-	var req EventData
-	err = json.Unmarshal(msg, &req)
-	if err != nil {
-		return nil, err
-	}
-
-	return &req, nil
 }
 
 func (b *wsBridge) Send(data *EventData) error {
