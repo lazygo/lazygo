@@ -127,10 +127,17 @@ func (e *Event) handle(ctx stdContext.Context, src SendReceiveCloser, req *Event
 	ctxT, cancel := stdContext.WithTimeout(ctx, time.Second)
 	defer cancel()
 	ok, err := e.waiter.Put(ctxT, strconv.FormatUint(req.RID, 10), req)
-	if err != nil {
-		return err
-	}
-	if ok {
+	if err != nil || ok {
+		// 返回空响应，避免客户端长时间等待
+		_ = src.Send(&EventData{
+			RID:    req.RID,
+			URI:    req.URI,
+			Header: http.Header{},
+			Body:   nil,
+		})
+		if err != nil {
+			return err
+		}
 		return nil
 	}
 	// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
