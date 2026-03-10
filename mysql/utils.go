@@ -101,30 +101,3 @@ func (f Fields) String() string {
 func isSimple(v string) bool {
 	return !strings.ContainsAny(strings.TrimSpace(v), "() `*/+-%=&<>!")
 }
-
-// ResultData 分页返回数据 - 返回结果定义
-type ResultData struct {
-	List      []map[string]any `json:"list"`
-	Count     int64            `json:"count"`
-	PageSize  int64            `json:"page_size"`
-	Page      int64            `json:"page"`
-	PageCount int64            `json:"page_count"`
-	Start     int64            `json:"start"`
-	Mark      int64            `json:"mark"`
-}
-
-// ToMap 分页结果集转化为map
-func (r *ResultData) ToMap() map[string]any {
-	if r == nil {
-		return map[string]any{}
-	}
-	return map[string]any{
-		"list":       r.List,
-		"count":      r.Count,
-		"page_size":  r.PageSize,
-		"page":       r.Page,
-		"page_count": r.PageCount,
-		"start":      r.Start,
-		"mark":       r.Mark,
-	}
-}

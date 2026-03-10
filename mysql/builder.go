@@ -2,7 +2,6 @@ package mysql
 
 import (
 	"fmt"
-	"math"
 	"slices"
 	"strconv"
 	"strings"
@@ -15,7 +14,6 @@ type RBuilder interface {
 	Find(result any) (int, error)
 	First(result any) (int, error)
 	One(field string) (string, error)
-	FetchWithPage(page int64, pageSize int64) (*ResultData, error)
 }
 
 // UDBuilder update or delete builder (UD)
@@ -231,21 +229,6 @@ func (b *builder) QueryString() (string, []any, error) {
 	return queryString, args, nil
 }
 
-// Multi 构造分页返回结果
-// count int64 总数
-// perpage int64 每页数量
-// page int64 当前页
-func Multi(count int64, page int64, pageSize int64) ResultData {
-	var data ResultData
-	data.Count = int64(math.Max(float64(count), 0))                                 // 总数
-	data.Page = int64(math.Max(float64(page), 1))                                   // 当前页
-	data.PageSize = int64(math.Max(float64(pageSize), 1))                           // 每页数量
-	data.PageCount = int64(math.Ceil(float64(data.Count) / float64(data.PageSize))) // 总页数
-	data.Start = int64(math.Max(float64(data.PageSize*data.Page-data.PageSize), 0)) // 当前页之前有多少条数据
-	data.Mark = data.Start + 1                                                      // 当前页开始是第几条数据
-	return data
-}
-
 // Count 查询统计个数
 func (b *builder) Count() (int64, error) {
 	if b.table == "" {
@@ -274,21 +257,6 @@ func (b *builder) Find(result any) (int, error) {
 	}
 
 	return b.tx.Before(b.before).Find(result, queryString, args...)
-}
-
-// FetchWithPage 查询并返回多条记录，且包含分页信息
-// page 第几页，从1开始
-// limit 结果数量
-func (b *builder) FetchWithPage(page int64, pageSize int64) (*ResultData, error) {
-	cond, args := b.buildCond()
-	count, err := b.ClearCond().WhereRaw(cond, args...).Count()
-	if err != nil {
-		return nil, err
-	}
-
-	data := Multi(count, page, pageSize)
-	_, err = b.ClearCond().WhereRaw(cond, args...).Limit(data.PageSize).Offset(data.Start).Find(&data.List)
-	return &data, err
 }
 
 // First 查询并返回单条记录

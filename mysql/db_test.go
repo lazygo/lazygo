@@ -323,42 +323,9 @@ func TestDb(t *testing.T) {
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
-	dataList, err := db.Table(tableName).Where("id", ">", 0).Select("uid", "name").FetchWithPage(1, 2)
-	if err != nil {
-		assert.Nil(err, err.Error())
-	}
-	assert.Equal(dataList.Count, int64(3))
-	assert.Equal(len(dataList.List), 2)
-	assert.Equal(dataList.List[0]["uid"], "1001")
-	assert.Equal(dataList.List[1]["uid"], "1002")
-
-	in := []int{
-		1001, 1002, 1003,
-	}
-	cond := map[string]any{
-		"uid": in,
-	}
-	dataList, err = db.Table(tableName).Where(cond).Select("uid", "name").FetchWithPage(2, 2)
-	if err != nil {
-		assert.Nil(err, err.Error())
-	}
-	assert.Equal(dataList.Count, int64(3))
-	assert.Equal(len(dataList.List), 1)
-	if len(dataList.List) >= 1 {
-		assert.Equal(dataList.List[0]["uid"], "1003")
-	}
-
-	dataMap := dataList.ToMap()
-	assert.Equal(dataMap["count"], int64(3))
-	lst, ok := dataMap["list"].([]map[string]any)
-	assert.True(ok)
-	assert.Equal(len(lst), 1)
-	if len(lst) >= 1 {
-		assert.Equal(lst[0]["uid"], "1003")
-	}
 
 	// Test Delete
-	cond = map[string]any{
+	cond := map[string]any{
 		"id": id,
 	}
 	n, err = db.Table(tableName).Where(cond).Delete()

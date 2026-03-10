@@ -39,7 +39,11 @@ func NewUserModel(ctx framework.Context) *UserModel {
 // Create 创建用户
 func (mdl *UserModel) Create(user map[string]any, trans ...func(*mysql.Tx, uint64) error) (uid uint64, err error) {
 	user["ctime"] = time.Now().Unix()
-	err = model.DB("zj").Transaction(func(tx *mysql.Tx) error {
+	db, err := mysql.Database("lazygo-db")
+	if err != nil {
+		return 0, err
+	}
+	err = db.Transaction(func(tx *mysql.Tx) error {
 		id, err := tx.Table("uc_user").Insert(user)
 		if err != nil {
 			return err
