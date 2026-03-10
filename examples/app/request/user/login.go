@@ -31,6 +31,3 @@ func (r *LoginRequest) Verify(ctx framework.Context) error {
 	r.Password = cmp.Or(r.Password, r.Loginpass)
 	return nil
 }
-
-func (r *LoginRequest) Clear() {
-}

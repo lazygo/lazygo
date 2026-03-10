@@ -21,6 +21,3 @@ func (r *BindMobileRequest) Verify(ctx framework.Context) error {
 	}
 	return nil
 }
-
-func (r *BindMobileRequest) Clear() {
-}

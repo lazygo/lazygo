@@ -14,6 +14,3 @@ func (r *DumpPostBodyRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *DumpPostBodyRequest) Clear() {
-}

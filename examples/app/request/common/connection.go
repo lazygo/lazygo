@@ -10,6 +10,3 @@ func (r *ConnectionRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *ConnectionRequest) Clear() {
-}

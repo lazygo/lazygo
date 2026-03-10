@@ -22,6 +22,3 @@ func (r *ListRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *ListRequest) Clear() {
-}

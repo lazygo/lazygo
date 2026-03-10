@@ -28,6 +28,3 @@ func (r *CaptchaRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *CaptchaRequest) Clear() {
-}

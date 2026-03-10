@@ -12,6 +12,3 @@ func (r *IndexRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *IndexRequest) Clear() {
-}

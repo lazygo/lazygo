@@ -14,6 +14,3 @@ type LogoutResponse struct {
 func (r *LogoutRequest) Verify(ctx framework.Context) error {
 	return nil
 }
-
-func (r *LogoutRequest) Clear() {
-}

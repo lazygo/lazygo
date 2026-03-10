@@ -31,17 +31,14 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 	num := rtp.NumMethod()
 	if _, ok := routes[serviceName]; !ok {
 		routes[serviceName] = make(map[string]Route, num)
-		tError := reflect.TypeOf((*error)(nil)).Elem()
-		for i := 0; i < num; i++ {
+		tError := reflect.TypeFor[error]()
+		for i := range num {
 			method := rtp.Method(i)
 			methodName := utils.ToSnakeString(method.Name)
 
 			numIn := method.Type.NumIn()
 			switch numIn {
 			case 2:
-				if _, ok := method.Type.In(1).MethodByName("Clear"); !ok {
-					return nil, "", fmt.Errorf("method %s args not implement Request, need func Clear()", methodName)
-				}
 				rf, ok := method.Type.In(1).MethodByName("Verify")
 				if !ok {
 					return nil, "", fmt.Errorf("method %s args not implement Request, need func Verify(Context) error", methodName)

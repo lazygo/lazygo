@@ -20,6 +20,3 @@ func (r *ProfileRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *ProfileRequest) Clear() {
-}

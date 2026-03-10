@@ -32,6 +32,3 @@ func (r *RegisterRequest) Verify(ctx framework.Context) error {
 	}
 	return nil
 }
-
-func (r *RegisterRequest) Clear() {
-}

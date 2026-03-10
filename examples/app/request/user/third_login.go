@@ -23,6 +23,3 @@ func (r *ThirdLoginRequest) Verify(ctx framework.Context) error {
 
 	return nil
 }
-
-func (r *ThirdLoginRequest) Clear() {
-}

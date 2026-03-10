@@ -26,6 +26,3 @@ func (r *ForgetRequest) Verify(ctx framework.Context) error {
 	}
 	return nil
 }
-
-func (r *ForgetRequest) Clear() {
-}

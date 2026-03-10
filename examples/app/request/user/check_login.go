@@ -11,6 +11,3 @@ type CheckLoginRequest struct {
 func (r *CheckLoginRequest) Verify(ctx framework.Context) error {
 	return nil
 }
-
-func (r *CheckLoginRequest) Clear() {
-}

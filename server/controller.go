@@ -40,7 +40,9 @@ func Controller(h any, methodName ...string) HandlerFunc {
 			pReq := reflect.New(method.Request)
 			req = pReq.Interface()
 
-			defer pReq.MethodByName("Clear").Call(nil)
+			if req, ok := req.(interface{ Clear() }); ok {
+				defer req.Clear()
+			}
 
 			if err = ctx.Bind(req); err != nil {
 				return ErrBadRequest.SetInternal(fmt.Errorf("bind params error, req: %v, err: %v", req, err))
