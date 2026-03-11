@@ -1,27 +1,11 @@
-package mysql
+package sqldb
 
 import (
 	"database/sql"
-	"fmt"
 	"io"
 	"sync"
 	"time"
-
-	_ "github.com/go-sql-driver/mysql"
 )
-
-type Config struct {
-	Name            string `json:"name" toml:"name"`
-	User            string `json:"user" toml:"user"`
-	Passwd          string `json:"passwd" toml:"passwd"`
-	Host            string `json:"host" toml:"host"`
-	Port            int    `json:"port" toml:"port"`
-	DbName          string `json:"dbname" toml:"dbname"`
-	Charset         string `json:"charset" toml:"charset"`
-	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
-	MaxIdleConns    int    `json:"max_idle_conns" toml:"max_idle_conns"`
-	ConnMaxLifetime int    `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
-}
 
 type Manager struct {
 	sync.Map
@@ -32,7 +16,7 @@ var manager = &Manager{}
 // init 初始化数据库连接
 func (m *Manager) init(conf []Config) error {
 	for _, item := range conf {
-		if _, ok := manager.Load(item.Name); ok {
+		if _, ok := manager.Load(item.name()); ok {
 			// 已连接的就不再次连接了
 			continue
 		}
@@ -44,9 +28,9 @@ func (m *Manager) init(conf []Config) error {
 		if err != nil {
 			return err
 		}
-		m.Store(item.Name, &DB{Tx{
+		m.Store(item.name(), &DB{Tx{
 			invoker: db,
-			name:    item.Name,
+			name:    item.name(),
 			before:  func(query string, args ...any) func() { return func() {} },
 		}})
 	}
@@ -69,30 +53,26 @@ func (m *Manager) closeAll() error {
 
 // open 连接数据库
 func (m *Manager) open(item Config) (*sql.DB, error) {
-	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
-		item.User,
-		item.Passwd,
-		item.Host,
-		item.Port,
-		item.DbName,
-		item.Charset,
-	)
-	database, err := sql.Open("mysql", dsn)
+	dsn := item.dsn()
+	database, err := sql.Open(item.driver(), dsn)
 	if err != nil {
 		return nil, err
 	}
-	database.SetMaxIdleConns(item.MaxIdleConns)
-	database.SetMaxOpenConns(item.MaxOpenConns)
-	if item.ConnMaxLifetime > 0 {
-		database.SetConnMaxLifetime(time.Duration(item.ConnMaxLifetime) * time.Second)
+	database.SetMaxIdleConns(item.maxIdleConns())
+	database.SetMaxOpenConns(item.maxOpenConns())
+	if item.connMaxLifetime() > 0 {
+		database.SetConnMaxLifetime(time.Duration(item.connMaxLifetime()) * time.Second)
 	}
 	return database, nil
 }
 
 // Init 初始化数据库
-func Init(conf []Config) error {
-	return manager.init(conf)
+func Init[T MySQLConfig | SQLiteConfig](conf []T) error {
+	var configs []Config
+	for _, item := range conf {
+		configs = append(configs, Config(item))
+	}
+	return manager.init(configs)
 }
 
 // CloseAll 关闭数据库连接

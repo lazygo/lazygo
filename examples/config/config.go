@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 
+	_ "github.com/go-sql-driver/mysql"
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/config"
 	"github.com/lazygo/lazygo/examples/framework"
@@ -13,12 +14,13 @@ import (
 	"github.com/lazygo/lazygo/locker"
 	"github.com/lazygo/lazygo/logger"
 	"github.com/lazygo/lazygo/memory"
-	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
+	"github.com/lazygo/lazygo/sqldb"
 	"github.com/lazygo/pkg/cos"
 	"github.com/lazygo/pkg/mail"
 	"github.com/lazygo/pkg/sms"
 	"github.com/lazygo/pkg/wechat"
+	_ "github.com/mattn/go-sqlite3"
 )
 
 type Logger struct {
@@ -76,9 +78,17 @@ func Init(filename string) error {
 	framework.InitLogger()
 
 	// load mysql config
-	err = base.Load("mysql", mysql.Init)
+	err = base.Load("mysql", func(conf []sqldb.MySQLConfig) error {
+		return sqldb.Init(conf)
+	})
 	if err != nil {
 		return fmt.Errorf("init mysql fail: %w", err)
+	}
+	err = base.Load("sqlite", func(conf []sqldb.SQLiteConfig) error {
+		return sqldb.Init(conf)
+	})
+	if err != nil {
+		return fmt.Errorf("init sqlite fail: %w", err)
 	}
 
 	// load redis config

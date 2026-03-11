@@ -13,7 +13,7 @@ import (
 	mailTemplates "github.com/lazygo/lazygo/examples/pkg/mail-templates"
 	"github.com/lazygo/lazygo/examples/utils"
 	"github.com/lazygo/lazygo/examples/utils/errors"
-	"github.com/lazygo/lazygo/mysql"
+	"github.com/lazygo/lazygo/sqldb"
 	"github.com/lazygo/pkg/goutils"
 	"github.com/lazygo/pkg/sms"
 	"github.com/lazygo/pkg/token/jwt"
@@ -66,7 +66,7 @@ func (ctl *UserController) Regist(req *request.RegisterRequest) (any, error) {
 	}
 	user["password"] = passwordHash
 
-	trans := func(tx *mysql.Tx, uid uint64) error {
+	trans := func(tx *sqldb.Tx, uid uint64) error {
 		return nil
 	}
 	uid, err := mdlUser.Create(user, trans)

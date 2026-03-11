@@ -13,8 +13,8 @@ import (
 	"github.com/lazygo/lazygo/cache"
 	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/httpclient"
-	"github.com/lazygo/lazygo/mysql"
 	"github.com/lazygo/lazygo/redis"
+	"github.com/lazygo/lazygo/sqldb"
 	goredis "github.com/redis/go-redis/v9"
 )
 
@@ -32,7 +32,7 @@ type BaseResp struct {
 	Time  int64  `json:"t"`
 }
 type TxModel[T any] struct {
-	mysql.TxModel[T]
+	sqldb.TxModel[T]
 }
 type CacheModel struct {
 	cache.Cache

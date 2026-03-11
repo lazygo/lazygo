@@ -6,7 +6,7 @@ import (
 
 	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/model"
-	"github.com/lazygo/lazygo/mysql"
+	"github.com/lazygo/lazygo/sqldb"
 )
 
 const (
@@ -37,13 +37,13 @@ func NewUserModel(ctx framework.Context) *UserModel {
 }
 
 // Create 创建用户
-func (mdl *UserModel) Create(user map[string]any, trans ...func(*mysql.Tx, uint64) error) (uid uint64, err error) {
+func (mdl *UserModel) Create(user map[string]any, trans ...func(*sqldb.Tx, uint64) error) (uid uint64, err error) {
 	user["ctime"] = time.Now().Unix()
-	db, err := mysql.Database("lazygo-db")
+	db, err := sqldb.Database("lazygo-db")
 	if err != nil {
 		return 0, err
 	}
-	err = db.Transaction(func(tx *mysql.Tx) error {
+	err = db.Transaction(func(tx *sqldb.Tx) error {
 		id, err := tx.Table("uc_user").Insert(user)
 		if err != nil {
 			return err

@@ -1,4 +1,4 @@
-package mysql
+package sqldb
 
 import (
 	"database/sql"
@@ -39,7 +39,7 @@ type UserVipInfoWithAlias struct {
 func TestDb(t *testing.T) {
 	assert := testify.New(t)
 
-	conf := []Config{
+	conf := []MySQLConfig{
 		{
 			Name:            "unit_test",
 			User:            "root",
