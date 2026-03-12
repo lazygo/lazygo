@@ -4,6 +4,16 @@ import (
 	"github.com/lazygo/lazygo/server"
 )
 
+type Response[T any] struct {
+	Code  int    `json:"code"`
+	Errno int    `json:"errno"`
+	Msg   string `json:"msg"`
+	Rid   uint64 `json:"rid"`
+	Error string `json:"error,omitempty"`
+	Time  int64  `json:"t"`
+	Data  T      `json:"data,omitempty"`
+}
+
 type HandlerFunc func(Context) error
 type HTTPErrorHandler func(error, Context)
 type HTTPOKHandler func(any, Context) error

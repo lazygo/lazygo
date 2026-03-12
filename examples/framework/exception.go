@@ -28,47 +28,31 @@ func AppHTTPErrorHandler(err error, ctx Context) {
 		}
 	}
 
-	code := he.Code
-	errno := he.Errno
-	message := he.Message
+	resp := Response[any]{
+		Code:  he.Code,
+		Errno: he.Errno,
+		Rid:   ctx.RequestID(),
+		Time:  time.Now().Unix(),
+		Data:  nil,
+	}
 
 	switch msg := he.Message.(type) {
 	case string:
+		resp.Msg = msg
 		if ctx.IsDebug() {
-			message = server.Map{
-				"code":  code,
-				"errno": errno,
-				"msg":   msg,
-				"error": err.Error(),
-				"rid":   ctx.RequestID(),
-				"t":     time.Now().Unix(),
-			}
-		} else {
-			message = server.Map{
-				"code":  code,
-				"errno": errno,
-				"msg":   msg,
-				"rid":   ctx.RequestID(),
-				"t":     time.Now().Unix(),
-			}
+			resp.Error = err.Error()
 		}
 	case json.Marshaler:
 		// do nothing - this type knows how to format itself to JSON
 	case error:
-		message = server.Map{
-			"code":  code,
-			"errno": errno,
-			"msg":   msg.Error(),
-			"rid":   ctx.RequestID(),
-			"t":     time.Now().Unix(),
-		}
+		resp.Error = msg.Error()
 	}
 
 	// Send response
 	if ctx.Request().Method == http.MethodHead {
 		err = ctx.NoContent(he.Code)
 	} else {
-		err = ctx.JSON(200, message)
+		err = ctx.JSON(200, resp)
 	}
 	if err != nil {
 		ctx.Logger().Error("%v", err)

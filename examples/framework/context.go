@@ -2,6 +2,7 @@ package framework
 
 import (
 	"net"
+	"net/http"
 	"strings"
 	"time"
 
@@ -74,16 +75,15 @@ func (c *context) RealIP() string {
 
 // Succ 返回成功
 func (c *context) Succ(data any) error {
-	result := server.Map{
-		"code":  200,
-		"errno": 0,
-		"msg":   "ok",
-		"data":  data,
-		"t":     time.Now().Unix(),
+	resp := Response[any]{
+		Code: http.StatusOK,
+		Msg:  http.StatusText(http.StatusOK),
+		Data: data,
+		Time: time.Now().Unix(),
 	}
 	rid := c.RequestID()
 	if rid != 0 {
-		result["rid"] = rid
+		resp.Rid = rid
 	}
-	return c.JSON(200, result)
+	return c.JSON(http.StatusOK, resp)
 }
