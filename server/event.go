@@ -96,6 +96,9 @@ func (e *Event) Request(ctx stdContext.Context, cid uint64, data *EventData) (fu
 	if !ok {
 		return nil, errors.New("cid not found")
 	}
+	if data.RID == 0 {
+		return nil, errors.New("rid is required")
+	}
 	wait, cancel := e.waiter.Get(ctx, strconv.FormatUint(data.RID, 10))
 	err := src.Send(data)
 	if err != nil {
@@ -124,21 +127,23 @@ func (e *Event) serve(ctx stdContext.Context, src SendReceiveCloser) error {
 }
 
 func (e *Event) handle(ctx stdContext.Context, src SendReceiveCloser, req *EventData) error {
-	ctxT, cancel := stdContext.WithTimeout(ctx, time.Second)
-	defer cancel()
-	ok, err := e.waiter.Put(ctxT, strconv.FormatUint(req.RID, 10), req)
-	if err != nil || ok {
-		// 返回空响应，避免客户端长时间等待
-		_ = src.Send(&EventData{
-			RID:    req.RID,
-			URI:    req.URI,
-			Header: http.Header{},
-			Body:   nil,
-		})
-		if err != nil {
-			return err
+	if req.RID > 0 {
+		ctxT, cancel := stdContext.WithTimeout(ctx, time.Second)
+		defer cancel()
+		ok, err := e.waiter.Put(ctxT, strconv.FormatUint(req.RID, 10), req)
+		if err != nil || ok {
+			// 返回空响应，避免客户端长时间等待
+			_ = src.Send(&EventData{
+				RID:    req.RID,
+				URI:    req.URI,
+				Header: http.Header{},
+				Body:   nil,
+			})
+			if err != nil {
+				return err
+			}
+			return nil
 		}
-		return nil
 	}
 	// 使用 buffer 收集完整响应，避免 ServeHTTP 多次 Write 被拆成多条 WebSocket 消息
 	buf := &bytes.Buffer{}
@@ -200,9 +205,6 @@ type EventData struct {
 }
 
 func newEventRequest(ctx stdContext.Context, method string, e *EventData) (*http.Request, error) {
-	if e.RID == 0 {
-		return nil, fmt.Errorf("rid is required")
-	}
 
 	if e.URI == "" {
 		return nil, fmt.Errorf("uri is required")
