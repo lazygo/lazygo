@@ -61,6 +61,7 @@ var (
 		http.MethodTrace,
 		MethodReport,
 		MethodWebSocket,
+		MethodCall,
 	}
 )
 
