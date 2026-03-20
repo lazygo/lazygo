@@ -17,6 +17,12 @@ import (
 	"github.com/lazygo/pkg/waiter"
 )
 
+var (
+	ErrEventCIDNotExists = errors.New("cid not exists")
+	ErrEventRIDRequired  = errors.New("rid is required")
+	ErrEventURIRequired  = errors.New("uri is required")
+)
+
 type EventManager struct {
 	event  sync.Map
 	server *Server
@@ -94,10 +100,10 @@ func (e *Event) Request(ctx stdContext.Context, cid uint64, data *EventData) (fu
 	src, ok := e.src[cid]
 	e.mu.RUnlock()
 	if !ok {
-		return nil, errors.New("cid not found")
+		return nil, ErrEventCIDNotExists
 	}
 	if data.RID == 0 {
-		return nil, errors.New("rid is required")
+		return nil, ErrEventRIDRequired
 	}
 	wait, cancel := e.waiter.Get(ctx, strconv.FormatUint(data.RID, 10))
 	err := src.Send(data)
@@ -207,7 +213,7 @@ type EventData struct {
 func newEventRequest(ctx stdContext.Context, method string, e *EventData) (*http.Request, error) {
 
 	if e.URI == "" {
-		return nil, fmt.Errorf("uri is required")
+		return nil, ErrEventURIRequired
 	}
 
 	ctx = stdContext.WithValue(ctx, HeaderXRequestID, e.RID)

@@ -20,6 +20,8 @@ var (
 	_ SendReceiveCloser = (*callBridge)(nil)
 )
 
+var ErrChannelClosed = errors.New("channel closed")
+
 // WrapHandler wraps `http.Handler` into `HandlerFunc`.
 func WrapHandler(h http.Handler) HandlerFunc {
 	return func(ctx Context) error {
@@ -126,7 +128,7 @@ func CallWrapper(ctx stdContext.Context, callback func(*EventData)) CallBridge {
 type CallBridge interface {
 	SendReceiveCloser
 	SendRequest(ctx stdContext.Context, req *EventData) error
-	Waiter(ctx stdContext.Context, id string) (func() (*EventData, error), func())
+	Waiter(ctx stdContext.Context, rid string) (func() (*EventData, error), func())
 }
 
 type callBridge struct {
@@ -145,8 +147,11 @@ func (b *callBridge) SendRequest(ctx stdContext.Context, req *EventData) error {
 	}
 }
 
-func (b *callBridge) Waiter(ctx stdContext.Context, id string) (func() (*EventData, error), func()) {
-	return b.waiter.Get(ctx, id)
+func (b *callBridge) Waiter(ctx stdContext.Context, rid string) (func() (*EventData, error), func()) {
+	if rid == "" || rid == "0" {
+		return func() (*EventData, error) { return nil, ErrEventRIDRequired }, func() {}
+	}
+	return b.waiter.Get(ctx, rid)
 }
 
 func (b *callBridge) Receive(ctx stdContext.Context) (*EventData, error) {
@@ -155,7 +160,7 @@ func (b *callBridge) Receive(ctx stdContext.Context) (*EventData, error) {
 		return nil, ctx.Err()
 	case data, ok := <-b.ch:
 		if !ok {
-			return nil, errors.New("channel closed")
+			return nil, ErrChannelClosed
 		}
 		return data, nil
 	}
