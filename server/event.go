@@ -146,7 +146,7 @@ func (e *Event) handle(ctx stdContext.Context, src SendReceiveCloser, req *Event
 	r, err := newEventRequest(ctx, e.method, req)
 	if err != nil {
 		c := e.server.AcquireContext()
-		c.SetRequest(r)
+		c.SetRequest(&http.Request{})
 		c.SetResponseWriter(NewResponseWriter(w))
 		c.Error(err)
 		e.server.ReleaseContext(c)
