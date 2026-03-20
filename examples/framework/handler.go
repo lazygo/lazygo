@@ -21,7 +21,10 @@ type HTTPOKHandler func(any, Context) error
 // BaseHandlerFunc HandlerFunc 转为 server.HandlerFunc
 func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 	return func(c server.Context) error {
-		cc := c.(Context)
+		cc, ok := c.(Context)
+		if !ok {
+			cc = WrapContext(c)
+		}
 		return h(cc)
 	}
 }
@@ -29,7 +32,10 @@ func BaseHandlerFunc(h HandlerFunc) server.HandlerFunc {
 // BaseHTTPErrorHandler 返回失败
 func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 	return func(err error, c server.Context) {
-		cc := c.(Context)
+		cc, ok := c.(Context)
+		if !ok {
+			cc = WrapContext(c)
+		}
 		h(err, cc)
 	}
 }
@@ -37,7 +43,10 @@ func BaseHTTPErrorHandler(h HTTPErrorHandler) server.HTTPErrorHandler {
 // BaseHTTPOKHandler 返回失败
 func BaseHTTPOKHandler(h HTTPOKHandler) server.HTTPOKHandler {
 	return func(data any, c server.Context) error {
-		cc := c.(Context)
+		cc, ok := c.(Context)
+		if !ok {
+			cc = WrapContext(c)
+		}
 		return h(data, cc)
 	}
 }

@@ -15,7 +15,7 @@ import (
 	"github.com/shirou/gopsutil/v4/process"
 )
 
-var rnum int32 = 0
+var rnum atomic.Int32
 
 // AccessLog 访问日志记录中间件
 func AccessLog(next server.HandlerFunc) server.HandlerFunc {
@@ -39,8 +39,8 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 			req.Body = io.NopCloser(buffer)
 		}
 
-		atomic.AddInt32(&rnum, 1)
-		defer atomic.AddInt32(&rnum, -1)
+		rnum.Add(1)
+		defer rnum.Add(-1)
 
 		defer func() {
 			rec := recover()
@@ -57,7 +57,7 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 				sysInfo = &monitor.SysMontor{MemInfo: &process.MemoryInfoStat{}}
 			}
 			ctx.Logger().Notice(
-				"[pid: %d] [threads: %d] [goroutine: %d] [mem: %.2fM %.1f%%] [cpu: %.1f%%] [fds: %d] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [ip: %s] [request_uri: %s]",
+				"[pid: %d] [threads: %d] [goroutine: %d] [mem: %.2fM %.1f%%] [cpu: %.1f%%] [fds: %d] [rnum: %d] [time: %.1fms] [status: %d] [errno: %d] [ip: %s] [method: %s] [request_uri: %s]",
 				os.Getegid(),
 				sysInfo.NumThreads,
 				sysInfo.NumGoroutine,
@@ -65,11 +65,12 @@ func AccessLog(next server.HandlerFunc) server.HandlerFunc {
 				sysInfo.MemPercent,
 				sysInfo.CPUPercent,
 				sysInfo.NumFDs,
-				atomic.LoadInt32(&rnum),
+				rnum.Load(),
 				float64(time.Since(st).Microseconds())/1000,
 				code,
 				errno,
 				ctx.RealIP(),
+				ctx.Request().Method,
 				uri,
 			)
 		}()
