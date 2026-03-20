@@ -213,8 +213,12 @@ func newEventRequest(ctx stdContext.Context, method string, e *EventData) (*http
 	if err != nil {
 		return nil, fmt.Errorf("invalid request: %w", err)
 	}
+	req.RequestURI = e.URI
 	req.ContentLength = int64(len(e.Body))
 	req.Header = e.Header
+	if host := e.Header.Get("Host"); host != "" {
+		req.Host = host
+	}
 
 	return req, nil
 }
