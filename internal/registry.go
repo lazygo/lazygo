@@ -2,6 +2,7 @@ package internal
 
 import (
 	"errors"
+	"fmt"
 	"sync"
 )
 
@@ -34,5 +35,5 @@ func (r *Register[T, O]) Get(name string) (Adapter[T, O], error) {
 	if a, ok := r.Load(name); ok {
 		return a.(Adapter[T, O]), nil
 	}
-	return nil, ErrAdapterUndefined
+	return nil, fmt.Errorf("%w: %s", ErrAdapterUndefined, name)
 }
