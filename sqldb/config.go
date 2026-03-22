@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"cmp"
 	"fmt"
 )
 
@@ -9,6 +10,7 @@ type MySQLConfig struct {
 	Name            string            `json:"name" toml:"name"`
 	User            string            `json:"user" toml:"user"`
 	Passwd          string            `json:"passwd" toml:"passwd"`
+	Schema          string            `json:"schema" toml:"schema"`
 	Host            string            `json:"host" toml:"host"`
 	Port            int               `json:"port" toml:"port"`
 	DbName          string            `json:"dbname" toml:"dbname"`
@@ -27,9 +29,10 @@ func (c MySQLConfig) driver() string {
 
 func (c MySQLConfig) dsn() string {
 	dsn := fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s",
+		"%s:%s@%s(%s:%d)/%s",
 		c.User,
 		c.Passwd,
+		cmp.Or(c.Schema, "tcp"),
 		c.Host,
 		c.Port,
 		c.DbName,
