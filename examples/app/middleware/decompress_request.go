@@ -7,7 +7,7 @@ import (
 	"github.com/lazygo/lazygo/server"
 )
 
-// DEBUG
+// DecompressRequest 解压请求体
 func DecompressRequest(next server.HandlerFunc) server.HandlerFunc {
 	return func(ctx server.Context) error {
 		r := ctx.Request()
