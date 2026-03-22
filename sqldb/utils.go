@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"maps"
+	"net/url"
 	"reflect"
 	"strings"
 )
@@ -98,4 +99,12 @@ func (f Fields) String() string {
 
 func isSimple(v string) bool {
 	return !strings.ContainsAny(strings.TrimSpace(v), "() `*/+-%=&<>!")
+}
+
+func buildQuery(params map[string]string) string {
+	query := url.Values{}
+	for k, v := range params {
+		query.Add(k, v)
+	}
+	return query.Encode()
 }

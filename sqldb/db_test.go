@@ -47,10 +47,10 @@ func TestDb(t *testing.T) {
 			Host:            "127.0.0.1",
 			Port:            3306,
 			DbName:          "unit_test",
-			Charset:         "utf8mb4",
 			MaxOpenConns:    10,
 			MaxIdleConns:    10,
 			ConnMaxLifetime: 60,
+			Params:          map[string]string{"charset": "utf8mb4", "timeout": "5s"},
 		},
 	}
 	err := Init(conf)

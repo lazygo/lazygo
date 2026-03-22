@@ -2,26 +2,34 @@
     addr = ":8089"
     debug = true
 [[mysql]]
+    driver = "mysql"
     name = "lazygo-db"
     host = "localhost"
     port = 3306
     user = "root"
     passwd = ""
     dbname = "lazygo"
-    charset = "utf8mb4"
-    prefix = ""
+    params = {charset = "utf8mb4", timeout = "5s"}
     max_open_conns = 1000
     max_idle_conns = 10
     conn_max_lifetime = 600
 [[mysql]]
+    driver = "mysql"
     name = "lazygo-db-read"
     host = "localhost"
     port = 3306
     user = "root"
     passwd = ""
     dbname = "lazygo"
-    charset = "utf8mb4"
-    prefix = ""
+    params = {charset = "utf8mb4", timeout = "5s"}
+    max_open_conns = 1000
+    max_idle_conns = 10
+    conn_max_lifetime = 600
+[[sqlite]]
+    driver = "sqlite3"
+    name = "lazygo-db-sqlite3"
+    path = "./lazygo.db"
+    params = {}
     max_open_conns = 1000
     max_idle_conns = 10
     conn_max_lifetime = 600

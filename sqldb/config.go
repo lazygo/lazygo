@@ -1,37 +1,43 @@
 package sqldb
 
-import "fmt"
+import (
+	"fmt"
+)
 
 type MySQLConfig struct {
-	Name            string `json:"name" toml:"name"`
-	User            string `json:"user" toml:"user"`
-	Passwd          string `json:"passwd" toml:"passwd"`
-	Host            string `json:"host" toml:"host"`
-	Port            int    `json:"port" toml:"port"`
-	DbName          string `json:"dbname" toml:"dbname"`
-	Charset         string `json:"charset" toml:"charset"`
-	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
-	MaxIdleConns    int    `json:"max_idle_conns" toml:"max_idle_conns"`
-	ConnMaxLifetime int    `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
+	Driver          string            `json:"driver" toml:"driver"`
+	Name            string            `json:"name" toml:"name"`
+	User            string            `json:"user" toml:"user"`
+	Passwd          string            `json:"passwd" toml:"passwd"`
+	Host            string            `json:"host" toml:"host"`
+	Port            int               `json:"port" toml:"port"`
+	DbName          string            `json:"dbname" toml:"dbname"`
+	Params          map[string]string `json:"params" toml:"params"`
+	MaxOpenConns    int               `json:"max_open_conns" toml:"max_open_conns"`
+	MaxIdleConns    int               `json:"max_idle_conns" toml:"max_idle_conns"`
+	ConnMaxLifetime int               `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
 }
 
 func (c MySQLConfig) name() string {
 	return c.Name
 }
 func (c MySQLConfig) driver() string {
-	return "mysql"
+	return c.Driver
 }
 
 func (c MySQLConfig) dsn() string {
-	return fmt.Sprintf(
-		"%s:%s@tcp(%s:%d)/%s?charset=%s&timeout=5s",
+	dsn := fmt.Sprintf(
+		"%s:%s@tcp(%s:%d)/%s",
 		c.User,
 		c.Passwd,
 		c.Host,
 		c.Port,
 		c.DbName,
-		c.Charset,
 	)
+	if len(c.Params) > 0 {
+		dsn += "?" + buildQuery(c.Params)
+	}
+	return dsn
 }
 
 func (c MySQLConfig) maxOpenConns() int {
@@ -47,11 +53,13 @@ func (c MySQLConfig) connMaxLifetime() int {
 }
 
 type SQLiteConfig struct {
-	Name            string `json:"name" toml:"name"`
-	Path            string `json:"path" toml:"path"`
-	MaxOpenConns    int    `json:"max_open_conns" toml:"max_open_conns"`
-	MaxIdleConns    int    `json:"max_idle_conns" toml:"max_idle_conns"`
-	ConnMaxLifetime int    `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
+	Driver          string            `json:"driver" toml:"driver"`
+	Name            string            `json:"name" toml:"name"`
+	Path            string            `json:"path" toml:"path"`
+	Params          map[string]string `json:"params" toml:"params"`
+	MaxOpenConns    int               `json:"max_open_conns" toml:"max_open_conns"`
+	MaxIdleConns    int               `json:"max_idle_conns" toml:"max_idle_conns"`
+	ConnMaxLifetime int               `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
 }
 
 func (c SQLiteConfig) name() string {
@@ -59,11 +67,15 @@ func (c SQLiteConfig) name() string {
 }
 
 func (c SQLiteConfig) driver() string {
-	return "sqlite3"
+	return c.Driver
 }
 
 func (c SQLiteConfig) dsn() string {
-	return c.Path
+	dsn := c.Path
+	if len(c.Params) > 0 {
+		dsn += "?" + buildQuery(c.Params)
+	}
+	return dsn
 }
 
 func (c SQLiteConfig) maxOpenConns() int {
