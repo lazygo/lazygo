@@ -3,6 +3,7 @@ package router
 import (
 	"github.com/lazygo/lazygo/server"
 
+	"github.com/lazygo/lazygo/examples/app/controller"
 	"github.com/lazygo/lazygo/examples/app/middleware"
 	"github.com/lazygo/lazygo/examples/framework"
 )
@@ -33,6 +34,8 @@ func Init(app *server.Server) *server.Server {
 	}
 
 	app.Get("/", server.NotFoundHandler)
+	connHandler := server.Controller(controller.CommonController{}, "Connection")
+	app.Get("connection/:token", connHandler, middleware.User, middleware.AuthUser)
 
 	InnerRouter(app.Group("/internal"))
 	RestRouter(app.Group("/api/rest"))

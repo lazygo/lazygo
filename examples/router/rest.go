@@ -12,7 +12,6 @@ func RestRouter(g *server.Group) {
 	g = g.Group("", middleware.User, middleware.AuthUser)
 
 	g.Get("profile", server.Controller(controller.UserController{}))
-	g.Get("connection/:token", server.Controller(controller.CommonController{}))
 
 	sg := g.Group("audit")
 	{
