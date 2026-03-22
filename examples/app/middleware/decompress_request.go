@@ -3,14 +3,13 @@ package middleware
 import (
 	"compress/gzip"
 
-	"github.com/lazygo/lazygo/examples/framework"
 	"github.com/lazygo/lazygo/examples/utils/errors"
 	"github.com/lazygo/lazygo/server"
 )
 
 // DEBUG
 func DecompressRequest(next server.HandlerFunc) server.HandlerFunc {
-	return framework.BaseHandlerFunc(func(ctx framework.Context) error {
+	return func(ctx server.Context) error {
 		r := ctx.Request()
 		// 检查请求头是否为 gzip 压缩
 		if r.Header.Get("Content-Encoding") == "gzip" {
@@ -24,5 +23,5 @@ func DecompressRequest(next server.HandlerFunc) server.HandlerFunc {
 			r.Body = gz
 		}
 		return next(ctx)
-	})
+	}
 }
