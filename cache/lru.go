@@ -112,5 +112,5 @@ func (l *lruCache) Forget(key string) error {
 }
 
 func init() {
-	registry.Add("lru", newLruCache)
+	registry.Add("memory", newLruCache)
 }
