@@ -64,7 +64,8 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 	ppath := path       // Pristine path
 
 	for i, l := 0, len(path); i < l; i++ {
-		if path[i] == ':' {
+		switch path[i] {
+		case ':':
 			j := i + 1
 
 			r.insert(method, path[:i], nil, skind, "", nil)
@@ -80,7 +81,7 @@ func (r *Router) Add(method, path string, h HandlerFunc) {
 			} else {
 				r.insert(method, path[:i], nil, pkind, "", nil)
 			}
-		} else if path[i] == '*' {
+		case '*':
 			r.insert(method, path[:i], nil, skind, "", nil)
 			pnames = append(pnames, "*")
 			r.insert(method, path[:i+1], h, akind, ppath, pnames)
@@ -248,9 +249,10 @@ func (r *Router) Find(method, path string, c *context) {
 			}
 			cn = nn
 			search = ns
-			if nk == pkind {
+			switch nk {
+			case pkind:
 				goto Param
-			} else if nk == akind {
+			case akind:
 				goto Any
 			}
 		}

@@ -138,7 +138,6 @@ type (
 const (
 	defaultMemory = 32 << 20 // 32 MB
 	indexPage     = "index.html"
-	defaultIndent = "  "
 )
 
 func (c *context) writeContentType(value string) {

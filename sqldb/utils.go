@@ -1,6 +1,7 @@
 package sqldb
 
 import (
+	"maps"
 	"reflect"
 	"strings"
 )
@@ -12,9 +13,8 @@ func CreateAnyTypeSlice(slice any) ([]any, bool) {
 		return nil, false
 	}
 
-	sliceLen := val.Len()
-	out := make([]any, sliceLen)
-	for i := 0; i < sliceLen; i++ {
+	out := make([]any, val.Len())
+	for i := range out {
 		out[i] = val.Index(i).Interface()
 	}
 
@@ -31,12 +31,10 @@ func isSlice(arg any) (reflect.Value, bool) {
 	return val, ok
 }
 
-func mergeMap(maps ...map[string]any) map[string]any {
-	var merged = make(map[string]any, cap(maps))
-	for _, m := range maps {
-		for mk, mv := range m {
-			merged[mk] = mv
-		}
+func mergeMap(v ...map[string]any) map[string]any {
+	var merged = make(map[string]any, cap(v))
+	for _, m := range v {
+		maps.Copy(merged, m)
 	}
 	return merged
 }

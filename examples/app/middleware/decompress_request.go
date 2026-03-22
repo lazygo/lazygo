@@ -12,7 +12,7 @@ func DecompressRequest(next server.HandlerFunc) server.HandlerFunc {
 	return func(ctx server.Context) error {
 		r := ctx.Request()
 		// 检查请求头是否为 gzip 压缩
-		if r.Header.Get("Content-Encoding") == "gzip" {
+		if r.Header.Get(server.HeaderContentEncoding) == "gzip" {
 			// 创建 gzip.Reader 解压请求体
 			gz, err := gzip.NewReader(r.Body)
 			if err != nil {
