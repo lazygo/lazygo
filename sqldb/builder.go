@@ -317,6 +317,9 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 
 	// 获取最后插入的主键id
 	id, err := res.LastInsertId()
+	if strings.Contains(err.Error(), "not supported") {
+		return 0, nil
+	}
 	return id, err
 }
 
