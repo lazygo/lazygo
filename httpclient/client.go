@@ -110,13 +110,7 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 		if err != nil {
 			return nil, 0, fmt.Errorf("%s=%s error: %w", HeaderRetayTimes, headers[HeaderRetayTimes], err)
 		}
-		retryTimes = retry
-		if retryTimes < 0 {
-			retryTimes = 0
-		}
-		if retryTimes > 10 {
-			retryTimes = 10
-		}
+		retryTimes = min(max(retry, 0), 10)
 		delete(headers, HeaderRetayTimes)
 	}
 	if headers[HeaderTimeoutSec] != "" {
@@ -133,8 +127,8 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 
 	if headers[HeaderSpecifiedIP] != "" {
 		var ips []netip.Addr
-		iplist := strings.Split(headers[HeaderSpecifiedIP], ",")
-		for _, item := range iplist {
+		iplist := strings.SplitSeq(headers[HeaderSpecifiedIP], ",")
+		for item := range iplist {
 			ip, err := netip.ParseAddr(item)
 			if err != nil {
 				LogError("parse header %s=%s fail, %v", HeaderSpecifiedIP, headers[HeaderSpecifiedIP], err)
