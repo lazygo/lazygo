@@ -192,9 +192,6 @@ func (mdl *TxModel[T]) Create(data *T, pk ...string) (int64, error) {
 		pk = []string{"id"}
 	}
 	set, _ := goutils.Struct2Map(data, pk...)
-	now := time.Now().Unix()
-	set["ctime"] = now
-	set["mtime"] = now
 	return mdl.Insert(set)
 }
 
