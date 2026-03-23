@@ -86,7 +86,7 @@ func (b *wsBridge) Receive(ctx stdContext.Context) (*EventData, error) {
 			return nil, err
 		}
 
-		if len(msg) > 4 && strings.ToUpper(string(msg[:4])) == "ping" {
+		if len(msg) == 4 && strings.ToLower(string(msg)) == "ping" {
 			b.conn.Write(b.ctx, websocket.MessageText, []byte("pong"))
 			continue
 		}
