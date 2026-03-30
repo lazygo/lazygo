@@ -3,7 +3,7 @@ GIT_COMMIT = $(shell git rev-parse HEAD | cut -c1-7)
 GIT_TAG = $(shell git describe --tags HEAD)
 VERSION = $(shell echo $(GIT_TAG) | tr -d 'v')
 PACKAGE = github.com/lazygo/lazygo/examples
-BUILD_OPTIONS = -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT)" -trimpath
+BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT)" -trimpath
 
 # GO_PROXY = GOPROXY=https://mirrors.aliyun.com/goproxy/
 
