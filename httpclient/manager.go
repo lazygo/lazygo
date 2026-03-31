@@ -160,7 +160,7 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 	if m.resolver == nil {
 		resolver = net.DefaultResolver
 	}
-	ips, err := resolver.LookupIPAddr(context.Background(), host)
+	ips, err := resolver.LookupIPAddr(ctx, host)
 	if err != nil {
 		LogError("lookup host %s fail, try httpdns: %v", host, err)
 	}
