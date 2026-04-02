@@ -33,8 +33,8 @@ type Manager struct {
 }
 
 var (
-	LogDebug = func(format string, v ...any) { log.Printf(format, v...) }
-	LogError = func(format string, v ...any) { log.Printf(format, v...) }
+	LogDebug = func(format string, v ...any) { log.Output(2, fmt.Sprintf(format, v...)) }
+	LogError = func(format string, v ...any) { log.Output(2, fmt.Sprintf(format, v...)) }
 )
 
 type specifiedIPCtxKey struct{}
@@ -185,7 +185,7 @@ func (m *Manager) lookupHost(ctx context.Context, host string) ([]netip.Addr, er
 		LogDebug("resolve dns fail, try httpdns")
 		addrs, err = m.httpdns.LookupIPAddr(ctx, host)
 		if err != nil {
-			LogError("resolve httpdns fail")
+			LogError("resolve httpdns fail: %v", err)
 		}
 		if err == nil && len(addrs) > 0 {
 			dnscache.Set(host, addrs, cache.DefaultExpiration)
