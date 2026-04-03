@@ -7,7 +7,7 @@ PACKAGE = git.code.tencent.com/trading-strategy/server
 ifeq ($(shell uname), Darwin)
 	EXTRA_LDFLAGS =
 else
-	EXTRA_LDFLAGS = "-extldflags='-static'"
+	EXTRA_LDFLAGS = -extldflags='-static'
 endif
 BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT) $(EXTRA_LDFLAGS)" -trimpath
 
@@ -27,7 +27,6 @@ vendor:
 	go install github.com/goware/modvendor@latest
 	go mod vendor
 	modvendor -copy="**/*.c **/*.h **/*.a" -v
-
 
 .PHONY: fmt
 fmt:
