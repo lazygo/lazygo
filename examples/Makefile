@@ -3,7 +3,13 @@ GIT_COMMIT = $(shell git rev-parse HEAD | cut -c1-7)
 GIT_TAG = $(shell git describe --tags HEAD)
 VERSION = $(shell echo $(GIT_TAG) | tr -d 'v')
 PACKAGE = github.com/lazygo/lazygo/examples
-BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT)" -trimpath
+PACKAGE = git.code.tencent.com/trading-strategy/server
+ifeq ($(shell uname), Darwin)
+	EXTRA_LDFLAGS =
+else
+	EXTRA_LDFLAGS = "-extldflags='-static'"
+endif
+BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT) $(EXTRA_LDFLAGS)" -trimpath
 
 # GO_PROXY = GOPROXY=https://mirrors.aliyun.com/goproxy/
 
