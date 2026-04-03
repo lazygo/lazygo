@@ -14,13 +14,13 @@ var (
 )
 
 type OrderBy struct {
-	Field string `json:"field" bind:"query,form"`
-	Sort  string `json:"sort" bind:"query,form"`
+	Field string `json:"field" bind:"query,form" process:"trim"`
+	Sort  string `json:"sort" bind:"query,form" process:"trim,tolower"`
 }
 
 type PaginatorRequest struct {
-	Order  string    `json:"order" bind:"query,form"`
-	Sort   string    `json:"sort" bind:"query,form"`
+	Order  string    `json:"order" bind:"query,form" process:"trim"`
+	Sort   string    `json:"sort" bind:"query,form" process:"trim,tolower"`
 	Orders []OrderBy `json:"orders" bind:"query,form"`
 	Page   int       `json:"page" bind:"query,form"`
 	Size   int       `json:"size" bind:"query,form"`
