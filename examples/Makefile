@@ -24,7 +24,10 @@ deps:
 
 .PHONY: vendor
 vendor:
+	go install github.com/goware/modvendor@latest
 	go mod vendor
+	modvendor -copy="**/*.c **/*.h **/*.a" -v
+
 
 .PHONY: fmt
 fmt:
