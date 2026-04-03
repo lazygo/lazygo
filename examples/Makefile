@@ -6,10 +6,6 @@ PACKAGE = github.com/lazygo/lazygo/examples
 CONTAINER ?= lazygo-examples
 DOCKER_IMAGE = ${PACKAGE}/${CONTAINER}
 
-WINDOWS_CC ?= $(WINDOWS_CC)
-LINUX_CC ?= $(LINUX_CC)
-DARWIN_CC ?= $(DARWIN_CC)
-
 ifeq ($(shell uname), Darwin)
 	EXTRA_LDFLAGS =
 else
@@ -19,6 +15,9 @@ BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=
 
 # 默认关闭 CGO；需要时用 CGO_ENABLED=1 make build 或导出环境变量覆盖
 CGO_ENABLED ?= 0
+WINDOWS_CC ?= $(WINDOWS_CC)
+LINUX_CC ?= $(LINUX_CC)
+DARWIN_CC ?= $(DARWIN_CC)
 
 # GO_PROXY = GOPROXY=https://mirrors.aliyun.com/goproxy/
 
