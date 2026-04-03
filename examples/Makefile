@@ -3,7 +3,13 @@ GIT_COMMIT = $(shell git rev-parse HEAD | cut -c1-7)
 GIT_TAG = $(shell git describe --tags HEAD)
 VERSION = $(shell echo $(GIT_TAG) | tr -d 'v')
 PACKAGE = github.com/lazygo/lazygo/examples
-PACKAGE = git.code.tencent.com/trading-strategy/server
+CONTAINER ?= lazygo-examples
+DOCKER_IMAGE = ${PACKAGE}/${CONTAINER}
+
+WINDOWS_CC ?= $(WINDOWS_CC)
+LINUX_CC ?= $(LINUX_CC)
+DARWIN_CC ?= $(DARWIN_CC)
+
 ifeq ($(shell uname), Darwin)
 	EXTRA_LDFLAGS =
 else
@@ -42,8 +48,9 @@ build:
 
 .PHONY: docker
 docker: deps vendor
-	docker build -t ${PACKAGE}:${GIT_TAG} .
-	docker push ${PACKAGE}:${GIT_TAG}
+	docker build -t ${DOCKER_IMAGE}:${GIT_TAG} .
+	rm -rf vendor
+	docker push ${DOCKER_IMAGE}:${GIT_TAG}
 
 .PHONY: run
 run: deps
@@ -52,6 +59,7 @@ run: deps
 .PHONY: release
 release:
 	git pull
+	git push
 	last_tag=`git tag --list | grep -E 'v?([0-9]+\.){1,3}[0-9]' | sort -V | tail -n 1 | tr -d 'v' | \
 	awk -F. -v OFS=. 'NF==1{print ++$$NF}; NF>1{ $$NF=$$NF+1; for (i=NF; i>1; i--) { if ($$i>=100) { $$i=0; $$(i-1)++ }} print}'` && \
 	echo tag: v$$last_tag && \
