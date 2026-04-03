@@ -11,6 +11,9 @@ else
 endif
 BUILD_OPTIONS = -buildvcs=false -ldflags "-w -s -X $(PACKAGE)/framework.Version=$(VERSION) -X $(PACKAGE)/framework.BuildID=$(GIT_COMMIT) $(EXTRA_LDFLAGS)" -trimpath
 
+# 默认关闭 CGO；需要时用 CGO_ENABLED=1 make build 或导出环境变量覆盖
+CGO_ENABLED ?= 0
+
 # GO_PROXY = GOPROXY=https://mirrors.aliyun.com/goproxy/
 
 default: all
@@ -34,7 +37,8 @@ fmt:
 
 .PHONY: build
 build:
-	CGO_ENABLED=0 ${GO_PROXY} go build -o ${OUTPUT_DIR}/app ${BUILD_OPTIONS}
+	# 默认 CGO_ENABLED=0；开启示例: CGO_ENABLED=1 make build
+	CGO_ENABLED=$(CGO_ENABLED) ${GO_PROXY} go build -o ${OUTPUT_DIR}/app ${BUILD_OPTIONS}
 
 .PHONY: docker
 docker: deps vendor
