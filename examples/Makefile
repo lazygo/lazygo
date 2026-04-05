@@ -32,9 +32,11 @@ deps:
 
 .PHONY: vendor
 vendor:
-	go install github.com/goware/modvendor@latest
 	go mod vendor
-	modvendor -copy="**/*.c **/*.h **/*.a" -v
+	if [ "$(CGO_ENABLED)" -eq 1 ]; then
+		go install github.com/goware/modvendor@latest
+		modvendor -copy="**/*.c **/*.h **/*.a" -v
+	fi
 
 .PHONY: fmt
 fmt:
