@@ -1,12 +1,13 @@
-FROM golang:1.17-alpine AS builder
+FROM golang:1.26-alpine AS builder
 
 RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories & apk add --no-cache --update git gcc rust make
-COPY ../../../Users/Administrator/Desktop/gohudong /src
+COPY . /src
 WORKDIR /src
 
-RUN go version && make build
+ARG CGO_ENABLED=0
+RUN go version && CGO_ENABLED=$CGO_ENABLED make build
 
-FROM alpine:3.15
+FROM alpine:3.20
 
 COPY --from=builder /src/output/app /usr/local/bin/app
 

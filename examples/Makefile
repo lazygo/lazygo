@@ -48,8 +48,8 @@ build:
 	CGO_ENABLED=$(CGO_ENABLED) ${GO_PROXY} go build -o ${OUTPUT_DIR}/app ${BUILD_OPTIONS}
 
 .PHONY: docker
-docker: deps vendor
-	docker build -t ${DOCKER_IMAGE}:${GIT_TAG} .
+docker: pb deps vendor
+	docker build -t ${DOCKER_IMAGE}:${GIT_TAG} . --build-arg CGO_ENABLED=$(CGO_ENABLED)
 	rm -rf vendor
 	docker push ${DOCKER_IMAGE}:${GIT_TAG}
 
