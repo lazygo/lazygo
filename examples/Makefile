@@ -34,8 +34,8 @@ deps:
 vendor:
 	go mod vendor
 	@if [ "$(CGO_ENABLED)" = "1" ]; then \
-		go install github.com/goware/modvendor@latest ; \
-		modvendor -copy="**/*.c **/*.h **/*.a" -v ; \
+		go install github.com/goware/modvendor@latest && \
+		modvendor -copy="**/*.c **/*.h **/*.a" -v; \
 	fi
 
 .PHONY: fmt
