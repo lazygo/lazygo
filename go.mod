@@ -4,14 +4,13 @@ go 1.27
 
 require (
 	github.com/ArtisanCloud/PowerLibs/v3 v3.3.2
-	github.com/ArtisanCloud/PowerWeChat/v3 v3.4.45
 	github.com/BurntSushi/toml v1.6.0
 	github.com/andybalholm/brotli v1.2.5
 	github.com/bradfitz/gomemcache v0.0.0-20260422231931-4d751bb6e37c
 	github.com/coder/websocket v1.8.15
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/klauspost/compress v1.20.1
-	github.com/lazygo/pkg v0.0.0-20260929142633-74335d6faea1
+	github.com/lazygo/pkg v0.0.0-20260929155734-9617c90dcdbf
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.22.0
@@ -24,6 +23,7 @@ require (
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/ArtisanCloud/PowerSocialite/v3 v3.0.11 // indirect
+	github.com/ArtisanCloud/PowerWeChat/v3 v3.4.45 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clbanning/mxj v1.8.4 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
