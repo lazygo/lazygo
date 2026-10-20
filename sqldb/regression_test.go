@@ -406,6 +406,112 @@ func TestRegressQueryString(t *testing.T) {
 	assert.Equal([]any{1, 2, "a"}, args)
 }
 
+// sqlx 风格：key 中携带运算符（"field op", value）
+func TestRegressFieldOpCond(t *testing.T) {
+	assert := testify.New(t)
+	db := regressDB(t)
+	defer db.Exec("DROP TABLE IF EXISTS regress_check")
+
+	db.Table("regress_check").Insert(map[string]any{"uid": 1, "name": "abc", "age": 20})
+	db.Table("regress_check").Insert(map[string]any{"uid": 2, "name": "xyz", "age": 30})
+
+	var check = func(cond ...any) (string, []any) {
+		b := newBuilder(nil, "regress_check")
+		sql, args, err := b.Where(cond...).QueryString()
+		assert.Nil(err)
+		return sql, args
+	}
+
+	sql, args := check("age >", 18)
+	assert.Equal("SELECT * FROM `regress_check` WHERE `age` > ?", sql)
+	assert.Equal([]any{18}, args)
+
+	sql, _ = check("age >=", 18)
+	assert.Equal("SELECT * FROM `regress_check` WHERE `age` >= ?", sql)
+
+	sql, _ = check("name like", "%a%")
+	assert.Equal("SELECT * FROM `regress_check` WHERE `name` like ?", sql)
+
+	sql, args = check("uid in", []any{1, 2})
+	assert.Equal("SELECT * FROM `regress_check` WHERE `uid` IN(?, ?)", sql)
+	assert.Equal([]any{1, 2}, args)
+
+	sql, _ = check("deleted_at IS", nil)
+	assert.Equal("SELECT * FROM `regress_check` WHERE `deleted_at` IS NULL", sql)
+
+	// 联表字段名带点号
+	sql, args = check("U.age >", 18)
+	assert.Equal("SELECT * FROM `regress_check` WHERE `U`.`age` > ?", sql)
+	assert.Equal([]any{18}, args)
+
+	// 实际查询验证
+	var rows []map[string]any
+	n, err := db.Table("regress_check").Where("age >", 25).Find(&rows)
+	assert.Nil(err)
+	assert.Equal(1, n)
+	assert.Equal("2", rows[0]["uid"])
+}
+
+// WithCTime/WithMTime：指定字段名后自动维护创建/更新时间，默认不写入
+func TestRegressModelTimeField(t *testing.T) {
+	assert := testify.New(t)
+	db := regressDB(t)
+	defer db.Exec("DROP TABLE IF EXISTS regress_check_time")
+	_, err := db.Exec("CREATE TABLE `regress_check_time` (" +
+		"`id` int(20) unsigned NOT NULL AUTO_INCREMENT," +
+		"`name` varchar(64) NOT NULL DEFAULT ''," +
+		"`created_at` int(10) unsigned NOT NULL DEFAULT 0," +
+		"`updated_at` int(10) unsigned NOT NULL DEFAULT 0," +
+		"PRIMARY KEY (`id`)" +
+		") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4")
+	assert.Nil(err)
+
+	type timeData struct {
+		Id        uint64 `json:"id"`
+		Name      string `json:"name"`
+		CreatedAt int64  `json:"created_at"`
+		UpdatedAt int64  `json:"updated_at"`
+	}
+	type timeModel struct {
+		TxModel[timeData]
+	}
+	newModel := func() *timeModel {
+		m := &timeModel{}
+		m.SetTable("regress_check_time")
+		m.SetTx(&db.Tx)
+		return m
+	}
+
+	// 默认不自动写入
+	mdl := newModel()
+	id, err := mdl.Create(&timeData{Name: "a"})
+	assert.Nil(err)
+	data, _, err := mdl.First(map[string]any{"id": id})
+	assert.Nil(err)
+	assert.Equal(int64(0), data.CreatedAt)
+	assert.Equal(int64(0), data.UpdatedAt)
+
+	// 指定字段名后：Create写入创建时间和更新时间
+	// 注意 WithCTime/WithMTime 返回 *TxModel[T]，应以副作用方式调用，不要重新赋值给外层 Model
+	mdl = newModel()
+	mdl.WithCTime("created_at").WithMTime("updated_at")
+	now := time.Now().Unix()
+	id, err = mdl.Create(&timeData{Name: "b"})
+	assert.Nil(err)
+	data, _, err = mdl.First(map[string]any{"id": id})
+	assert.Nil(err)
+	assert.GreaterOrEqual(data.CreatedAt, now-2)
+	assert.GreaterOrEqual(data.UpdatedAt, now-2)
+
+	// Modify 更新更新时间字段
+	n, err := mdl.Modify(&timeData{Id: uint64(id), Name: "c", CreatedAt: data.CreatedAt})
+	assert.Nil(err)
+	assert.Equal(int64(1), n)
+	data, _, err = mdl.First(map[string]any{"id": id})
+	assert.Nil(err)
+	assert.GreaterOrEqual(data.UpdatedAt, now-2)
+}
+
 func mapKeysOf(m map[string]any) []string {
 	keys := make([]string, 0, len(m))
 	for k := range m {

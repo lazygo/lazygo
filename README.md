@@ -9,7 +9,7 @@ lazygo框架
 ### 初始化lazygo项目
 
 方案一：
-```
+```bash
 
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
@@ -28,7 +28,7 @@ make build
 
 方案二：
 
-```
+```bash
 
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
@@ -53,7 +53,7 @@ make build
 
 项目初始化后，将会自动创建下列文件目录结构。
 
-```
+```text
 .
 ├── app                              // http请求处理，业务逻辑代码目录
 │   ├── controller                   // 控制器
@@ -103,7 +103,7 @@ make build
 
 lazygo 默认支持toml和json两种格式的配置。
 
-```
+```go
 // 加载toml格式的配置
 loader := config.Toml(data []byte) (*Config, error)
 // 加载json格式的配置
@@ -115,7 +115,7 @@ loader := config.Json(data []byte) (*Config, error)
 以下代码为解析配置redis配置段到RedisConfig结构体的示例。
 
 示例：加载json配置
-```
+```go
 import (
     "github.com/lazygo/lazygo/config"
 )
@@ -183,7 +183,7 @@ func LoadJsonConfig() {
 
 控制器结构体必须包含类型为Context的Ctx成员变量。其定义如下所示：
 
-```
+```go
 // UserController 定义一个User控制器
 type UserController struct{
 	Ctx Context
@@ -199,7 +199,7 @@ type UserController struct{
 - 当返回仅有1个error类型参数时，如果返回的error为nil框架将不会向HTTP输出任何内容。这可以方便开发者在控制器方法中自行定义HTTP响应的内容。如果返回error不为nil，则根据`framework/exception.go`中定义的格式输出错误信息到HTTP响应。
 - 当返回有2个参数时，如果返回的第二个参数error为nil，则会根据server.HTTPOKHandler中定义的格式，输出第一个参数到HTTP响应。如果返回error不为nil，处理方式与1个参数时相同，直接向HTTP响应输出错误信息。
 
-```
+```go
 // 自定义响应内容的控制器方法
 func (c *UserController)Login(request.UserLoginRequest) error {
     ctl.Ctx.HTMLBlob(200, []byte("<h1>lazygo framework</h1>"))
@@ -238,7 +238,7 @@ func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error)
 控制器函数需要注册到路由才能被HTTP请求访问到，注册路由时需要使用`server.Controller`函数 将控制器函数转换为路由中的HandlerFunc。
 
 
-```
+```go
 // server.Controller 函数定义如下
 // 参数h为控制器结构体实例
 // method为函数名，若不指定函数名，会自动指定函数名为路由uri最后一个“/”后面的字符串
@@ -247,7 +247,7 @@ func Controller(h interface{}, methodName ...string) server.HandlerFunc
 
 注册路由示例代码：
 
-```
+```go
 // 将uri /user/profile 注册到UserController.UserInfo
 app.Post("/user/profile", server.Controller(controller.UserController{}, "UserInfo"))
 
@@ -257,7 +257,7 @@ app.Post("/user/login", server.Controller(controller.UserController{}))
 
 ### Request 参数绑定和预处理 ###
 
-```
+```go
 type ToolsUploadRequest struct {
     Category string      `json:"category" bind:"query,form" process:"trim,cut(20)"`
     Tags     []int       `json:"tag" bind:"query,form"`
@@ -297,7 +297,7 @@ type ToolsUploadRequest struct {
 - `Clear`会在http请求返回响应后执行，用于做一些清理工作
 
 
-```
+```go
 func (r *ToolsUploadRequest) Verify() error {
 
 	if slices.Contains(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
@@ -324,7 +324,336 @@ func (r *ToolsUploadRequest) Clear() {
 
 ### mysql
 
-查询构建器
+#### 连接数据库
+
+数据库驱动需在使用前自行引入：
+
+```go
+import _ "github.com/go-sql-driver/mysql"
+```
+
+```go
+err := sqldb.Init([]sqldb.MySQLConfig{
+    {
+        Driver:          "mysql",     // 数据库驱动
+        Name:            "default",   // 连接名称，通过 sqldb.Database("default") 获取
+        User:            "root",
+        Passwd:          "",
+        Host:            "127.0.0.1",
+        Port:            3306,
+        DbName:          "mydb",
+        MaxOpenConns:    50,
+        MaxIdleConns:    10,
+        ConnMaxLifetime: 300,         // 连接最大存活时间，单位秒
+        Params:          map[string]string{"charset": "utf8mb4", "parseTime": "true"},
+    },
+})
+if err != nil {
+    return err
+}
+
+db, err := sqldb.Database("default")
+
+// 程序退出时关闭全部连接
+defer sqldb.CloseAll()
+```
+
+注意：扫描 `time.Time` 类型的字段需要在 `Params` 中设置 `parseTime=true`。
+
+#### 查询构建器
+
+`db.Table()` 每次返回一个新的查询构建器。构建器不是 goroutine 安全的，链式调用时暂存的条件、ORDER BY、LIMIT 等状态仅属于本次串式操作。
+
+**查询**
+
+```go
+// Where 自动识别条件类型，可多次链式调用，多个条件之间以 AND 连接
+var users []User
+_, err := db.Table("user").
+    Where("name", "张三").                  // `name` = ?
+    Where("age", ">", 18).                  // `age` > ?
+    Where("status", "in", []any{1, 2}).     // `status` IN(?, ?)
+    Where("deleted_at", nil).               // `deleted_at` IS NULL
+    WhereMap(map[string]any{"age >=": 20}). // `age` >= ?
+    OrderBy("id", "desc").
+    Limit(10).
+    Offset(20).
+    Find(&users)
+```
+
+**Where 条件的所有形式**
+
+`Where` 根据参数个数与类型自动识别条件：
+
+```go
+db.Table("user").
+    // —— 1个参数 ——
+    Where("age > 0").                       // 字符串：原生条件子句，原样拼入SQL（注意自行保证安全）
+    Where(map[string]any{"name": "a"}).     // map：等价于 WhereMap
+
+    // —— 2个参数 ——
+    Where("name", "张三").                   // 普通值：等于，生成 `name` = ?
+    Where("age >", 18).                     // key为"字段 运算符"：按运算符解析，同 WhereMap 的key规则
+    Where("deleted_at", nil).               // 值为nil：判空，生成 `deleted_at` IS NULL
+    Where("id", []int{1, 2, 3}).            // 值为任意类型切片：IN查询，生成 `id` IN(?, ?, ?)
+
+    // —— 3个参数 ——
+    Where("age", ">", 18).                  // 指定运算符：运算符原样拼入，如 > >= < <= != like 等
+    Where("deleted_at", "=", nil).          // 值为nil：= 生成 IS NULL，!= 生成 IS NOT NULL
+    Where("status", "in", []any{1, 2}).     // 运算符 in / not in（不区分大小写）：IN / NOT IN 查询，
+                                            // 值为非切片时按单元素IN处理
+```
+
+除 `Where` 外还提供了专用条件方法：
+
+```go
+WhereIn("id", ids)                          // IN查询；传空切片时生成恒假条件 1=0
+WhereNotIn("id", ids)                       // NOT IN查询；传空切片时生成恒真条件 1=1
+WhereRaw("age > ? AND name != ?", 18, "x")  // 原生条件子句，? 与 args 按位置对应
+ClearCond()                                 // 手动清空已暂存的条件
+```
+
+**WhereMap 规则**
+
+- key 不含空格时按等于处理；值为 nil 生成 `IS NULL`，值为切片生成 IN 查询
+- key 含空格时按空格拆分为 `字段 运算符`，运算符支持 `>` `>=` `<` `<=` `!=` `in` `not in` `like`
+- 值为 map 时，以该 key（AND/OR）为关系符嵌套条件分组：
+
+```go
+// ((`name` = 'a' AND `age` > 1) OR `name` = 'b') AND `status` = 1
+db.Table("user").Where(map[string]any{
+    "OR": map[string]any{
+        "AND":  map[string]any{"name": "a", "age >": 1},
+        "name": "b",
+    },
+    "status": 1,
+})
+```
+
+**排序、分组与分页**
+
+```go
+// 排序：方向仅支持 ASC / DESC（不区分大小写），可多次调用按顺序拼接
+db.Table("user").Where("age", ">", 18).OrderBy("age", "desc").OrderBy("id", "asc").Find(&users)
+
+// 随机排序
+db.Table("user").OrderByRand().Find(&users)
+
+// 指定查询字段：不调用Select时默认 SELECT *；Select 会按字段名排序后拼接
+_, err := db.Table("user").Select("id", "name").Where("id", 1).First(&user)
+
+// 分组：配合 Select 中的聚合函数做分组统计
+type AgeStat struct {
+    Age   int64 `json:"age"`
+    Total int64 `json:"total"`
+}
+var stats []AgeStat
+_, err = db.Table("user").
+    Select("age", "count(*) AS total").
+    GroupBy("age").
+    Find(&stats)
+
+// 分页：Limit 限制条数；Offset 为偏移量，需与 Limit 同时使用才生效
+var page []User
+_, err = db.Table("user").Where("status", 1).OrderBy("id", "desc").Limit(10).Offset(20).Find(&page)
+```
+
+注意：不要对分组查询使用 `Count()`——`Count` 是单值查询，与 `GroupBy` 同用时不统计组数。分组统计请使用 `Select` + 聚合函数 + `Find` 的方式（如上面的 AgeStat 示例）。
+
+**结果绑定**
+
+- struct / []struct：按 json tag 匹配列名；匿名字段平铺；有 tag 的嵌套结构体以 tag 为前缀（如 `U.id`）；tag 带选项（`json:"uid,omitempty"`）也能正确匹配；`sql.NullString` 等 database/sql 类型直接作为叶子字段匹配
+- `map[string]string` / `map[string]any`：值为字符串类型
+
+**单条、单字段与统计**
+
+```go
+var user User
+n, err := db.Table("user").Where("id", 1).First(&user)
+// n == 0 表示记录不存在，err 为 nil
+
+// 查询单个字段，支持表达式与别名
+name, err := db.Table("user").Where("id", 1).One("name")
+count, err := db.Table("user").Where("age", ">", 18).One("count(*) AS count")
+
+total, err := db.Table("user").Where("age", ">", 18).Count()
+
+// 只拼接SQL不执行。QueryString 为纯查询，不会清空构建器状态
+sql, args, err := db.Table("user").Where("id", 1).QueryString()
+```
+
+**写入**
+
+```go
+// 插入，返回自增id
+id, err := db.Table("user").Insert(map[string]any{"name": "a", "age": 1})
+
+// 更新，返回影响行数；可选第二个参数限制更新行数
+n, err := db.Table("user").Where("id", 1).Update(map[string]any{"name": "b"}, 1)
+
+// 原生SET更新
+n, err = db.Table("user").Where("id", 1).UpdateRaw("age = age + 1, name = 'c'")
+
+// 自增/自减，可同时更新其他字段
+n, err = db.Table("user").Where("id", 1).Increment("age", 1)
+n, err = db.Table("user").Where("id", 1).Decrement("age", 2, map[string]any{"name": "d"})
+
+// 删除，返回影响行数
+n, err = db.Table("user").Where("id", 1).Delete()
+```
+
+防止误操作：`Update` / `UpdateRaw` / `Increment` / `Delete` 必须携带 WHERE 条件，否则返回 `ErrEmptyCond`。
+确实需要全表操作时，请显式传入 `Where("1=1")`。
+
+**事务**
+
+`Transaction` 中返回 error 或 panic 都会回滚；panic 会以 error 形式返回。
+
+```go
+err := db.Transaction(func(tx *sqldb.Tx) error {
+    id, err := tx.Table("user").Insert(map[string]any{"name": "a"})
+    if err != nil {
+        return err
+    }
+    _, err = tx.Table("user").Where("id", id).Update(map[string]any{"age": 1})
+    return err
+})
+```
+
+**表关联**
+
+```go
+table := sqldb.Table("user").As("U").
+    LeftJoin(sqldb.Table("order").As("O"), "U.id", "O.user_id")
+
+var list []UserOrder
+_, err := db.Table(table.String()).
+    Where("U.id", 1).
+    Select(sqldb.StructFields(UserOrder{})...).
+    Find(&list)
+```
+
+**执行前 Hook**
+
+`BeforeHook` 接收一个执行前回调，其返回值在SQL执行后调用（类似 defer）。hook 仅对构建器的下一次执行生效。
+
+```go
+builder := db.Table("user").BeforeHook(func(query string, args ...any) func() {
+    start := time.Now()
+    return func() {
+        fmt.Println("SQL耗时:", time.Since(start), query, args)
+    }
+})
+builder.Where("id", 1).Find(&users)
+```
+
+**构建器状态说明**
+
+- 每个终端方法（`Find` / `First` / `One` / `Count` / `Insert` / `Update` / `UpdateRaw` / `Increment` / `Delete`）执行后会自动清空条件、ORDER BY、LIMIT 等暂存状态，builder 可继续复用
+- `QueryString` 是纯拼接，不清理任何状态
+
+**原生SQL**
+
+```go
+var users []User
+n, err := db.Find(&users, "SELECT * FROM user WHERE age > ?", 18)
+
+var user User
+n, err = db.First(&user, "SELECT * FROM user WHERE id = ?", 1)
+
+result, err := db.Exec("UPDATE user SET name = ? WHERE id = ?", "a", 1)
+```
+
+#### Model 封装
+
+`TxModel[T]` 以泛型结构体约定封装常用 CRUD，数据约定：
+
+- 主键 `id` 使用 `uint64`，时间戳字段使用 `int64`
+- 创建/更新时间默认不自动写入，通过 `WithCTime`/`WithMTime` 指定字段名后自动维护：`Create` 时写入创建时间和更新时间，`Modify` 时写入更新时间
+- 数据库字段定义为 NOT NULL；允许 NULL 的字段使用 `sql.Null[T]` 类型
+- 结构体字段通过 json tag 与列名匹配
+
+```go
+type UserData struct {
+    Id    uint64         `json:"id"`
+    Name  string         `json:"name"`
+    Email sql.NullString `json:"email"`
+    Ctime int64          `json:"ctime"`
+    Mtime int64          `json:"mtime"`
+}
+
+type UserModel struct {
+    sqldb.TxModel[UserData]
+}
+
+func NewUserModel() *UserModel {
+    mdl := &UserModel{}
+    mdl.SetTable("user")
+    db, _ := sqldb.Database("default")
+    mdl.SetTx(&db.Tx)
+    return mdl
+}
+
+// 开启自动维护创建/更新时间（不调用则默认不写入，字段名可自定义）
+mdl.WithCTime("ctime").WithMTime("mtime")
+```
+
+使用示例：
+
+```go
+mdl := NewUserModel()
+
+// 新增，自动写入ctime/mtime，返回自增id
+id, err := mdl.Create(&UserData{Name: "a"})
+
+// 按主键更新（默认id），mtime自动刷新
+n, err := mdl.Modify(&UserData{Id: uint64(id), Name: "b"})
+// 也可指定其他唯一键作为更新条件
+n, err = mdl.Modify(&UserData{Uid: 100, Name: "b"}, "uid")
+
+// 查询：空结果返回 nil, 0, nil，需同时判断 err 和 n
+data, n, err := mdl.First(map[string]any{"id": id})
+if err != nil {
+    return err
+}
+if n == 0 {
+    // 记录不存在
+}
+
+list, n, err := mdl.Find(map[string]any{"age >": 18})
+
+ok, err := mdl.Exists(map[string]any{"name": "a"})
+cnt, err := mdl.Count(map[string]any{"age >": 18})
+
+// 分页：Order/Sort为主排序字段，Orders可附加次级排序，groupby传nil表示不分组
+req := &sqldb.PaginatorRequest{
+    Page:  1,    // 页码，从1开始
+    Size:  10,   // 每页条数
+    Order: "id", // 排序字段
+    Sort:  "desc",
+    Orders: []sqldb.OrderBy{ // 可选：次级排序
+        {Field: "age", Sort: "asc"},
+    },
+}
+resp, n, err := mdl.Paginator(map[string]any{"status": 1}, req, nil)
+// resp.Page / resp.Size / resp.Total / resp.List
+// Total 为总记录数；入参可先经 Clean 清洗（非法page/size回落默认值，size超上限截断）
+req.Clean(sqldb.DefaultPaginatorMaxSize, sqldb.DefaultPaginatorRequest)
+
+// 分组分页：total统计组数；不传fields时默认只查询分组字段
+resp, _, err = mdl.Paginator(map[string]any{}, req, []string{"age"})
+```
+
+在事务中使用：在 `db.Transaction` 的回调里重新 `SetTx(tx)` 即可让 Model 的操作加入事务。
+
+```go
+err := db.Transaction(func(tx *sqldb.Tx) error {
+    mdl := NewUserModel()
+    mdl.SetTx(tx)
+    _, err := mdl.Create(&UserData{Name: "a"})
+    return err
+})
+```
 
 ### 缓存
 

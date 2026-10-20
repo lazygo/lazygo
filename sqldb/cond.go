@@ -106,6 +106,11 @@ func (g *groupCond) where(cond ...any) error {
 		if !ok {
 			return ErrInvalidCondArguments
 		}
+		// key包含空格时按 "field op" 解析，同 WhereMap 的key规则
+		if strings.Contains(k, " ") {
+			kv := strings.SplitN(strings.TrimSpace(k), " ", 2)
+			return g.where(kv[0], strings.TrimSpace(kv[1]), cond[1])
+		}
 		if cond[1] == nil {
 			// k IS NULL
 			g.meta(k, "IS")
@@ -147,10 +152,10 @@ func (g *groupCond) where(cond ...any) error {
 		// k op v
 		if cond[2] == nil {
 			switch strings.ReplaceAll(strings.ToLower(op), " ", "") {
-			case "=":
+			case "=", "is":
 				g.meta(k, "IS")
 				return nil
-			case "!=":
+			case "!=", "isnot":
 				g.meta(k, "IS NOT")
 				return nil
 			}

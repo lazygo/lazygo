@@ -56,7 +56,8 @@ type PaginatorResponse[T any] struct {
 // T ModelData 结构体定义规范:
 //   - id使用 uint64
 //   - 时间使用 int64
-//   - 创建时间字段位ctime，更新时间字段位mtime
+//   - 创建/更新时间默认不自动写入，通过 WithCTime/WithMTime 指定字段名后自动维护：
+//     Insert/Create 时写入创建时间和更新时间，Modify 时写入更新时间
 //   - 数据库定义字段必须为NOT NULL，对于特殊情况下允许为NULL的字段，ModelData结构体对应的字段需使用sql.Null[T]字段类型
 //
 // 具体XxxModel 定义规范：
