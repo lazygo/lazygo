@@ -33,6 +33,8 @@ func NewUserModel(ctx framework.Context) *UserModel {
 	mdl := &UserModel{Ctx: ctx}
 	mdl.SetTable("uc_user")
 	mdl.SetDB("lazygo-db")
+	mdl.AutoCTime("ctime")
+	mdl.AutoMTime("mtime")
 	return mdl
 }
 

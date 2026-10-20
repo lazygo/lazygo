@@ -569,7 +569,7 @@ result, err := db.Exec("UPDATE user SET name = ? WHERE id = ?", "a", 1)
 `TxModel[T]` 以泛型结构体约定封装常用 CRUD，数据约定：
 
 - 主键 `id` 使用 `uint64`，时间戳字段使用 `int64`
-- 创建/更新时间默认不自动写入，通过 `WithCTime`/`WithMTime` 指定字段名后自动维护：`Create` 时写入创建时间和更新时间，`Modify` 时写入更新时间
+- 创建/更新时间默认不自动写入，通过 `AutoCTime`/`AutoMTime` 指定字段名后自动维护：`Create` 时写入创建时间和更新时间，`Modify` 时写入更新时间
 - 数据库字段定义为 NOT NULL；允许 NULL 的字段使用 `sql.Null[T]` 类型
 - 结构体字段通过 json tag 与列名匹配
 
@@ -595,7 +595,8 @@ func NewUserModel() *UserModel {
 }
 
 // 开启自动维护创建/更新时间（不调用则默认不写入，字段名可自定义）
-mdl.WithCTime("ctime").WithMTime("mtime")
+mdl.AutoCTime("ctime")
+mdl.AutoMTime("mtime")
 ```
 
 使用示例：

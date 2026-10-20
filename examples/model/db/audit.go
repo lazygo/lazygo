@@ -35,6 +35,8 @@ func NewAuditModel(ctx framework.Context) *AuditModel {
 	mdl := &AuditModel{Ctx: ctx}
 	mdl.SetTable("audit")
 	mdl.SetDB("lazygo-db")
+	mdl.AutoCTime("ctime")
+	mdl.AutoMTime("mtime")
 	return mdl
 }
 

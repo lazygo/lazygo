@@ -37,6 +37,8 @@ func NewThirdAuthModel(ctx framework.Context) *ThirdAuthModel {
 	mdl := &ThirdAuthModel{Ctx: ctx}
 	mdl.SetTable("uc_third_auth")
 	mdl.SetDB("lazygo-db")
+	mdl.AutoCTime("ctime")
+	mdl.AutoMTime("mtime")
 	return mdl
 }
 

@@ -23,5 +23,7 @@ func NewUploadModel(ctx framework.Context) *UploadModel {
 	mdl := &UploadModel{Ctx: ctx}
 	mdl.SetTable("file_upload")
 	mdl.SetDB("lazygo-db")
+	mdl.AutoCTime("ctime")
+	mdl.AutoMTime("mtime")
 	return mdl
 }

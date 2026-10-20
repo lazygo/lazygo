@@ -452,7 +452,7 @@ func TestRegressFieldOpCond(t *testing.T) {
 	assert.Equal("2", rows[0]["uid"])
 }
 
-// WithCTime/WithMTime：指定字段名后自动维护创建/更新时间，默认不写入
+// AutoCTime/AutoMTime：指定字段名后自动维护创建/更新时间，默认不写入
 func TestRegressModelTimeField(t *testing.T) {
 	assert := testify.New(t)
 	db := regressDB(t)
@@ -492,9 +492,9 @@ func TestRegressModelTimeField(t *testing.T) {
 	assert.Equal(int64(0), data.UpdatedAt)
 
 	// 指定字段名后：Create写入创建时间和更新时间
-	// 注意 WithCTime/WithMTime 返回 *TxModel[T]，应以副作用方式调用，不要重新赋值给外层 Model
 	mdl = newModel()
-	mdl.WithCTime("created_at").WithMTime("updated_at")
+	mdl.AutoCTime("created_at")
+	mdl.AutoMTime("updated_at")
 	now := time.Now().Unix()
 	id, err = mdl.Create(&timeData{Name: "b"})
 	assert.Nil(err)
