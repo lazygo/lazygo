@@ -29,7 +29,18 @@ type metaCond struct {
 
 func (c *metaCond) String() string {
 	if len(c.args) == 0 {
-		return fmt.Sprintf("%s IS NULL", buildK(c.key))
+		// IN空集恒假，NOT IN空集恒真，IS / IS NOT 判空
+		if strings.Contains(strings.ToUpper(c.op), "IN") {
+			if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(c.op)), "NOT") {
+				return "1=1"
+			}
+			return "1=0"
+		}
+		op := strings.ToUpper(strings.TrimSpace(c.op))
+		if op == "" || op == "IS" {
+			return fmt.Sprintf("%s IS NULL", buildK(c.key))
+		}
+		return fmt.Sprintf("%s %s NULL", buildK(c.key), op)
 	}
 	if strings.Contains(strings.ToUpper(c.op), "IN") {
 		arr := make([]string, 0, len(c.args))
@@ -95,6 +106,11 @@ func (g *groupCond) where(cond ...any) error {
 		if !ok {
 			return ErrInvalidCondArguments
 		}
+		if cond[1] == nil {
+			// k IS NULL
+			g.meta(k, "IS")
+			break
+		}
 		// in查询
 		in, ok := CreateAnyTypeSlice(cond[1])
 		if ok {
@@ -129,6 +145,16 @@ func (g *groupCond) where(cond ...any) error {
 			break
 		}
 		// k op v
+		if cond[2] == nil {
+			switch strings.ReplaceAll(strings.ToLower(op), " ", "") {
+			case "=":
+				g.meta(k, "IS")
+				return nil
+			case "!=":
+				g.meta(k, "IS NOT")
+				return nil
+			}
+		}
 		g.meta(k, op, cond[2])
 	default:
 		return ErrInvalidCondArguments
@@ -160,6 +186,10 @@ func (g *groupCond) whereMap(cond map[string]any) {
 		if vv, ok := v.(map[string]any); ok {
 			sg := g.sub(Relate(k))
 			sg.whereMap(vv)
+			continue
+		}
+		if v == nil {
+			g.meta(k, "IS")
 			continue
 		}
 		g.meta(k, "=", v)

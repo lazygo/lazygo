@@ -5,7 +5,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"time"
 )
+
+var timeType = reflect.TypeOf(time.Time{})
 
 type reflectField struct {
 	tag    string
@@ -190,6 +193,9 @@ func getFieldPtr(columns []string, rv reflect.Value) ([]any, error) {
 
 func StructFields(result any, except ...string) []string {
 	rv := reflect.Indirect(reflect.ValueOf(result))
+	if rv.Kind() != reflect.Struct {
+		return nil
+	}
 	arr := getFieldArr(rv)
 	for _, rm := range except {
 		delete(arr, strings.ReplaceAll(rm, "`", ""))
@@ -232,8 +238,11 @@ func getFieldArr(rv reflect.Value) map[string]any {
 			field := rtField.Tag.Get("json")
 			if field == "-" {
 				field = ""
+			} else if i := strings.IndexByte(field, ','); i >= 0 {
+				// 去掉json tag的选项部分，如 uid,omitempty -> uid
+				field = field[:i]
 			}
-			if rvField.Kind() == reflect.Struct && rvField.Type().PkgPath() != "database/sql" {
+			if rvField.Kind() == reflect.Struct && rvField.Type() != timeType && rvField.Type().PkgPath() != "database/sql" {
 				stack = append(stack, &reflectField{tag: field, value: rvField})
 				continue
 			}

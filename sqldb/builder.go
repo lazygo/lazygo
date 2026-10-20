@@ -76,6 +76,17 @@ func newBuilder(tx *Tx, table Table) *builder {
 	}
 }
 
+// withBefore 返回携带hook的执行用Tx
+// hook非nil时拷贝tx并覆盖其before，避免直接改写共享的Tx（并发竞争与hook残留）
+func withBefore(tx *Tx, hook func(string, ...any) func()) *Tx {
+	if hook == nil || tx == nil {
+		return tx
+	}
+	ntx := *tx
+	ntx.before = hook
+	return &ntx
+}
+
 // Where 自动识别查询 推荐使用
 // cond string                                字符串查询条件
 // cond map[string]interface{}                map查询条件，同WhereMap
@@ -173,7 +184,7 @@ func (b *builder) Select(fields ...string) WhereBuilder {
 	return b
 }
 
-// BeforeHook sql执行前hook
+// BeforeHook sql执行前hook，仅对下一次查询或更新操作生效
 func (b *builder) BeforeHook(h func(string, ...any) func()) Builder {
 	if h == nil {
 		return b
@@ -184,19 +195,17 @@ func (b *builder) BeforeHook(h func(string, ...any) func()) Builder {
 
 // buildCond 构建条件
 // 把cond用 AND 连接起来
-// buildCond调用之后会清空当期查询构建器中暂存的条件
-// （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
+// 仅拼接字符串，不改变查询构建器中暂存的条件，状态由调用方负责清理
 func (b *builder) buildCond() (string, []any) {
-	defer b.ClearCond()
 	result := b.cond.String()
 	args := b.cond.Args()
 	return strings.TrimSpace(result), args
 }
 
 // QueryString 拼接查询语句字符串
+// 仅拼接字符串，不改变查询构建器中暂存的条件和Limit、Offset等内容
+// 状态由查询或更新方法（Find/First/One/Update等）在执行后自动清空
 func (b *builder) QueryString() (string, []any, error) {
-	defer b.Clear()
-
 	if b.table == "" {
 		return "", nil, ErrEmptyTableName
 	}
@@ -250,46 +259,53 @@ func (b *builder) Count() (int64, error) {
 // Find 查询并返回多条记录
 // field string 返回的字段 示例："*"
 func (b *builder) Find(result any) (int, error) {
+	defer b.Clear()
 
 	queryString, args, err := b.QueryString()
 	if err != nil {
 		return 0, err
 	}
 
-	return b.tx.Before(b.before).Find(result, queryString, args...)
+	return withBefore(b.tx, b.before).Find(result, queryString, args...)
 }
 
 // First 查询并返回单条记录
 // field string 返回的字段 示例："*"
 func (b *builder) First(result any) (int, error) {
+	defer b.Clear()
+
 	queryString, args, err := b.Limit(1).QueryString()
 	if err != nil {
 		return 0, err
 	}
 
-	return b.tx.Before(b.before).First(result, queryString, args...)
+	return withBefore(b.tx, b.before).First(result, queryString, args...)
 }
 
 // One 查询并返回单个字段
-// field string 返回的字段 示例："count(*) AS count"
+// field string 返回的字段 示例："name"、"count(*) AS count"
 func (b *builder) One(field string) (string, error) {
+	defer b.Clear()
+
 	queryString, args, err := b.Limit(1).Select(field).QueryString()
 	if err != nil {
 		return "", err
 	}
 
 	item := map[string]string{}
-	_, err = b.tx.Before(b.before).First(&item, queryString, args...)
+	_, err = withBefore(b.tx, b.before).First(&item, queryString, args...)
 	if err != nil {
 		return "", err
 	}
-	return item[field], nil
+	return item[oneColumnName(field)], nil
 }
 
 // Insert 单条插入
 // set map[string]interface{} 插入的数据
 // 返回插入的id，错误信息
 func (b *builder) Insert(set map[string]any) (int64, error) {
+	defer b.Clear()
+
 	if b.table == "" {
 		return 0, ErrEmptyTableName
 	}
@@ -310,7 +326,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 	queryString := "INSERT INTO " + b.table.String() + " (" + strings.Join(fields, ", ") + ") VALUES (" + strings.Join(values, ", ") + ")"
 
 	// 执行插入语句
-	res, err := b.tx.Before(b.before).Exec(queryString, args...)
+	res, err := withBefore(b.tx, b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -328,6 +344,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
 func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
+	defer b.Clear()
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
@@ -363,7 +380,7 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 	}
 
 	// 执行更新语句
-	res, err := b.tx.Before(b.before).Exec(queryString, args...)
+	res, err := withBefore(b.tx, b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -377,6 +394,8 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
 func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
+	defer b.Clear()
+
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
 
@@ -410,7 +429,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	}
 
 	// 执行更新语句
-	res, err := b.tx.Before(b.before).Exec(queryString, args...)
+	res, err := withBefore(b.tx, b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -425,6 +444,8 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 // set map[string]interface{} （可选参数）自增同时update的字段
 // 返回影响的条数，错误信息
 func (b *builder) Increment(column string, amount int64, set ...map[string]any) (int64, error) {
+	defer b.Clear()
+
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
 	if where == "" {
@@ -469,7 +490,7 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]any) 
 
 	// 执行更新sql语句
 	args = append(valArgs, args...)
-	res, err := b.tx.Before(b.before).Exec(queryString, args...)
+	res, err := withBefore(b.tx, b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}
@@ -489,6 +510,8 @@ func (b *builder) Decrement(column string, amount int64, set ...map[string]any) 
 
 // Delete 删除
 func (b *builder) Delete(limit ...int) (int64, error) {
+	defer b.Clear()
+
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
 	where, args := b.buildCond()
 	if where == "" {
@@ -517,7 +540,7 @@ func (b *builder) Delete(limit ...int) (int64, error) {
 	}
 
 	// 获取影响的行数
-	res, err := b.tx.Before(b.before).Exec(queryString, args...)
+	res, err := withBefore(b.tx, b.before).Exec(queryString, args...)
 	if err != nil {
 		return 0, err
 	}

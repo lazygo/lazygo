@@ -29,18 +29,12 @@ func (d *Tx) Table(table string) *builder {
 	return newBuilder(d, Table(table))
 }
 
-// Before sql执行前hook
-func (d *Tx) Before(h func(string, ...any) func()) *Tx {
-	if h == nil {
-		return d
-	}
-	d.before = h
-	return d
-}
-
 // Query 查询sql并返回结果集
 func (d *Tx) Query(sql string, args ...any) (*sql.Rows, error) {
-	after := d.before(sql, args...)
+	var after func()
+	if d.before != nil {
+		after = d.before(sql, args...)
+	}
 	row, err := d.invoker.Query(sql, args...)
 	if after != nil {
 		after()
@@ -57,7 +51,10 @@ func (d *Tx) Query(sql string, args ...any) (*sql.Rows, error) {
 
 // Exec 执行sql
 func (d *Tx) Exec(sql string, args ...any) (sql.Result, error) {
-	after := d.before(sql, args...)
+	var after func()
+	if d.before != nil {
+		after = d.before(sql, args...)
+	}
 	result, err := d.invoker.Exec(sql, args...)
 	if after != nil {
 		after()
@@ -112,7 +109,11 @@ func (d *DB) Transaction(fn func(tx *Tx) error) (err error) {
 				err = fmt.Errorf("panic: %v: %w", e, rbErr)
 				return
 			}
-			err = errors.New(fmt.Sprint(e))
+			if ee, ok := e.(error); ok {
+				err = fmt.Errorf("panic: %w", ee)
+			} else {
+				err = fmt.Errorf("panic: %v", e)
+			}
 		}
 	}()
 	err = fn(&Tx{

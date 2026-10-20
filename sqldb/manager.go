@@ -26,6 +26,7 @@ func (m *Manager) init(conf []Config) error {
 		}
 		err = db.Ping()
 		if err != nil {
+			db.Close()
 			return err
 		}
 		m.Store(item.name(), &DB{Tx{

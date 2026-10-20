@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	_ "github.com/go-sql-driver/mysql"
 	testify "github.com/stretchr/testify/assert"
 )
 
@@ -41,6 +42,7 @@ func TestDb(t *testing.T) {
 
 	conf := []MySQLConfig{
 		{
+			Driver:          "mysql",
 			Name:            "unit_test",
 			User:            "root",
 			Passwd:          "",

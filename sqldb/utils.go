@@ -82,6 +82,17 @@ func buildK(k string) string {
 	return "`" + strings.ReplaceAll(k, ".", "`.`") + "`"
 }
 
+// oneColumnName 解析查询字段的列名
+// 包含" AS "时取别名，否则取字段本身，并去掉反引号
+// 示例："count(*) AS count" -> "count"，"`name`" -> "name"
+func oneColumnName(field string) string {
+	f := strings.TrimSpace(field)
+	if i := strings.LastIndex(strings.ToLower(f), " as "); i >= 0 {
+		f = strings.TrimSpace(f[i+len(" as "):])
+	}
+	return strings.Trim(f, "`")
+}
+
 type Fields []string
 
 func (f Fields) String() string {

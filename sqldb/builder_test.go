@@ -61,7 +61,11 @@ func TestWhere(t *testing.T) {
 	assert.Equal(expectedCond[9], "c=3", "错误")
 
 	// ((a=1 AND b=2) OR c=3) AND d=4
-	builder.Where(map[string]any{
+	// map 遍历顺序随机，以下 8 种排列（2x2x2）均为合法结果，
+	// 校验时必须保证 SQL 与 args 的位置一一对应
+	// QueryString 不改变构建器状态，这里使用新的 builder，避免与上面的用例叠加条件
+	builder2 := newBuilder(nil, "table_name")
+	builder2.Where(map[string]any{
 		string(OR): map[string]any{
 			string(AND): map[string]any{
 				"a": 1,
@@ -71,14 +75,34 @@ func TestWhere(t *testing.T) {
 		},
 		"d": 4,
 	})
-	sql, args, err = builder.Select(data...).QueryString()
+	sql, args, err = builder2.Select(data...).QueryString()
 	assert.Nil(err, "err.Error()")
 
 	sp = strings.Split(sql, " WHERE ")
 	assert.Equal(len(sp), 2, "错误")
 
-	assert.Equal(sp[1], "((`a` = ? AND `b` = ?) OR `c` = ?) AND `d` = ?", "错误")
-	assert.Equal(args, []any{1, 2, 3, 4}, "错误")
+	type expect struct {
+		cond string
+		args []any
+	}
+	expected := []expect{
+		{"((`a` = ? AND `b` = ?) OR `c` = ?) AND `d` = ?", []any{1, 2, 3, 4}},
+		{"((`b` = ? AND `a` = ?) OR `c` = ?) AND `d` = ?", []any{2, 1, 3, 4}},
+		{"(`c` = ? OR (`a` = ? AND `b` = ?)) AND `d` = ?", []any{3, 1, 2, 4}},
+		{"(`c` = ? OR (`b` = ? AND `a` = ?)) AND `d` = ?", []any{3, 2, 1, 4}},
+		{"`d` = ? AND ((`a` = ? AND `b` = ?) OR `c` = ?)", []any{4, 1, 2, 3}},
+		{"`d` = ? AND ((`b` = ? AND `a` = ?) OR `c` = ?)", []any{4, 2, 1, 3}},
+		{"`d` = ? AND (`c` = ? OR (`a` = ? AND `b` = ?))", []any{4, 3, 1, 2}},
+		{"`d` = ? AND (`c` = ? OR (`b` = ? AND `a` = ?))", []any{4, 3, 2, 1}},
+	}
+	matched := false
+	for _, e := range expected {
+		if sp[1] == e.cond && testify.ObjectsAreEqual(e.args, args) {
+			matched = true
+			break
+		}
+	}
+	assert.True(matched, "WHERE 与 args 不匹配: %s args=%v", sp[1], args)
 
 }
 

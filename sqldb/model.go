@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"cmp"
+	"maps"
 	"strings"
 	"time"
 
@@ -68,6 +69,8 @@ type PaginatorResponse[T any] struct {
 type TxModel[T any] struct {
 	table string
 	tx    *Tx
+	ctime string
+	mtime string
 }
 
 func (m *TxModel[T]) SetTable(table string) {
@@ -76,6 +79,16 @@ func (m *TxModel[T]) SetTable(table string) {
 
 func (m *TxModel[T]) SetTx(tx *Tx) {
 	m.tx = tx
+}
+
+func (m *TxModel[T]) WithCTime(ctime string) *TxModel[T] {
+	m.ctime = ctime
+	return m
+}
+
+func (m *TxModel[T]) WithMTime(mtime string) *TxModel[T] {
+	m.mtime = mtime
+	return m
 }
 
 func (m *TxModel[T]) SetDB(dbname string) error {
@@ -113,6 +126,9 @@ func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (*T, int, er
 	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
 	if err != nil {
 		return nil, 0, err
+	}
+	if n == 0 {
+		return nil, 0, nil
 	}
 	return &data, n, nil
 }
@@ -159,6 +175,10 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 	}
 	if len(groupby) > 0 {
 		builder.GroupBy(groupby...)
+		if len(fields) == 0 {
+			// 分组查询时不允许SELECT *（ONLY_FULL_GROUP_BY），默认查询分组字段
+			fields = groupby
+		}
 	}
 	n, err := builder.
 		Offset(int64(req.Size * max((req.Page-1), 0))).
@@ -167,9 +187,27 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 	if err != nil {
 		return nil, 0, err
 	}
-	count, err := mdl.QueryBuilder().Where(cond).Count()
-	if err != nil {
-		return nil, 0, err
+
+	var count int64
+	if len(groupby) > 0 {
+		// 分组查询统计组数
+		inner, args, err := mdl.QueryBuilder().Where(cond).GroupBy(groupby...).Select(groupby...).QueryString()
+		if err != nil {
+			return nil, 0, err
+		}
+		result := &struct {
+			Num int64 `json:"num"`
+		}{}
+		_, err = mdl.Tx().First(result, "SELECT COUNT(*) AS num FROM ("+inner+") AS _grp", args...)
+		if err != nil {
+			return nil, 0, err
+		}
+		count = result.Num
+	} else {
+		count, err = mdl.QueryBuilder().Where(cond).Count()
+		if err != nil {
+			return nil, 0, err
+		}
 	}
 	data := &PaginatorResponse[T]{
 		Page:  req.Page,
@@ -182,8 +220,13 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 
 func (mdl *TxModel[T]) Insert(set map[string]any) (int64, error) {
 	now := time.Now().Unix()
-	set["ctime"] = now
-	set["mtime"] = now
+	set = maps.Clone(set)
+	if mdl.ctime != "" {
+		set[mdl.ctime] = now
+	}
+	if mdl.mtime != "" {
+		set[mdl.mtime] = now
+	}
 	return mdl.QueryBuilder().Insert(set)
 }
 
@@ -200,7 +243,13 @@ func (mdl *TxModel[T]) Modify(data *T, pk ...string) (int64, error) {
 		pk = []string{"id"}
 	}
 	set, pkset := goutils.Struct2Map(data, pk...)
+	v, ok := pkset[pk[0]]
+	if !ok {
+		return 0, ErrInvalidArguments
+	}
 	now := time.Now().Unix()
-	set["mtime"] = now
-	return mdl.QueryBuilder().Where("id", pkset["id"]).Update(set)
+	if mdl.mtime != "" {
+		set[mdl.mtime] = now
+	}
+	return mdl.QueryBuilder().Where(pk[0], v).Update(set)
 }
