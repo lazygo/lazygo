@@ -18,7 +18,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/lazygo/lazygo/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type (
@@ -303,52 +303,52 @@ func (c *context) ParamValues() []string {
 
 // GetString 获取Get字符串变量
 func (c *context) GetString(name string, defVal ...string) string {
-	return utils.ToString(c.QueryParam(name), defVal...)
+	return goutils.String(c.QueryParam(name), defVal...)
 }
 
 // GetInt 获取Get整型变量
 func (c *context) GetInt(name string, defVal ...int) int {
-	return utils.ToInt(c.QueryParam(name), defVal...)
+	return goutils.Int(c.QueryParam(name), defVal...)
 }
 
 // GetInt64 获取Get整型变量
 func (c *context) GetInt64(name string, defVal ...int64) int64 {
-	return utils.ToInt64(c.QueryParam(name), defVal...)
+	return goutils.Int64(c.QueryParam(name), defVal...)
 }
 
 // GetUint 获取Get无符号整型变量
 func (c *context) GetUint(name string, defVal ...uint) uint {
-	return utils.ToUint(c.QueryParam(name), defVal...)
+	return goutils.Uint(c.QueryParam(name), defVal...)
 }
 
 // GetUint64 获取Get无符号整型变量
 func (c *context) GetUint64(name string, defVal ...uint64) uint64 {
-	return utils.ToUint64(c.QueryParam(name), defVal...)
+	return goutils.Uint64(c.QueryParam(name), defVal...)
 }
 
 // PostString 获取Post字符串变量
 func (c *context) PostString(name string, defVal ...string) string {
-	return utils.ToString(c.FormValue(name), defVal...)
+	return goutils.String(c.FormValue(name), defVal...)
 }
 
 // PostInt 获取Post整型变量
 func (c *context) PostInt(name string, defVal ...int) int {
-	return utils.ToInt(c.FormValue(name), defVal...)
+	return goutils.Int(c.FormValue(name), defVal...)
 }
 
 // PostInt64 获取Post整型变量
 func (c *context) PostInt64(name string, defVal ...int64) int64 {
-	return utils.ToInt64(c.FormValue(name), defVal...)
+	return goutils.Int64(c.FormValue(name), defVal...)
 }
 
 // PostUint 获取Get无符号整型变量
 func (c *context) PostUint(name string, defVal ...uint) uint {
-	return utils.ToUint(c.FormValue(name), defVal...)
+	return goutils.Uint(c.FormValue(name), defVal...)
 }
 
 // PostUint64 获取Get无符号整型变量
 func (c *context) PostUint64(name string, defVal ...uint64) uint64 {
-	return utils.ToUint64(c.FormValue(name), defVal...)
+	return goutils.Uint64(c.FormValue(name), defVal...)
 }
 
 func (c *context) QueryParam(name string) string {
@@ -581,7 +581,7 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 
 	if rv.Kind() == reflect.String && (typeKind == reflect.Array || typeKind == reflect.Interface || typeKind == reflect.Map || typeKind == reflect.Slice || typeKind == reflect.Struct) {
 		rVal := reflect.New(rType)
-		strVal := utils.ToString(val)
+		strVal := goutils.String(val)
 		if err := json.Unmarshal([]byte(strVal), rVal.Interface()); err == nil {
 			return rVal.Elem().Interface(), true
 		}
@@ -592,127 +592,127 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 	}
 	switch typeName {
 	case "int":
-		return utils.ToInt(val), true
+		return goutils.Int(val), true
 	case "[]int":
 		returnVal := make([]int, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, utils.ToInt(str))
+				returnVal = append(returnVal, goutils.Int(str))
 			}
 		}
 		return returnVal, true
 	case "int8":
-		return int8(utils.ToInt(val)), true
+		return int8(goutils.Int(val)), true
 	case "[]int8":
 		returnVal := make([]int8, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, int8(utils.ToInt(str)))
+				returnVal = append(returnVal, int8(goutils.Int(str)))
 			}
 		}
 		return returnVal, true
 	case "int16":
-		return int16(utils.ToInt(val)), true
+		return int16(goutils.Int(val)), true
 	case "[]int16":
 		returnVal := make([]int16, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, int16(utils.ToInt(str)))
+				returnVal = append(returnVal, int16(goutils.Int(str)))
 			}
 		}
 		return returnVal, true
 	case "int32":
-		return int32(utils.ToInt(val)), true
+		return int32(goutils.Int(val)), true
 	case "[]int32":
 		returnVal := make([]int32, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, int32(utils.ToInt(str)))
+				returnVal = append(returnVal, int32(goutils.Int(str)))
 			}
 		}
 		return returnVal, true
 	case "int64":
-		return utils.ToInt64(val), true
+		return goutils.Int64(val), true
 	case "[]int64":
 		returnVal := make([]int64, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, utils.ToInt64(str))
+				returnVal = append(returnVal, goutils.Int64(str))
 			}
 		}
 		return returnVal, true
 	case "uint":
-		return utils.ToUint(val), true
+		return goutils.Uint(val), true
 	case "[]uint":
 		returnVal := make([]uint, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, utils.ToUint(str))
+				returnVal = append(returnVal, goutils.Uint(str))
 			}
 		}
 		return returnVal, true
 	case "uint8":
-		return uint8(utils.ToUint(val)), true
+		return uint8(goutils.Uint(val)), true
 	case "[]uint8":
 		returnVal := make([]uint8, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, uint8(utils.ToUint(str)))
+				returnVal = append(returnVal, uint8(goutils.Uint(str)))
 			}
 		}
 		return returnVal, true
 	case "uint16":
-		return uint16(utils.ToUint(val)), true
+		return uint16(goutils.Uint(val)), true
 	case "[]uint16":
 		returnVal := make([]uint16, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, uint16(utils.ToUint(str)))
+				returnVal = append(returnVal, uint16(goutils.Uint(str)))
 			}
 		}
 		return returnVal, true
 	case "uint32":
-		return uint32(utils.ToUint(val)), true
+		return uint32(goutils.Uint(val)), true
 	case "[]uint32":
 		returnVal := make([]uint32, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, uint32(utils.ToUint(str)))
+				returnVal = append(returnVal, uint32(goutils.Uint(str)))
 			}
 		}
 		return returnVal, true
 	case "uint64":
-		return utils.ToUint64(val), true
+		return goutils.Uint64(val), true
 	case "[]uint64":
 		returnVal := make([]uint64, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, utils.ToUint64(str))
+				returnVal = append(returnVal, goutils.Uint64(str))
 			}
 		}
 		return returnVal, true
 	case "float32":
-		return float32(utils.ToFloat(val)), true
+		return float32(goutils.Float(val)), true
 	case "float64":
-		return utils.ToFloat(val), true
+		return goutils.Float(val), true
 	case "string":
-		return process(utils.ToString(val), procList), true
+		return process(goutils.String(val), procList), true
 	case "[]string":
 		returnVal := make([]string, 0)
-		strVal := strings.TrimSpace(utils.ToString(val))
+		strVal := strings.TrimSpace(goutils.String(val))
 		if len(strVal) > 0 {
 			for _, str := range strings.Split(strVal, ",") {
-				returnVal = append(returnVal, process(utils.ToString(str), procList))
+				returnVal = append(returnVal, process(goutils.String(str), procList))
 			}
 		}
 		return returnVal, true
@@ -741,7 +741,7 @@ func process(str string, procList []string) string {
 			str = strings.ToUpper(str)
 		case strings.HasPrefix(proc, "cut("):
 			if n, err := strconv.Atoi(proc[4 : len(proc)-1]); err != nil {
-				str = utils.CutRune(str, n)
+				str = goutils.CutRune(str, n)
 			}
 		}
 	}

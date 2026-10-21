@@ -34,7 +34,6 @@ func loadJson(data []byte) (Parser, error) {
 	parser := &jsonParser{}
 	err := json.Unmarshal(data, &parser.data)
 	return parser, err
-
 }
 
 func loadToml(data []byte) (Parser, error) {

@@ -5,7 +5,7 @@ import (
 	"reflect"
 	"strings"
 
-	"github.com/lazygo/lazygo/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 // Controller 转为 server.HandlerFunc
@@ -16,7 +16,7 @@ func Controller(h any, methodName ...string) HandlerFunc {
 	}
 	var name string
 	if len(methodName) > 0 {
-		name = utils.ToSnakeString(methodName[0])
+		name = goutils.ToSnakeString(methodName[0])
 	}
 
 	return func(ctx Context) error {

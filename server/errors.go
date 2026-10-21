@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/lazygo/lazygo/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 // Errors
@@ -56,7 +56,7 @@ func NewHTTPError(code int, message ...any) *HTTPError {
 	case 1:
 		he.Message = message[0]
 	case 2:
-		he.Errno = utils.ToInt(message[0], -1)
+		he.Errno = goutils.Int(message[0], -1)
 		he.Message = message[1]
 	default:
 		he.Message = message[0]

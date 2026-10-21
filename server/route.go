@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/lazygo/lazygo/utils"
+	"github.com/lazygo/pkg/goutils"
 )
 
 type Route struct {
@@ -34,7 +34,7 @@ func (RouteCache) Make(h any) (reflect.Type, string, error) {
 		tError := reflect.TypeFor[error]()
 		for i := range num {
 			method := rtp.Method(i)
-			methodName := utils.ToSnakeString(method.Name)
+			methodName := goutils.ToSnakeString(method.Name)
 
 			numIn := method.Type.NumIn()
 			switch numIn {
