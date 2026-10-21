@@ -362,14 +362,13 @@ defer sqldb.CloseAll()
 
 #### 查询构建器
 
-`db.Table()` 每次返回一个新的查询构建器。构建器不是 goroutine 安全的，链式调用时暂存的条件、ORDER BY、LIMIT 等状态仅属于本次串式操作。
+`db.Table()` 无需类型参数；写操作直接链式调用；读操作在终端方法（`Find` / `First`）上指定类型参数。每次返回一个新的查询构建器，构建器不是 goroutine 安全的，链式调用时暂存的条件、ORDER BY、LIMIT 等状态仅属于本次串式操作。
 
 **查询**
 
 ```go
 // Where 自动识别条件类型，可多次链式调用，多个条件之间以 AND 连接
-var users []User
-_, err := db.Table("user").
+users, _, err := db.Table("user").
     Where("name", "张三").                  // `name` = ?
     Where("age", ">", 18).                  // `age` > ?
     Where("status", "in", []any{1, 2}).     // `status` IN(?, ?)
@@ -378,7 +377,7 @@ _, err := db.Table("user").
     OrderBy("id", "desc").
     Limit(10).
     Offset(20).
-    Find(&users)
+    Find[User]()
 ```
 
 **Where 条件的所有形式**
@@ -434,28 +433,26 @@ db.Table("user").Where(map[string]any{
 
 ```go
 // 排序：方向仅支持 ASC / DESC（不区分大小写），可多次调用按顺序拼接
-db.Table("user").Where("age", ">", 18).OrderBy("age", "desc").OrderBy("id", "asc").Find(&users)
+users, _, err := db.Table("user").Where("age", ">", 18).OrderBy("age", "desc").OrderBy("id", "asc").Find[User]()
 
 // 随机排序
-db.Table("user").OrderByRand().Find(&users)
+users, _, err = db.Table("user").OrderByRand().Find[User]()
 
 // 指定查询字段：不调用Select时默认 SELECT *；Select 会按字段名排序后拼接
-_, err := db.Table("user").Select("id", "name").Where("id", 1).First(&user)
+user, _, err := db.Table("user").Select("id", "name").Where("id", 1).First[User]()
 
 // 分组：配合 Select 中的聚合函数做分组统计
 type AgeStat struct {
     Age   int64 `json:"age"`
     Total int64 `json:"total"`
 }
-var stats []AgeStat
-_, err = db.Table("user").
+stats, _, err := db.Table("user").
     Select("age", "count(*) AS total").
     GroupBy("age").
-    Find(&stats)
+    Find[AgeStat]()
 
 // 分页：Limit 限制条数；Offset 为偏移量，需与 Limit 同时使用才生效
-var page []User
-_, err = db.Table("user").Where("status", 1).OrderBy("id", "desc").Limit(10).Offset(20).Find(&page)
+page, _, err := db.Table("user").Where("status", 1).OrderBy("id", "desc").Limit(10).Offset(20).Find[User]()
 ```
 
 注意：不要对分组查询使用 `Count()`——`Count` 是单值查询，与 `GroupBy` 同用时不统计组数。分组统计请使用 `Select` + 聚合函数 + `Find` 的方式（如上面的 AgeStat 示例）。
@@ -468,15 +465,17 @@ _, err = db.Table("user").Where("status", 1).OrderBy("id", "desc").Limit(10).Off
 **单条、单字段与统计**
 
 ```go
-var user User
-n, err := db.Table("user").Where("id", 1).First(&user)
-// n == 0 表示记录不存在，err 为 nil
+user, n, err := db.Table("user").Where("id", 1).First[User]()
+// n == 0 表示记录不存在，err 为 nil，此时 user 为 User 零值
 
-// 查询单个字段，支持表达式与别名
+// 查询单个字段，支持表达式与别名；查不到时返回 ErrNoData
 name, err := db.Table("user").Where("id", 1).One("name")
 count, err := db.Table("user").Where("age", ">", 18).One("count(*) AS count")
 
 total, err := db.Table("user").Where("age", ">", 18).Count()
+
+// 判断记录是否存在
+exists, err := db.Table("user").Where("id", 1).Exists()
 
 // 只拼接SQL不执行。QueryString 为纯查询，不会清空构建器状态
 sql, args, err := db.Table("user").Where("id", 1).QueryString()
@@ -526,11 +525,10 @@ err := db.Transaction(func(tx *sqldb.Tx) error {
 table := sqldb.Table("user").As("U").
     LeftJoin(sqldb.Table("order").As("O"), "U.id", "O.user_id")
 
-var list []UserOrder
-_, err := db.Table(table.String()).
+list, _, err := db.Table(table.String()).
     Where("U.id", 1).
     Select(sqldb.StructFields(UserOrder{})...).
-    Find(&list)
+    Find[UserOrder]()
 ```
 
 **执行前 Hook**
@@ -544,22 +542,20 @@ builder := db.Table("user").BeforeHook(func(query string, args ...any) func() {
         fmt.Println("SQL耗时:", time.Since(start), query, args)
     }
 })
-builder.Where("id", 1).Find(&users)
+users, _, err := builder.Where("id", 1).Find[User]()
 ```
 
 **构建器状态说明**
 
-- 每个终端方法（`Find` / `First` / `One` / `Count` / `Insert` / `Update` / `UpdateRaw` / `Increment` / `Delete`）执行后会自动清空条件、ORDER BY、LIMIT 等暂存状态，builder 可继续复用
+- 每个终端方法（`Find` / `First` / `Exists` / `One` / `Count` / `Insert` / `Update` / `UpdateRaw` / `Increment` / `Delete`）执行后会自动清空条件、ORDER BY、LIMIT 等暂存状态，builder 可继续复用
 - `QueryString` 是纯拼接，不清理任何状态
 
 **原生SQL**
 
 ```go
-var users []User
-n, err := db.Find(&users, "SELECT * FROM user WHERE age > ?", 18)
+users, _, err := db.Find[User]("SELECT * FROM user WHERE age > ?", 18)
 
-var user User
-n, err = db.First(&user, "SELECT * FROM user WHERE id = ?", 1)
+user, _, err := db.First[User]("SELECT * FROM user WHERE id = ?", 1)
 
 result, err := db.Exec("UPDATE user SET name = ? WHERE id = ?", "a", 1)
 ```
@@ -612,7 +608,7 @@ n, err := mdl.Modify(&UserData{Id: uint64(id), Name: "b"})
 // 也可指定其他唯一键作为更新条件
 n, err = mdl.Modify(&UserData{Uid: 100, Name: "b"}, "uid")
 
-// 查询：空结果返回 nil, 0, nil，需同时判断 err 和 n
+// 查询：空结果返回零值, 0, nil，需同时判断 err 和 n
 data, n, err := mdl.First(map[string]any{"id": id})
 if err != nil {
     return err

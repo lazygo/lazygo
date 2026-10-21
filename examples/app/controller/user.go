@@ -224,7 +224,7 @@ func (ctl *UserController) login(req *request.LoginRequest) (*dbModel.UserData, 
 		ctl.Ctx.Logger().Error("[msg: create token fail] [err: %v]", err)
 		return nil, "", errors.ErrUserTokenError
 	}
-	return user, code, nil
+	return &user, code, nil
 }
 
 func (ctl *UserController) Logout(req *request.LogoutRequest) (any, error) {

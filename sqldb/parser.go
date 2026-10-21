@@ -120,7 +120,11 @@ func parseRowData(rows *sql.Rows, result any) (int, error) {
 		}
 		return 1, rows.Err()
 	}
-	if rv.Kind() == reflect.Map && !rv.IsNil() {
+	if rv.Kind() == reflect.Map {
+		if rv.IsNil() {
+			// 初始化nil map
+			rv.Set(reflect.MakeMap(rv.Type()))
+		}
 		if err := checkMap(rv.Type()); err != nil {
 			return 0, err
 		}

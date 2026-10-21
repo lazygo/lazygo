@@ -159,7 +159,7 @@ func TestDb(t *testing.T) {
 
 	// Test FetchRowIn
 	user := &UserInfo{}
-	_, err = db.Table(tableName).Where("id", uid).Select("uid", "name", "ctime", "mobile").First(user)
+	*user, _, err = db.Table(tableName).Where("id", uid).Select("uid", "name", "ctime", "mobile").First[UserInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -171,8 +171,8 @@ func TestDb(t *testing.T) {
 	// Test Join Table
 	uservip := &UserVipInfo{}
 	table := Table(tableName).As("U").LeftJoin(Table(tableVipName).As("V"), "U.uid", "V.uid")
-	_, err = db.Table(table.String()).
-		Where("U.uid", 1001).First(uservip)
+	*uservip, _, err = db.Table(table.String()).
+		Where("U.uid", 1001).First[UserVipInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -181,8 +181,8 @@ func TestDb(t *testing.T) {
 	assert.Equal(user.Ctime, now)
 
 	uservip2 := &UserVipInfoWithAlias{}
-	_, err = db.Table(table.String()).
-		Where("U.uid", 1001).Select(StructFields(uservip2)...).First(uservip2)
+	*uservip2, _, err = db.Table(table.String()).
+		Where("U.uid", 1001).Select(StructFields(uservip2)...).First[UserVipInfoWithAlias]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -237,7 +237,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First(user)
+	*user, _, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First[UserInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -254,7 +254,7 @@ func TestDb(t *testing.T) {
 	}
 	assert.Equal(n, int64(1))
 	user = &UserInfo{}
-	_, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First(user)
+	*user, _, err = db.Table(tableName).Where("id", id).Select("name", "ctime").First[UserInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -280,7 +280,7 @@ func TestDb(t *testing.T) {
 	}
 
 	var listSS []UserInfo
-	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find(&listSS)
+	listSS, _, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find[UserInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -293,7 +293,7 @@ func TestDb(t *testing.T) {
 		assert.Equal(listSS[1].Uid, uint64(1002))
 		assert.Equal(listSS[1].Name, "测试2号")
 	}
-	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find(&listSS)
+	listSS, _, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name").Find[UserInfo]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -301,7 +301,7 @@ func TestDb(t *testing.T) {
 
 	// Fetch Map
 	var userMap []map[string]any
-	_, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name", "ctime").Find(&userMap)
+	userMap, _, err = db.Table(tableName).Where("id", ">", 0).Select("uid", "name", "ctime").Find[map[string]any]()
 	if err != nil {
 		assert.Nil(err, err.Error())
 	}
@@ -337,14 +337,14 @@ func TestDb(t *testing.T) {
 	assert.Equal(n, int64(1))
 
 	var result []map[string]any
-	_, err = db.Table(tableName).Where("id", id).Select("uid", "name").Find(&result)
+	result, _, err = db.Table(tableName).Where("id", id).Select("uid", "name").Find[map[string]any]()
 	if err != nil {
 		assert.Nil(err, ErrInvalidResultPtr)
 	}
 	assert.Empty(result)
 
 	// test error
-	_, err = db.Table(tableName).Where("id", ">", id).Select("nofound1", "name").First(&result)
+	_, _, err = db.Table(tableName).Where("id", ">", id).Select("nofound1", "name").First[map[string]any]()
 	assert.True(strings.Contains(err.(*SqlError).Unwrap().Error(), "Unknown column 'nofound1' in 'field list'"))
 
 	// test error
@@ -388,16 +388,16 @@ func TestDb(t *testing.T) {
 	assert.Equal(err, ErrInvalidArguments)
 	assert.Equal(n, int64(0))
 
-	resErrType := 0
-	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").First(&resErrType)
+	_, _, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").First[int]()
 	assert.Equal(err, ErrInvalidResultPtr)
 
-	var resNilType map[string]any
-	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").First(&resNilType)
-	assert.Equal(err, ErrInvalidResultPtr)
+	// map类型是合法的结果类型，返回初始化的map
+	resMap, mn, err := db.Table(tableName).Where("id", ">", id).Select("id", "name").First[map[string]any]()
+	assert.Nil(err)
+	assert.Equal(1, mn)
+	assert.NotNil(resMap)
 
-	var resErrType2 []map[string]int
-	_, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").Find(&resErrType2)
+	_, _, err = db.Table(tableName).Where("id", ">", id).Select("id", "name").Find[map[string]int]()
 	assert.Equal(err, ErrInvalidResultPtr)
 
 }

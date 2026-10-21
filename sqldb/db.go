@@ -70,23 +70,27 @@ func (d *Tx) Exec(sql string, args ...any) (sql.Result, error) {
 }
 
 // Find 直接执行sql原生语句并返回多行
-func (d *Tx) Find(result any, query string, args ...any) (int, error) {
+func (d *Tx) Find[T any](query string, args ...any) ([]T, int, error) {
 	rows, err := d.Query(query, args...)
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 	defer rows.Close()
-	return parseData(rows, result)
+	result := make([]T, 0)
+	n, err := parseData(rows, &result)
+	return result, n, err
 }
 
 // First 直接执行sql原生语句并返回1行
-func (d *Tx) First(result any, query string, args ...any) (int, error) {
+func (d *Tx) First[T any](query string, args ...any) (T, int, error) {
+	var result T
 	rows, err := d.Query(query, args...)
 	if err != nil {
-		return 0, err
+		return result, 0, err
 	}
 	defer rows.Close()
-	return parseRowData(rows, result)
+	n, err := parseRowData(rows, &result)
+	return result, n, err
 }
 
 // Transaction 事务

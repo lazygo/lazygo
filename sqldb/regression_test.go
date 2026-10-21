@@ -103,13 +103,12 @@ func TestRegressEmptyIn(t *testing.T) {
 	assert.Contains(sql, "1=1")
 
 	// NOT IN 空集应命中全部行
-	var rows []map[string]any
-	n, err := db.Table("regress_check").WhereNotIn("id", []any{}).Find(&rows)
+	_, n, err := db.Table("regress_check").WhereNotIn("id", []any{}).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(2, n)
 
 	// IN 空集应命中 0 行
-	n, err = db.Table("regress_check").WhereIn("id", []any{}).Find(&rows)
+	_, n, err = db.Table("regress_check").WhereIn("id", []any{}).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(0, n)
 }
@@ -124,18 +123,18 @@ func TestRegressNilCond(t *testing.T) {
 	db.Table("regress_check").Insert(map[string]any{"uid": 2, "nick": "x"})
 
 	var rows []map[string]any
-	n, err := db.Table("regress_check").Where("nick", nil).Find(&rows)
+	rows, n, err := db.Table("regress_check").Where("nick", nil).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(1, n)
 	assert.Equal("1", rows[0]["uid"])
 
-	n, err = db.Table("regress_check").Where("nick", "!=", nil).Find(&rows)
+	rows, n, err = db.Table("regress_check").Where("nick", "!=", nil).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(1, n)
 	assert.Equal("2", rows[0]["uid"])
 
 	// WhereMap 中的 nil
-	n, err = db.Table("regress_check").WhereMap(map[string]any{"nick": nil}).Find(&rows)
+	rows, n, err = db.Table("regress_check").WhereMap(map[string]any{"nick": nil}).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(1, n)
 }
@@ -221,7 +220,7 @@ func TestRegressPaginatorGroupBy(t *testing.T) {
 	assert.Equal(int64(5), resp.Total)
 }
 
-// First 空结果返回 nil, 0, nil
+// First 空结果返回零值, 0, nil
 func TestRegressFirstEmpty(t *testing.T) {
 	assert := testify.New(t)
 	db := regressDB(t)
@@ -234,7 +233,7 @@ func TestRegressFirstEmpty(t *testing.T) {
 	data, n, err := mdl.First(map[string]any{"uid": 404})
 	assert.Nil(err)
 	assert.Equal(0, n)
-	assert.Nil(data)
+	assert.Zero(data)
 }
 
 // 写操作后 builder 状态清空
@@ -279,8 +278,7 @@ func TestRegressBeforeHook(t *testing.T) {
 		return func() {}
 	}
 
-	var out []map[string]any
-	_, err := db.Table("regress_check").BeforeHook(hook).Where("id", ">", 0).Find(&out)
+	_, _, err := db.Table("regress_check").BeforeHook(hook).Where("id", ">", 0).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(1, calls)
 
@@ -291,7 +289,7 @@ func TestRegressBeforeHook(t *testing.T) {
 	assert.Equal(2, calls)
 
 	// 后续普通查询不再触发 hook
-	_, err = db.Table("regress_check").Where("id", ">", 0).Find(&out)
+	_, _, err = db.Table("regress_check").Where("id", ">", 0).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(2, calls)
 
@@ -318,8 +316,7 @@ func TestRegressBeforeHookRace(t *testing.T) {
 			for j := 0; j < 30; j++ {
 				_, err := db.Table("regress_check").BeforeHook(hook).Where("uid", 1).Update(map[string]any{"name": "b"})
 				assert.Nil(err)
-				var out []map[string]any
-				_, err = db.Table("regress_check").BeforeHook(hook).Where("id", ">", 0).Find(&out)
+				_, _, err = db.Table("regress_check").BeforeHook(hook).Where("id", ">", 0).Find[map[string]any]()
 				assert.Nil(err)
 			}
 		}()
@@ -343,7 +340,7 @@ func TestRegressParser(t *testing.T) {
 	}
 
 	var row withTag
-	_, err := db.Table("regress_check").Where("uid", 7).First(&row)
+	row, _, err := db.Table("regress_check").Where("uid", 7).First[withTag]()
 	assert.Nil(err)
 	assert.Equal(uint64(7), row.Uid)
 	assert.Equal(now.UTC(), row.T.UTC())
@@ -446,7 +443,7 @@ func TestRegressFieldOpCond(t *testing.T) {
 
 	// 实际查询验证
 	var rows []map[string]any
-	n, err := db.Table("regress_check").Where("age >", 25).Find(&rows)
+	rows, n, err := db.Table("regress_check").Where("age >", 25).Find[map[string]any]()
 	assert.Nil(err)
 	assert.Equal(1, n)
 	assert.Equal("2", rows[0]["uid"])

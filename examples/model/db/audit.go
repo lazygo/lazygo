@@ -59,8 +59,7 @@ func (mdl *AuditModel) Get(uid uint64, opType string) (*AuditData, int, error) {
 		"uid":  uid,
 		"type": opType,
 	}
-	var data AuditData
-	n, err := mdl.QueryBuilder().Where(cond).OrderBy("id", "desc").First(&data)
+	data, n, err := mdl.QueryBuilder().Where(cond).OrderBy("id", "desc").First[AuditData]()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -72,8 +71,7 @@ func (mdl *AuditModel) GetByRelateID(opType, relateID string) ([]AuditData, int,
 		"relate_id": relateID,
 		"type":      opType,
 	}
-	var data []AuditData
-	n, err := mdl.QueryBuilder().Where(cond).OrderBy("id", "desc").Find(&data)
+	data, n, err := mdl.QueryBuilder().Where(cond).OrderBy("id", "desc").Find[AuditData]()
 	if err != nil {
 		return nil, 0, err
 	}

@@ -105,7 +105,7 @@ func (m *TxModel[T]) Tx() *Tx {
 	return m.tx
 }
 
-func (m *TxModel[T]) QueryBuilder() Builder {
+func (m *TxModel[T]) QueryBuilder() *builder {
 	table := m.table
 	if table == "" {
 		// 没有指定表名
@@ -114,7 +114,7 @@ func (m *TxModel[T]) QueryBuilder() Builder {
 	return m.tx.Table(table)
 }
 
-func (m *TxModel[T]) Table(table string) Builder {
+func (m *TxModel[T]) Table(table string) *builder {
 	if table == "" {
 		// 没有指定表名
 		panic("没有指定表名")
@@ -122,25 +122,12 @@ func (m *TxModel[T]) Table(table string) Builder {
 	return m.tx.Table(table)
 }
 
-func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (*T, int, error) {
-	var data T
-	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).First(&data)
-	if err != nil {
-		return nil, 0, err
-	}
-	if n == 0 {
-		return nil, 0, nil
-	}
-	return &data, n, nil
+func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (T, int, error) {
+	return mdl.QueryBuilder().Where(cond).Select(fields...).First[T]()
 }
 
 func (mdl *TxModel[T]) Exists(cond map[string]any) (bool, error) {
-	data := map[string]any{}
-	n, err := mdl.QueryBuilder().Where(cond).Select("(0)").First(&data)
-	if err != nil {
-		return false, err
-	}
-	return n > 0, nil
+	return mdl.QueryBuilder().Where(cond).Exists()
 }
 
 func (mdl *TxModel[T]) Count(cond map[string]any) (int64, error) {
@@ -148,12 +135,7 @@ func (mdl *TxModel[T]) Count(cond map[string]any) (int64, error) {
 }
 
 func (mdl *TxModel[T]) Find(cond map[string]any, fields ...string) ([]T, int, error) {
-	var data []T
-	n, err := mdl.QueryBuilder().Where(cond).Select(fields...).Find(&data)
-	if err != nil {
-		return nil, 0, err
-	}
-	return data, n, nil
+	return mdl.QueryBuilder().Where(cond).Select(fields...).Find[T]()
 }
 
 func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, groupby []string, fields ...string) (*PaginatorResponse[T], int, error) {
@@ -181,10 +163,10 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 			fields = groupby
 		}
 	}
-	n, err := builder.
+	list, n, err := builder.
 		Offset(int64(req.Size * max((req.Page-1), 0))).
 		Limit(int64(req.Size)).
-		Select(fields...).Find(&list)
+		Select(fields...).Find[T]()
 	if err != nil {
 		return nil, 0, err
 	}
@@ -196,10 +178,10 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 		if err != nil {
 			return nil, 0, err
 		}
-		result := &struct {
+		type numType struct {
 			Num int64 `json:"num"`
-		}{}
-		_, err = mdl.Tx().First(result, "SELECT COUNT(*) AS num FROM ("+inner+") AS _grp", args...)
+		}
+		result, _, err := mdl.Tx().First[numType]("SELECT COUNT(*) AS num FROM ("+inner+") AS _grp", args...)
 		if err != nil {
 			return nil, 0, err
 		}

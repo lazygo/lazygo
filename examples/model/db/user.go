@@ -74,7 +74,7 @@ func (mdl *UserModel) FetchByUid(uid uint64, fields ...string) (*UserData, int, 
 		return nil, 0, err
 	}
 
-	return data, n, err
+	return &data, n, err
 }
 
 func (mdl *UserModel) UpdateByUid(uid uint64, data map[string]any) (int64, error) {

@@ -1,57 +1,16 @@
 package sqldb
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 	"strconv"
 	"strings"
 )
 
-// RBuilder read builder (R)
-type RBuilder interface {
-	QueryString() (string, []any, error)
-	Count() (int64, error)
-	Find(result any) (int, error)
-	First(result any) (int, error)
-	One(field string) (string, error)
-}
-
-// UDBuilder update or delete builder (UD)
-type UDBuilder interface {
-	Update(set map[string]any, limit ...int) (int64, error)
-	UpdateRaw(set string, limit ...int) (int64, error)
-	Increment(column string, amount int64, set ...map[string]any) (int64, error)
-	Decrement(column string, amount int64, set ...map[string]any) (int64, error)
-	Delete(limit ...int) (int64, error)
-}
-
-// CBuilder create builder (C)
-type CBuilder interface {
-	Insert(set map[string]any) (int64, error)
-}
-
-type WhereBuilder interface {
-	Where(cond ...any) WhereBuilder
-	WhereMap(cond map[string]any) WhereBuilder
-	WhereRaw(cond string, args ...any) WhereBuilder
-	WhereIn(k string, in []any) WhereBuilder
-	WhereNotIn(k string, in []any) WhereBuilder
-	ClearCond() WhereBuilder
-	GroupBy(ks ...string) WhereBuilder
-	OrderBy(k string, direct string) WhereBuilder
-	OrderByRand() WhereBuilder
-	Offset(offset int64) WhereBuilder
-	Limit(limit int64) WhereBuilder
-	Select(fields ...string) WhereBuilder
-	RBuilder
-	UDBuilder
-}
-
-type Builder interface {
-	BeforeHook(h func(string, ...any) func()) Builder
-	WhereBuilder
-	CBuilder
-}
+var (
+	ErrNoData = errors.New("not exists")
+)
 
 // 查询构建器
 type builder struct {
@@ -92,7 +51,7 @@ func withBefore(tx *Tx, hook func(string, ...any) func()) *Tx {
 // cond map[string]interface{}                map查询条件，同WhereMap
 // field string, value []any                  In查询条件，同WhereIn
 // field string, op string value interface{}  同WhereIn
-func (b *builder) Where(cond ...any) WhereBuilder {
+func (b *builder) Where(cond ...any) *builder {
 	b.lastError = b.cond.where(cond...)
 	return b
 }
@@ -102,38 +61,38 @@ func (b *builder) Where(cond ...any) WhereBuilder {
 // key中包含条件运算符时，例如 Map{"key >=": 1}  会拼接为 `k2` >= 'v2'
 // key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like”
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
-func (b *builder) WhereMap(cond map[string]any) WhereBuilder {
+func (b *builder) WhereMap(cond map[string]any) *builder {
 	b.cond.whereMap(cond)
 	return b
 }
 
 // WhereRaw 子句查询
-func (b *builder) WhereRaw(cond string, args ...any) WhereBuilder {
+func (b *builder) WhereRaw(cond string, args ...any) *builder {
 	b.cond.whereRaw(cond, args...)
 	return b
 }
 
 // WhereIn IN查询
-func (b *builder) WhereIn(k string, in []any) WhereBuilder {
+func (b *builder) WhereIn(k string, in []any) *builder {
 	b.cond.meta(k, "IN", in...)
 	return b
 }
 
 // WhereNotIn NOT IN查询
-func (b *builder) WhereNotIn(k string, in []any) WhereBuilder {
+func (b *builder) WhereNotIn(k string, in []any) *builder {
 	b.cond.meta(k, "NOT IN", in...)
 	return b
 }
 
 // ClearCond 清空当前where
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
-func (b *builder) ClearCond() WhereBuilder {
+func (b *builder) ClearCond() *builder {
 	b.cond.clear()
 	return b
 }
 
 // Clear 清空当前where和Limit、Offset等内容
-func (b *builder) Clear() Builder {
+func (b *builder) Clear() *builder {
 	b.ClearCond()
 	b.fields = nil
 	b.groupBy = []string{}
@@ -145,19 +104,19 @@ func (b *builder) Clear() Builder {
 	return b
 }
 
-func (b *builder) GroupBy(ks ...string) WhereBuilder {
+func (b *builder) GroupBy(ks ...string) *builder {
 	for _, k := range ks {
 		b.groupBy = append(b.groupBy, buildK(k))
 	}
 	return b
 }
 
-func (b *builder) OrderByRand() WhereBuilder {
+func (b *builder) OrderByRand() *builder {
 	b.orderBy = append(b.orderBy, "RAND()")
 	return b
 }
 
-func (b *builder) OrderBy(k string, direct string) WhereBuilder {
+func (b *builder) OrderBy(k string, direct string) *builder {
 	direct = strings.ToUpper(direct)
 	if direct != "ASC" && direct != "DESC" {
 		// params error
@@ -168,24 +127,24 @@ func (b *builder) OrderBy(k string, direct string) WhereBuilder {
 	return b
 }
 
-func (b *builder) Offset(offset int64) WhereBuilder {
+func (b *builder) Offset(offset int64) *builder {
 	b.offset = offset
 	return b
 }
 
-func (b *builder) Limit(limit int64) WhereBuilder {
+func (b *builder) Limit(limit int64) *builder {
 	b.limit = limit
 	return b
 }
 
-func (b *builder) Select(fields ...string) WhereBuilder {
+func (b *builder) Select(fields ...string) *builder {
 	slices.Sort(fields)
 	b.fields = fields
 	return b
 }
 
 // BeforeHook sql执行前hook，仅对下一次查询或更新操作生效
-func (b *builder) BeforeHook(h func(string, ...any) func()) Builder {
+func (b *builder) BeforeHook(h func(string, ...any) func()) *builder {
 	if h == nil {
 		return b
 	}
@@ -244,42 +203,51 @@ func (b *builder) Count() (int64, error) {
 		return 0, ErrEmptyTableName
 	}
 
-	result := &struct {
-		Num int64 `json:"num"`
-	}{}
-
-	_, err := b.Select("COUNT(*) AS num").First(result)
+	num, err := b.One("COUNT(*) AS _num")
 	if err != nil {
 		return 0, err
 	}
 
-	return result.Num, nil
+	return strconv.ParseInt(num, 10, 64)
 }
 
 // Find 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Find(result any) (int, error) {
+func (b *builder) Find[T any]() ([]T, int, error) {
 	defer b.Clear()
 
 	queryString, args, err := b.QueryString()
 	if err != nil {
-		return 0, err
+		return nil, 0, err
 	}
 
-	return withBefore(b.tx, b.before).Find(result, queryString, args...)
+	return withBefore(b.tx, b.before).Find[T](queryString, args...)
 }
 
 // First 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) First(result any) (int, error) {
+func (b *builder) First[T any]() (T, int, error) {
 	defer b.Clear()
 
 	queryString, args, err := b.Limit(1).QueryString()
 	if err != nil {
-		return 0, err
+		var zero T
+		return zero, 0, err
 	}
 
-	return withBefore(b.tx, b.before).First(result, queryString, args...)
+	return withBefore(b.tx, b.before).First[T](queryString, args...)
+}
+
+// Exists 判读记录是否存在
+func (b *builder) Exists() (bool, error) {
+	_, err := b.One("(0) AS _row")
+	if err != nil {
+		if errors.Is(err, ErrNoData) {
+			return false, nil
+		}
+		return false, err
+	}
+	return true, nil
 }
 
 // One 查询并返回单个字段
@@ -292,10 +260,12 @@ func (b *builder) One(field string) (string, error) {
 		return "", err
 	}
 
-	item := map[string]string{}
-	_, err = withBefore(b.tx, b.before).First(&item, queryString, args...)
+	item, n, err := withBefore(b.tx, b.before).First[map[string]string](queryString, args...)
 	if err != nil {
 		return "", err
+	}
+	if n == 0 {
+		return "", ErrNoData
 	}
 	return item[oneColumnName(field)], nil
 }
