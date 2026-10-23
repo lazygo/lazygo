@@ -2,11 +2,11 @@ package locker
 
 import (
 	"context"
+	"math/rand/v2"
 	"runtime"
 	"strconv"
 	"sync"
 	"time"
-	"unsafe"
 
 	"github.com/lazygo/lazygo/redis"
 	goredis "github.com/redis/go-redis/v9"
@@ -20,7 +20,7 @@ type redisAdapter struct {
 	retry int
 }
 
-// UnlockScript 释放锁脚本
+// UnlockScript 释放锁脚本：仅当持有者匹配时删除，避免误删他人锁
 const UnlockScript = `
 	if redis.call("GET", KEYS[1]) == ARGV[1] then
 		return redis.call("DEL", KEYS[1])
@@ -28,6 +28,8 @@ const UnlockScript = `
 		return 0
 	end
 `
+
+var unlockScript = goredis.NewScript(UnlockScript)
 
 // newRedisLocker 初始化redis适配器
 func newRedisLocker(opt map[string]string) (Locker, error) {
@@ -49,24 +51,41 @@ func newRedisLocker(opt map[string]string) (Locker, error) {
 	return a, nil
 }
 
+// spinInterval 自旋间隔：50ms + 0~50ms随机抖动，避免释放瞬间惊群
+func spinInterval() time.Duration {
+	return 50*time.Millisecond + time.Duration(rand.IntN(50))*time.Millisecond
+}
+
 // Lock 分布式自旋锁
 func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (Releaser, error) {
+	if ttl == 0 {
+		return nil, ErrInvalidTTL
+	}
+	if err := ctx.Err(); err != nil {
+		return nil, err
+	}
 
-	actual, _ := r.local.LoadOrStore(resource, &sync.Mutex{})
-	mu := actual.(*sync.Mutex)
-	mu.Lock()
+	actual, _ := r.local.LoadOrStore(resource, make(chan struct{}, 1))
+	mu := actual.(chan struct{})
+
+	// 进程内串行，排队等待期间响应ctx取消
+	select {
+	case <-ctx.Done():
+		return nil, ctx.Err()
+	case mu <- struct{}{}:
+	}
 
 	token := strconv.FormatUint(randomToken(), 10)
 
 	// 获取锁成功，返回释放锁的方法
 	handleRelease := func() error {
 		defer func() {
-			mu.Unlock()
+			<-mu
 			r.local.Delete(resource)
 		}()
 		var err error
-		for retry := r.retry; retry >= 0; retry-- {
-			err = goredis.NewScript(UnlockScript).Run(context.Background(), r.conn, []string{resource}, token).Err()
+		for retry := r.retry; retry > 0; retry-- {
+			err = unlockScript.Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}
@@ -83,20 +102,21 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 			_ = handleRelease()
 			return nil, ctx.Err()
 		case <-timer.C:
-			timer.Reset(50 * time.Millisecond)
-			err := r.conn.SetNX(ctx, resource, token, time.Duration(ttl)*time.Second).Err()
+			timer.Reset(spinInterval())
+			// 注意：SET NX未命中时返回false且err为nil，必须取Result判断
+			ok, err := r.conn.SetNX(ctx, resource, token, time.Duration(ttl)*time.Second).Result()
 			if err != nil {
-				if err == goredis.Nil {
-					// key 已存在，获取锁失败
-					runtime.Gosched()
-					continue
-				}
-				if retry >= 0 {
+				if retry > 0 {
 					retry--
 					continue
 				}
 				_ = handleRelease()
 				return nil, err
+			}
+			if !ok {
+				// key已存在，获取锁失败，自旋等待
+				runtime.Gosched()
+				continue
 			}
 			return releaseFunc(handleRelease), nil
 		}
@@ -105,21 +125,25 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 
 // TryLock 获取分布式锁（非阻塞）
 func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, error) {
-	token := strconv.FormatUint(randomToken(), 10)
-	err := r.conn.SetNX(context.Background(), resource, token, time.Duration(ttl)*time.Second).Err()
-	if err == goredis.Nil {
-		// key 已存在，获取锁失败
-		return nil, false, nil
+	if ttl == 0 {
+		return nil, false, ErrInvalidTTL
 	}
+	token := strconv.FormatUint(randomToken(), 10)
+	// 注意：SET NX未命中时返回false且err为nil，必须取Result判断
+	ok, err := r.conn.SetNX(context.Background(), resource, token, time.Duration(ttl)*time.Second).Result()
 	if err != nil {
 		return nil, false, err
+	}
+	if !ok {
+		// key已存在，获取锁失败
+		return nil, false, nil
 	}
 
 	// 获取锁成功，返回释放锁的方法
 	handleRelease := func() error {
 		var err error
 		for retry := r.retry; retry > 0; retry-- {
-			err = goredis.NewScript(UnlockScript).Run(context.Background(), r.conn, []string{resource}, token).Err()
+			err = unlockScript.Run(context.Background(), r.conn, []string{resource}, token).Err()
 			if err == nil {
 				return nil
 			}
@@ -130,15 +154,16 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	return releaseFunc(handleRelease), true, nil
 }
 
-func (r *redisAdapter) LockFunc(ctx context.Context, ttl uint64, f func() any) (result any, err error) {
-	resource := runtime.FuncForPC(**(**uintptr)(unsafe.Pointer(&f))).Name()
+// LockFunc 分布式自旋锁执行fn
+func (r *redisAdapter) LockFunc(ctx context.Context, resource string, ttl uint64, f func() any) (result any, err error) {
 	lock, err := r.Lock(ctx, resource, ttl)
 	if err != nil {
 		return nil, err
 	}
-
 	defer func() {
-		err = lock.Release()
+		if rerr := lock.Release(); err == nil {
+			err = rerr
+		}
 	}()
 	return f(), nil
 }

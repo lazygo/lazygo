@@ -19,23 +19,23 @@ type Locker interface {
 
 	// Lock 分布式自旋锁
 	// resource 资源标识，相同的资源标识会互斥
-	// ttl 生存时间 (秒)
+	// ttl 生存时间 (秒)，必须大于0
 	Lock(ctx context.Context, resource string, ttl uint64) (Releaser, error)
 
 	// TryLock 尝试获取锁
 	// resource 资源标识，相同的资源标识会互斥
-	// ttl 生存时间 (秒)
+	// ttl 生存时间 (秒)，必须大于0
 	TryLock(resource string, ttl uint64) (Releaser, bool, error)
 
 	// LockFunc 分布式自旋锁执行fn
 	// resource 资源标识，相同的资源标识会互斥
-	// ttl 生存时间 (秒)
-	// f 返回interface{} 的函数
+	// ttl 生存时间 (秒)，必须大于0
 	// 在获取锁失败或超时的情况下，fn不会被执行
-	LockFunc(ctx context.Context, ttl uint64, fn func() any) (any, error)
+	LockFunc(ctx context.Context, resource string, ttl uint64, fn func() any) (any, error)
 }
 
 type Releaser interface {
+	// Release 释放锁
 	Release() error
 }
 
@@ -80,8 +80,8 @@ func (m *Manager) init(conf []Config, defaultName string) error {
 }
 
 // Init 初始化设置，在框架初始化时调用
-func Init(conf []Config, defaultAdapter string) error {
-	return manager.init(conf, defaultAdapter)
+func Init(conf []Config, defaultName string) error {
+	return manager.init(conf, defaultName)
 }
 
 // Instance 获取分布式锁实例
@@ -113,14 +113,28 @@ func TryLock(resource string, ttl uint64) (Releaser, bool, error) {
 	return lock.TryLock(resource, ttl)
 }
 
-// LockFunc 启用分布式锁执行fn
-// ttl 生存时间 (秒)
-// f 返回interface{} 的函数
-// 在获取锁失败或超时的情况下，fn不会被执行
-func LockFunc(ctx context.Context, ttl uint64, fn func() any) (any, error) {
-	lock, err := Instance(manager.defaultName)
+// LockFunc 启用分布式锁执行fn，fn支持返回错误
+// 获取锁失败或超时的情况下，fn不会被执行
+// fn返回错误时锁照常释放；释放失败且fn未报错时返回释放错误
+func LockFunc[T any](ctx context.Context, resource string, ttl uint64, fn func() (T, error)) (result T, err error) {
+	lock, err := Lock(ctx, resource, ttl)
 	if err != nil {
-		return nil, err
+		return result, err
 	}
-	return lock.LockFunc(ctx, ttl, fn)
+	defer func() {
+		if rerr := lock.Release(); err == nil {
+			err = rerr
+		}
+	}()
+	return fn()
+}
+
+// CloseAll 清空已注册的锁实例
+// 注意底层redis连接由redis包管理，不在此关闭
+func CloseAll() {
+	manager.Range(func(name, _ any) bool {
+		manager.Delete(name)
+		return true
+	})
+	manager.defaultName = ""
 }
