@@ -550,6 +550,10 @@ func (c *context) Value(key any) any {
 			return val
 		}
 	}
+	// request可能为nil（如AcquireContext后未reset即使用），此时仅查store
+	if c.request == nil {
+		return nil
+	}
 	return c.request.Context().Value(key)
 }
 
@@ -564,7 +568,11 @@ func (c *context) reset(r *http.Request, w http.ResponseWriter) {
 	c.path = ""
 	c.pnames = nil
 	c.query = nil
-	// NOTE: Don't reset because it has to have length c.engine.maxParam at all times
+	// NOTE: Don't reset because it has to have length c.server.maxParam at all times
+	// maxParam在运行期注册更多参数的路由后会增长，此处按需扩容（echo #3157）
+	if len(c.pvalues) < *c.s().maxParam {
+		c.pvalues = make([]string, *c.s().maxParam)
+	}
 	for i := 0; i < *c.s().maxParam; i++ {
 		c.pvalues[i] = ""
 	}
@@ -705,6 +713,13 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 		return float32(goutils.Float(val)), true
 	case "float64":
 		return goutils.Float(val), true
+	case "bool":
+		b, err := strconv.ParseBool(goutils.String(val))
+		if err != nil {
+			// 非法值不覆盖字段默认值
+			return nil, false
+		}
+		return b, true
 	case "string":
 		return process(goutils.String(val), procList), true
 	case "[]string":
@@ -740,7 +755,7 @@ func process(str string, procList []string) string {
 		case strings.HasPrefix(proc, "toupper"):
 			str = strings.ToUpper(str)
 		case strings.HasPrefix(proc, "cut("):
-			if n, err := strconv.Atoi(proc[4 : len(proc)-1]); err != nil {
+			if n, err := strconv.Atoi(proc[4 : len(proc)-1]); err == nil {
 				str = goutils.CutRune(str, n)
 			}
 		}

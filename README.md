@@ -1,16 +1,41 @@
 # lazygo
 
-lazygo框架
+lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（MySQL/缓存/分布式锁）等常用组件，帮助快速搭建 HTTP 服务。
 
+## 目录
+
+- [快速开始](#快速开始)
+  - [初始化lazygo项目](#初始化lazygo项目)
+  - [项目文件目录结构](#项目文件目录结构)
+- [配置](#配置)
+- [路由](#路由)
+  - [服务实例与启动](#服务实例与启动)
+  - [注册路由](#注册路由)
+  - [路径参数](#路径参数)
+  - [路由组](#路由组)
+  - [中间件](#中间件)
+  - [静态文件](#静态文件)
+  - [其他说明](#其他说明)
+- [控制器](#控制器)
+  - [控制器的定义](#控制器的定义)
+  - [控制器方法的定义规则](#控制器方法的定义规则)
+  - [注册控制器到HTTP路由](#注册控制器到http路由)
+  - [Request 参数绑定和预处理](#request-参数绑定和预处理)
+- [上下文Context](#上下文context)
+- [日志](#日志)
+- [模型](#模型)
+  - [mysql](#mysql)
+  - [缓存](#缓存)
+  - [分布式锁](#分布式锁)
+  - [错误处理](#错误处理)
 
 ## 快速开始
-
 
 ### 初始化lazygo项目
 
 方案一：
-```bash
 
+```bash
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
 
@@ -23,13 +48,11 @@ make run
 
 # 构建
 make build
-
 ```
 
 方案二：
 
 ```bash
-
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
 
@@ -45,11 +68,9 @@ make run
 
 # 构建
 make build
-
 ```
 
-
-### 项目文件目录结构说明
+### 项目文件目录结构
 
 项目初始化后，将会自动创建下列文件目录结构。
 
@@ -94,45 +115,48 @@ make build
     ├── errors                       // 错误定义
     │   └── errors.go
     └── string.go                    // 字符串处理函数
-
 ```
 
 ## 配置
 
-项目的配置加载相关代码在`config/config.go`中，可根据实际使用情况修改此文件内容。
+项目的配置加载相关代码在 `config/config.go` 中，可根据实际使用情况修改此文件内容。
 
-lazygo 默认支持toml和json两种格式的配置。
+lazygo 默认支持 toml 和 json 两种格式的配置。
 
 ```go
 // 加载toml格式的配置
-loader := config.Toml(data []byte) (*Config, error)
+loader, err := config.Toml(data []byte) (*Config, error)
 // 加载json格式的配置
-loader := config.Json(data []byte) (*Config, error)
+loader, err := config.Json(data []byte) (*Config, error)
 ```
 
-可以调用func (c *Config) Load(field string f any) 方法，将配置信息中的field配置段解析到回调函数f的第一个参数中。
-其中回调函数f的定义需符合 func(*CustomStruct) error 或 func([]CustomStruct) error 的形式。 注意需要确保提供的配置内容与回调函数参数结构体类型CustomStruct的数据字段相匹配。如果加载的是json类型的配置，则需要在CustomStruct结构体字段中提供json注解，同理toml格式配置需要提供toml注解。
-以下代码为解析配置redis配置段到RedisConfig结构体的示例。
+可以调用 `func (c *Config) Load(field string, f any)` 方法，将配置信息中的 field 配置段解析到回调函数 f 的第一个参数中。
+
+其中回调函数 f 的定义需符合 `func(*CustomStruct) error` 或 `func([]CustomStruct) error` 的形式。注意需要确保提供的配置内容与回调函数参数结构体类型 CustomStruct 的数据字段相匹配。如果加载的是 json 类型的配置，则需要在 CustomStruct 结构体字段中提供 json 注解，同理 toml 格式配置需要提供 toml 注解。
+
+以下代码为解析配置中 redis 配置段到 RedisConfig 结构体的示例。
 
 示例：加载json配置
+
 ```go
 import (
+    "fmt"
+
     "github.com/lazygo/lazygo/config"
 )
 
 // RedisConfig 可同时增加json和toml注解，便于更换配置文件格式。
 type RedisConfig struct {
-	Name     string `json:"name" toml:"name"`
-	Host     string `json:"host" toml:"host"`
-	Port     int    `json:"port" toml:"port"`
-	Password string `json:"password" toml:"password"`
-	Db       int    `json:"db" toml:"db"`
-	Prefix   string `json:"prefix" toml:"prefix"`
+    Name     string `json:"name" toml:"name"`
+    Host     string `json:"host" toml:"host"`
+    Port     int    `json:"port" toml:"port"`
+    Password string `json:"password" toml:"password"`
+    Db       int    `json:"db" toml:"db"`
+    Prefix   string `json:"prefix" toml:"prefix"`
 }
 
-
 // 加载json配置
-func LoadJsonConfig() {
+func LoadJsonConfig(data []byte) error {
     jsonConfig := `
     {
         "redis": [
@@ -150,73 +174,265 @@ func LoadJsonConfig() {
                 "password": "",
                 "db": 0
             }
-        ],
-	"redis": {
-             "foo": "bar"
-	}
+        ]
     }
     `
+    _ = jsonConfig
 
     // 使用json加载器解析配置内容
     jsonLoader, err := config.Json(data)
-	if err != nil {
-		return err
-	}
+    if err != nil {
+        return err
+    }
 
-	// 注册redis配置
-	err = jsonLoader.Load("redis", func(conf []RedisConfig) error {
-		fmt.Pringln(conf)
-	})
-	if err != nil {
-		return err
-	}
-
+    // 注册redis配置
+    err = jsonLoader.Load("redis", func(conf []RedisConfig) error {
+        fmt.Println(conf)
+        return nil
+    })
+    if err != nil {
+        return err
+    }
+    return nil
 }
-
 ```
 
 ## 路由
 
-## 控制器
+### 服务实例与启动
 
-### 控制器的定义 ###
-
-控制器结构体必须包含类型为Context的Ctx成员变量。其定义如下所示：
+通过 `server.New()` 创建服务实例；业务项目通常在 `framework` 包中以单例方式维护（可参考 examples 项目的 `framework/app.go`）。
 
 ```go
-// UserController 定义一个User控制器
-type UserController struct{
-	Ctx Context
+app := server.New()
+
+// 启动（阻塞）
+err := app.Start(ctx, ":8080")
+
+// 优雅停止
+err := app.Shutdown(ctx)
+
+// 立即关闭
+err := app.Close()
+```
+
+### 注册路由
+
+所有注册方法在 `*Server` 和 `*Group` 上均可用，统一签名为 `func(path string, h HandlerFunc, m ...MiddlewareFunc)`：path 为路由路径，h 为处理函数，最后的可变参数是**路由级中间件**（仅对当前路由生效）。
+
+**按 HTTP 方法注册**
+
+| 注册方法 | HTTP 方法 | 典型用途 |
+|---|---|---|
+| `Get` | GET | 查询资源 |
+| `Post` | POST | 创建资源、表单提交 |
+| `Put` | PUT | 整体更新资源 |
+| `Patch` | PATCH | 局部更新资源 |
+| `Delete` | DELETE | 删除资源 |
+| `Head` | HEAD | 仅获取响应头 |
+| `Options` | OPTIONS | 预检请求、查询支持的方法 |
+| `Connect` | CONNECT | 建立隧道（如代理） |
+| `Trace` | TRACE | 链路回显诊断 |
+
+**特殊方法**
+
+以下两个不是标准 HTTP 方法，而是**替代传输层**：让 WebSocket 连接和进程内调用复用框架的路由与控制器体系。客户端发出的每条消息会被转换为 method=WEBSOCKET（或 CALL）的内部请求，按消息中的 `uri` 走路由分发，响应再按 `rid` 配对送回。
+
+| 注册方法 | 方法名 | 说明 |
+|---|---|---|
+| `WebSocket` | `WEBSOCKET` | 处理经 WebSocket 连接传入的请求（长连接 RPC） |
+| `Call` | `CALL` | 处理进程内调用桥传入的请求（同进程 RPC） |
+
+框架还内置 `PROPFIND`、`REPORT` 两个 WebDAV 方法常量（`server.MethodPropfind` / `server.MethodReport`），没有对应的便捷方法，可用 `Add` 注册。
+
+**通用注册入口**
+
+```go
+// 一次性注册所有支持的方法（含上面的全部方法以及 PROPFIND/REPORT/WEBSOCKET/CALL）
+app.Any(path, handler, middleware...)
+
+// 注册多个指定方法
+app.Match([]string{http.MethodGet, http.MethodPost}, path, handler, middleware...)
+
+// 按方法名注册的底层入口
+app.Add(method, path, handler, middleware...)
+```
+
+注意：`Add` 的 `method` 为大小写敏感的字符串，须使用标准大写形式（如 `http.MethodGet` 即 `"GET"`），小写或非标准名将无法匹配到处理器。
+
+**注册示例**
+
+```go
+// 控制器方法（推荐，见[控制器](#控制器)一章）
+app.Get("/user/profile", server.Controller(controller.UserController{}, "Profile"))
+
+// 直接编写 HandlerFunc
+app.Get("/ping", func(c server.Context) error {
+    return c.Blob(200, server.MIMETextPlainCharsetUTF8, []byte("pong"))
+})
+
+// 带路由级中间件
+app.Get("/connection/:token",
+    server.Controller(controller.CommonController{}, "Connection"),
+    middleware.User, middleware.AuthUser)
+```
+
+同一路径可以为不同方法分别注册处理器（按方法分槽存储，互不冲突）；同一路径同一方法重复注册时，后注册的会覆盖先前的。
+
+### 路径参数
+
+路由路径支持 `:name` 参数和 `*` 通配符，匹配优先级为 **静态 > 参数 > 通配**：
+
+```go
+app.Get("/user/:id", handler)      // 匹配 /user/123，参数通过 c.Param("id") 获取
+app.Get("/assets/*", handler)      // 匹配 /assets/ 下的任意路径，c.Param("*") 获取剩余部分
+```
+
+### 路由组
+
+`Group` 将一组路由挂在统一前缀下，并可附加组级中间件；组支持嵌套，子组自动继承父组的前缀和中间件：
+
+```go
+func InitRouter(app *server.Server) {
+    // 全局中间件（见下一节）
+    app.Use(middleware.RequestID)
+
+    api := app.Group("/api", middleware.Auth)        // 组级中间件对组内全部路由生效
+    rest := api.Group("/rest")                        // 最终前缀 /api/rest
+    rest.Get("/profile", server.Controller(controller.UserController{}))
+
+    audit := rest.Group("audit")                      // 嵌套组，前缀 /api/rest/audit
+    audit.Get("/list", server.Controller(controller.AuditController{}))
+}
+
+// 也可在函数中按组拆分注册逻辑
+func RestRouter(g *server.Group) {
+    g = g.Group("", middleware.User, middleware.AuthUser)
+    g.Get("profile", server.Controller(controller.UserController{}))
 }
 ```
 
-### 控制器方法的定义规则 ###
+### 中间件
 
-控制器的Public类型成员函数用于处理业务逻辑，其入参和出参定义形式必须遵循以下规则。
+中间件类型为 `func(HandlerFunc) HandlerFunc`，按注册位置分为三层，执行顺序为：
 
-- 入参必须有且仅有一个，且此参数必须实现server.Request接口。
-- 返回参数可以有一个或两个，且最后一个返回参数必须时error类型。
-- 当返回仅有1个error类型参数时，如果返回的error为nil框架将不会向HTTP输出任何内容。这可以方便开发者在控制器方法中自行定义HTTP响应的内容。如果返回error不为nil，则根据`framework/exception.go`中定义的格式输出错误信息到HTTP响应。
-- 当返回有2个参数时，如果返回的第二个参数error为nil，则会根据server.HTTPOKHandler中定义的格式，输出第一个参数到HTTP响应。如果返回error不为nil，处理方式与1个参数时相同，直接向HTTP响应输出错误信息。
+```
+Pre → 路由查找 → Use → 路由级中间件 → handler
+```
+
+- `app.Pre(...)`：在**路由查找之前**执行，可修改请求路径等影响路由匹配的行为（如去除 `.json` 后缀）
+- `app.Use(...)`：在**路由查找之后**执行，可使用路由匹配结果（如访问日志、鉴权）
+- 路由级：注册路由时的最后一个可变参数，仅对单个路由生效
+
+```go
+app.Pre(middleware.StripUrlSuffix)     // 路由查找前：去url后缀
+app.Use(middleware.AccessLog)          // 路由查找后：访问日志
+app.Get("/profile", h, middleware.User) // 路由级
+```
+
+已有的 `net/http` 生态组件可通过 `WrapHandler` / `WrapMiddleware` 接入：
+
+```go
+app.Get("/debug/pprof/*", server.WrapHandler(http.DefaultServeMux))
+app.Use(server.WrapMiddleware(someHttpMiddleware))
+```
+
+### 静态文件
+
+```go
+// 将 url 前缀映射到目录：GET /static/* → ./assets/ 目录
+app.Static("/static", "./assets")
+
+// 单个文件
+app.File("/favicon.ico", "./assets/favicon.ico")
+
+// 嵌入资源（embed.FS）
+//go:embed assets
+var assets embed.FS
+app.Get("/assets/*", server.AssetHandler("/assets/", assets, "assets"))
+```
+
+### 其他说明
+
+- `app.Router().GetList()` 返回全部已注册的路由（方法+路径），可用于启动时打印路由表
+- 404 默认由 `server.NotFoundHandler` 处理，可通过 `app.Get("/", server.NotFoundHandler)` 等方式自定义；统一错误/成功响应格式可覆盖 `app.HTTPErrorHandler` / `app.HTTPOKHandler`（见 examples 的 `framework/app.go`）
+- 请求处理过程中的数据传递与响应输出见[上下文Context](#上下文context)一章（待补充）
+
+#### WebSocket 与 Call（事件通道）
+
+`WEBSOCKET` / `CALL` 方法路由与配套的事件机制用于**长连接 RPC** 场景：客户端（WebSocket 连接或进程内调用桥）发送的数据帧 `EventData{rid, uri, header, body}` 会被框架转换成内部请求——`uri` 决定路由、`body` 作为请求体、`rid` 用于请求响应配对——分发到 `app.WebSocket(uri, handler)` / `app.Call(uri, handler)` 注册的处理函数，处理结果按 `rid` 配对联回发送方。
+
+连接侧的典型接入流程：
+
+```go
+// 1. 注册 WebSocket 方法的业务路由（数据帧的 uri 指向这里）
+app.WebSocket("info", server.Controller(controller.InfoController{}))
+
+// 2. 升级连接并挂到事件频道上（在控制器方法中完成）
+func (ctl *CommonController) Connection(req *request.ConnectionRequest) error {
+    conn, err := websocket.Accept(ctl.Ctx.ResponseWriter(), ctl.Ctx.Request(), opts)
+    if err != nil {
+        return err
+    }
+    subject := "market"                                    // 频道名，服务端推送时按它定位
+    event := ctl.Ctx.Event(server.MethodWebSocket, subject)
+    // 阻塞服务该连接：接收数据帧→路由分发→响应回送，连接关闭后返回
+    return event.Serve(ctl.Ctx, ctl.Ctx.RequestID(), server.WebSocketWrapper(ctl.Ctx, conn))
+}
+```
+
+服务端主动推送（如行情下发）按"方法+频道"广播：
+
+```go
+ctx.Event(server.MethodWebSocket, "market").Broadcast(ctx, &server.EventData{
+    URI:  "quote/EURUSD",
+    Body: body,
+})
+```
+
+`Call` 方法同理，但连接来自进程内调用桥 `server.CallWrapper(ctx, callback)`，适合同进程模块间复用路由体系做 RPC。典型应用形态：交易/行情桥接服务接受客户端 WebSocket 订阅，业务请求走 `app.WebSocket(uri, controller)` 复用同一套控制器，服务端通过 `Broadcast` 向频道内的所有连接推送数据。
+
+## 控制器
+
+### 控制器的定义
+
+控制器结构体必须包含类型为 Context 的 Ctx 成员变量。其定义如下所示：
+
+```go
+// UserController 定义一个User控制器
+type UserController struct {
+    Ctx Context
+}
+```
+
+### 控制器方法的定义规则
+
+控制器的 Public 类型成员函数用于处理业务逻辑，其入参和出参定义形式必须遵循以下规则。
+
+- 入参必须有且仅有一个，且此参数必须实现 server.Request 接口。
+- 返回参数可以有一个或两个，且最后一个返回参数必须是 error 类型。
+- 当返回仅有1个 error 类型参数时，如果返回的 error 为 nil，框架将不会向HTTP输出任何内容。这可以方便开发者在控制器方法中自行定义HTTP响应的内容。如果返回 error 不为 nil，则根据 `framework/exception.go` 中定义的格式输出错误信息到HTTP响应。
+- 当返回有2个参数时，如果返回的第二个参数 error 为 nil，则会根据 server.HTTPOKHandler 中定义的格式，输出第一个参数到HTTP响应。如果返回 error 不为 nil，处理方式与1个参数时相同，直接向HTTP响应输出错误信息。
+- 控制器方法执行过程中发生 panic 时，框架会捕获并统一返回 500 错误响应（格式同 error 处理），不会导致连接中断。
 
 ```go
 // 自定义响应内容的控制器方法
-func (c *UserController)Login(request.UserLoginRequest) error {
-    ctl.Ctx.HTMLBlob(200, []byte("<h1>lazygo framework</h1>"))
+func (c *UserController) Login(req request.UserLoginRequest) error {
+    c.Ctx.HTMLBlob(200, []byte("<h1>lazygo framework</h1>"))
     return nil
 }
 
-// 返回一个request.UserProfileResponse结构，框架默认会使用ctx.Succ() 处理返回的*request.UserProfileResponse
-// 也就是会将第一个参数*request.UserProfileResponse 整个放入"data"字段中，并序列化成json。{"data": {"name": "李某人"}}
-func (c *UserController)Profile(request.UserProfileRequest) (*request.UserProfileResponse, error) {
+// 返回一个request.UserProfileResponse结构，框架默认会使用ctx.Succ()处理返回的*request.UserProfileResponse
+// 也就是会将第一个参数*request.UserProfileResponse整个放入"data"字段中，并序列化成json。{"data": {"name": "李某人"}}
+func (c *UserController) Profile(req request.UserProfileRequest) (*request.UserProfileResponse, error) {
     resp := &request.UserProfileResponse{
         Name: "李某人",
     }
     return resp, nil
 }
 
-// 返回一个map结构，返回结果处理方式同上{"data": {"lazygo": "yes"}}
-func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error) {
+// 返回一个map结构，返回结果处理方式同上 {"data": {"lazygo": "yes"}}
+func (c *UserController) ProfileMap(req request.UserProfileRequest) (interface{}, error) {
     resp := map[string]interface{}{
         "lazygo": "yes",
     }
@@ -224,24 +440,24 @@ func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error)
 }
 
 // 返回一个error信息，返回结果类似 {"errno": 400, "msg": "参数错误"}
-// 可在`framework/exception.go`中自行定义返回结果的渲染格式
-func (c *UserController)Profile(request.UserProfileRequest) (interface{}, error) {
+// 可在 framework/exception.go 中自行定义返回结果的渲染格式
+func (c *UserController) ProfileError(req request.UserProfileRequest) (interface{}, error) {
     return nil, server.NewHTTPError(200, 400, "参数错误")
 }
 ```
 
-需要注意的是，框架会默认认为所有Public成员函数都是HTTP请求处理函数，也就是说这些Public类型成员函数都必须遵循上述入参和出参的定义规则。在框架启动时会强制检查该控制器下所有的Public成员函数是否满足此规则。如果有不符合此规则的函数，请定义为开头小写的私有类型。
-例如`(ctl *UserController) Register(req *request.User) (any, error)`和`(ctl *UserController) Login(req *request.User) (any, error)`两个函数内部都会调用发送通知的方法，可将发送通知定义为`(ctl *UserController)sendMsg(uid uint64, msg string)`并在Register和Login中以`ctl.sendMsg(uid, msg)`的形式调用。
+需要注意的是，框架会默认认为所有 Public 成员函数都是HTTP请求处理函数，也就是说这些 Public 类型成员函数都必须遵循上述入参和出参的定义规则。在框架启动时会强制检查该控制器下所有的 Public 成员函数是否满足此规则。如果有不符合此规则的函数，请定义为开头小写的私有类型。
 
-### 注册控制器到HTTP路由 ###
+例如 `(ctl *UserController) Register(req *request.User) (any, error)` 和 `(ctl *UserController) Login(req *request.User) (any, error)` 两个函数内部都会调用发送通知的方法，可将发送通知定义为 `(ctl *UserController) sendMsg(uid uint64, msg string)` 并在 Register 和 Login 中以 `ctl.sendMsg(uid, msg)` 的形式调用。
 
-控制器函数需要注册到路由才能被HTTP请求访问到，注册路由时需要使用`server.Controller`函数 将控制器函数转换为路由中的HandlerFunc。
+### 注册控制器到HTTP路由
 
+控制器函数需要注册到路由才能被HTTP请求访问到，注册路由时需要使用 `server.Controller` 函数将控制器函数转换为路由中的 HandlerFunc。
 
 ```go
 // server.Controller 函数定义如下
 // 参数h为控制器结构体实例
-// method为函数名，若不指定函数名，会自动指定函数名为路由uri最后一个“/”后面的字符串
+// method为函数名，若不指定函数名，会自动指定函数名为路由uri最后一个"/"后面的字符串
 func Controller(h interface{}, methodName ...string) server.HandlerFunc
 ```
 
@@ -255,70 +471,64 @@ app.Post("/user/profile", server.Controller(controller.UserController{}, "UserIn
 app.Post("/user/login", server.Controller(controller.UserController{}))
 ```
 
-### Request 参数绑定和预处理 ###
+### Request 参数绑定和预处理
 
 ```go
 type ToolsUploadRequest struct {
     Category string      `json:"category" bind:"query,form" process:"trim,cut(20)"`
     Tags     []int       `json:"tag" bind:"query,form"`
-    Image    server.File `json:"image"``
+    Image    server.File `json:"image"`
 }
 ```
 
-在框架收到HTTP请求时，请求数据会自动绑定到Request结构体中。绑定需要依赖结构体注解来完成。
+在框架收到HTTP请求时，请求数据会自动绑定到 Request 结构体中。绑定需要依赖结构体注解来完成。
 
-- 对于 `Content-Type`为 `application/json` 的请求，会自动将json数据解析到结构体中。
+- 对于 `Content-Type` 为 `application/json` 的请求，会自动将json数据解析到结构体中。
+- 对于 `Content-Type` 为 `form-data` 类型的请求或GET请求，可通过 `bind` 注解指定绑定的数据来源。例如 `bind:"query,form"` 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
+- bind 支持的类型为：
+  - `value` 或 `ctx` 表示调用 context 中 Value 方法获取数据；
+  - `header` 表示从HTTP Header中获取数据；
+  - `param` 从路由参数中获取数据；
+  - `query` 从URL Query中获取数据；
+  - `form` 从Post Form中获取数据；
+  - `file` 绑定文件数据。
+- 数据类型为切片时，需要提供的参数格式为使用逗号分隔的字符串，或json数组字符串。例如 `?tags=1,2,3` 或 `?tags=[1,2,3]` 都可以绑定到 `[]int` 类型。
+- 绑定支持常用值类型：字符串、各整型/无符号整型、浮点、布尔（`?flag=true`）及其切片；无法解析的值不会覆盖字段默认值。
 
-- 对于 `Content-Type`为 `form-data`类型的请求或GET请求，可通过 `bind` 注解 指定绑定的数据来源。例如 bind:"query,form" 表示优先从url的query参数中获取字段，如果获取不到，则使用form获取。
-
-- bind支持的类型为：
-  
-    `value` 或 `ctx` 表示调用context中Value方法获取数据；
-    `header` 表示从HTTP Header中获取数据；
-    `param`从路由参数中获取数据；
-    `query` 从URL Query中获取数据；
-    `form` 从Post Form中获取数据；
-    `file` 绑定文件数据。
-
-- 数据类型为切片时，需要提供的参数格式为 使用逗号分隔的字符串，或json数组字符串。例如`?tags=1,2,3` 或`?tags=[1,2,3]`都可以绑定到`[]int`类型
-    
 在绑定数据时，会自动通过注解中的预处理器函数，对被绑定的参数进行预处理。多个预处理器之间使用逗号隔开。
 
-`trim` ：剔除字符串两端空字符；
-`tolower` ：字符串转为小写；
-`toupper` ：字符串转为大写；
-`cut(num int)` ：如果utf8字符串字符数量超过num个，则将字符串截断。
+- `trim`：剔除字符串两端空字符；
+- `tolower`：字符串转为小写；
+- `toupper`：字符串转为大写；
+- `cut(num int)`：如果utf8字符串字符数量超过num个，则将字符串截断。
 
+`Request` 需要实现 `func Verify() error` 和 `func Clear()` 两个函数。
 
-`Request`需要实现 `func Verify() error` 和 `func Clear()` 两个函数
-
-- `Verify`函数在参数绑定后执行，用于对请求参数内容进行校验
-
-- `Clear`会在http请求返回响应后执行，用于做一些清理工作
-
+- `Verify` 函数在参数绑定后执行，用于对请求参数内容进行校验。
+- `Clear` 会在http请求返回响应后执行，用于做一些清理工作。
 
 ```go
 func (r *ToolsUploadRequest) Verify() error {
-
-	if slices.Contains(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) == false {
-		return errors.ErrInvalidImageFormat
-	}
-	return nil
+    if !slices.Contains(utils.ImageFormat, path.Ext(r.Image.FileHeader.Filename)) {
+        return errors.ErrInvalidImageFormat
+    }
+    return nil
 }
 
 func (r *ToolsUploadRequest) Clear() {
-	if r.Image.File != nil {
-		r.Image.File.Close()
-	}
+    if r.Image.File != nil {
+        r.Image.File.Close()
+    }
 }
 ```
 
-
-## 中间件
-
 ## 上下文Context
 
+> 该章节文档待补充。
+
 ## 日志
+
+> 该章节文档待补充。
 
 ## 模型
 
@@ -501,8 +711,7 @@ n, err = db.Table("user").Where("id", 1).Decrement("age", 2, map[string]any{"nam
 n, err = db.Table("user").Where("id", 1).Delete()
 ```
 
-防止误操作：`Update` / `UpdateRaw` / `Increment` / `Delete` 必须携带 WHERE 条件，否则返回 `ErrEmptyCond`。
-确实需要全表操作时，请显式传入 `Where("1=1")`。
+防止误操作：`Update` / `UpdateRaw` / `Increment` / `Delete` 必须携带 WHERE 条件，否则返回 `ErrEmptyCond`。确实需要全表操作时，请显式传入 `Where("1=1")`。
 
 **事务**
 
@@ -654,4 +863,110 @@ err := db.Transaction(func(tx *sqldb.Tx) error {
 
 ### 缓存
 
+泛型缓存接口 `Cache[T]`，值统一以 JSON 序列化存储，支持 `memory`（进程内LRU）、`redis`、`memcache` 三种适配器。
+
+#### 初始化
+
+适配器的 `Option` 中，`name` 指向底层已初始化的实例名，`prefix` 为key前缀：
+
+```go
+// memory适配器依赖memory包
+memory.Init([]memory.Config{
+    {Name: "local", Capacity: 10000},
+})
+// redis/memcache适配器依赖对应包的实例
+redis.Init([]redis.Config{
+    {Name: "main", Host: "127.0.0.1", Port: 6379, Password: "123456", Db: 0},
+})
+
+err := cache.Init([]cache.Config{
+    {Name: "default", Adapter: "memory", Option: map[string]string{"name": "local"}},
+    {Name: "session", Adapter: "redis", Option: map[string]string{"name": "main", "prefix": "sess_"}},
+}, "default")
+```
+
+#### 使用
+
+每个命名实例都可以是强类型句柄，`Get`/`Remember` 直接返回类型化数据：
+
+```go
+// 强类型实例
+sess, err := cache.Instance[SessionData]("session")
+
+// 未命中返回 (零值, false, nil)
+data, ok, err := sess.Get("abc")
+
+// 缓存穿透：命中直接返回(hit=true)，未命中调用fn并写入缓存
+data, hit, err := sess.Remember("abc", func() (SessionData, error) {
+    return loadFromDB(), nil
+}, 300)
+
+err = sess.Set("abc", data, 300)  // ttl单位秒
+exists, err := sess.Has("abc")
+results, err := sess.HasMulti("a", "b", "c")  // map[string]bool
+err = sess.Forget("abc")
+
+// 默认实例的包级函数（同样支持泛型）
+user, ok, err := cache.Get[User]("user_1")
+user, hit, err := cache.Remember[User]("user_1", func() (User, error) {
+    return loadUser(), nil
+}, 300)
+err = cache.Set("k", v, 60)
+err = cache.Forget("k")
+```
+
+缓存值支持任意可 JSON 序列化的类型（结构体、切片、map、基本类型）。
+
+### 分布式锁
+
+基于 redis 的分布式锁（`SET NX` + 释放token校验），支持进程内串行、自旋等待与随机抖动。
+
+#### 初始化
+
+```go
+err := locker.Init([]locker.Config{
+    {
+        Name:    "lock",
+        Adapter: "redis",
+        Option:  map[string]string{"name": "lazygo-rds"}, // 指向redis包的实例名
+    },
+}, "lock")
+```
+
+#### 使用
+
+```go
+// 自旋锁：拿不到锁时自旋等待，ctx控制最长等待时间
+// ttl为锁的过期时间（秒），必须大于0，进程崩溃时锁靠ttl自动释放
+rel, err := locker.Lock(ctx, "order:123", 30)
+if err != nil {
+    return err
+}
+defer rel.Release()
+// ... 临界区操作
+
+// 非阻塞尝试
+rel, ok, err := locker.TryLock("order:123", 30)
+if err != nil {
+    return err
+}
+if ok {
+    defer rel.Release()
+}
+
+// 带锁执行（默认实例，泛型版，fn的错误正常透传）
+count, err := locker.LockFunc(ctx, "order:123", 30, func() (int, error) {
+    return doSomething()
+})
+```
+
+说明：
+
+- `Lock` 的 `ctx` 是**获取阶段**的等待/取消语义，获取成功后不再受其过期影响
+- `Release` 无参、幂等，内部使用带3秒超时的独立ctx执行释放，可重复调用
+- 释放使用 Lua 脚本做 token 校验，只删除自己持有的锁，不会误删他人锁
+- 同进程内相同资源串行竞争，避免对 redis 的无效压力
+
 ### 错误处理
+
+> 该章节文档待补充。

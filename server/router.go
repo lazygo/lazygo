@@ -240,8 +240,9 @@ func (r *Router) Find(method, path string, c *context) {
 
 		// Attempt to go back up the tree on no matching prefix or no remaining search
 		if l != pl || search == "" {
-			// Handle special case of trailing slash route with existing any route (see #1526)
-			if path[len(path)-1] == '/' && cn.findChildByKind(akind) != nil {
+			// Handle special case of trailing slash route with existing any route (see #1526, #1741)
+			// 仅当search已耗尽时才考虑尾斜杠特例，部分前缀失配时不应落入any路由
+			if search == "" && path[len(path)-1] == '/' && cn.findChildByKind(akind) != nil {
 				goto Any
 			}
 			if nn == nil { // Issue #1348
@@ -313,8 +314,11 @@ func (r *Router) Find(method, path string, c *context) {
 				pos := strings.IndexByte(ns, '/')
 				if pos == -1 {
 					// If no slash is remaining in search string set param value
-					pvalues[len(cn.pnames)-1] = search
-					break
+					// 仅当中间param节点持有参数名时才写入，避免空pnames导致pvalues[-1]越界（issue #1653）
+					if len(cn.pnames) > 0 {
+						pvalues[len(cn.pnames)-1] = search
+						break
+					}
 				} else if pos > 0 {
 					// Otherwise continue route processing with restored next node
 					cn = nn

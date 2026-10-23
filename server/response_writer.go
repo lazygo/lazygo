@@ -4,7 +4,6 @@ import (
 	"bufio"
 	stdContext "context"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -50,7 +49,6 @@ func (r *ResponseWriter) Before(fn func()) {
 }
 
 // After registers a function which is called just after the response is written.
-// If the `Content-Length` is unknown, none of the after function is executed.
 func (r *ResponseWriter) After(fn func()) {
 	r.afterFuncs = append(r.afterFuncs, fn)
 }
@@ -61,7 +59,6 @@ func (r *ResponseWriter) After(fn func()) {
 // used to send error codes.
 func (r *ResponseWriter) WriteHeader(code int) {
 	if r.Committed {
-		fmt.Println("response already committed")
 		return
 	}
 	for _, fn := range r.beforeFuncs {
@@ -93,9 +90,21 @@ func (r *ResponseWriter) Write(b []byte) (n int, err error) {
 // Flush implements the http.Flusher interface to allow an HTTP handler to flush
 // buffered data to the client.
 func (r *ResponseWriter) Flush() {
+	if !r.Committed {
+		// 先提交状态，避免底层隐式200导致Status/before-after回调状态不一致
+		r.WriteHeader(http.StatusOK)
+	}
 	if flusher, ok := r.Writer.(http.Flusher); ok {
 		flusher.Flush()
 	}
+}
+
+// Unwrap 返回底层http.ResponseWriter，支持http.ResponseController穿透包装
+func (r *ResponseWriter) Unwrap() http.ResponseWriter {
+	if w, ok := r.Writer.(http.ResponseWriter); ok {
+		return w
+	}
+	return nil
 }
 
 // Hijack implements the http.Hijacker interface to allow an HTTP handler to
@@ -129,6 +138,4 @@ func (w *ioWriterResponseWriter) Header() http.Header {
 	return http.Header{}
 }
 
-func (w *ioWriterResponseWriter) WriteHeader(statusCode int) {
-	fmt.Println("Header:", statusCode)
-}
+func (w *ioWriterResponseWriter) WriteHeader(statusCode int) {}

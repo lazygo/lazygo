@@ -229,6 +229,10 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		if rec != nil {
 			fmt.Println("panic:", rec)
 			debug.PrintStack()
+			// panic后若响应尚未提交，通过统一错误处理返回500，避免客户端收到EOF断连
+			if !ctx.ResponseWriter().Committed {
+				s.HTTPErrorHandler(ErrInternalServerError, ctx)
+			}
 		}
 	}()
 	// Execute chain
