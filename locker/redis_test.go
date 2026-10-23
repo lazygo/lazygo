@@ -166,6 +166,30 @@ func TestLockFunc(t *testing.T) {
 	assert.Nil(r.Release())
 }
 
+// Release幂等：重复调用不会死锁，acquire阶段的ctx过期不影响释放
+func TestReleaseIdempotent(t *testing.T) {
+	assert := testify.New(t)
+	setupLocker(t)
+	res := t.Name()
+
+	// acquire阶段使用短超时ctx，业务耗时超过其有效期
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
+	defer cancel()
+	rel, err := Lock(ctx, res, 60)
+	assert.Nil(err)
+	time.Sleep(300 * time.Millisecond)
+
+	// acquire ctx已过期，但Release内部使用独立超时ctx，照常释放
+	assert.Nil(rel.Release())
+	assert.Nil(rel.Release())
+
+	rdb, err := redis.Client("locker_unit_test")
+	assert.Nil(err)
+	exists, err := rdb.Exists(context.Background(), res).Result()
+	assert.Nil(err)
+	assert.Equal(int64(0), exists)
+}
+
 // ttl必须大于0，否则创建出永不过期的锁（崩溃即死锁）
 func TestInvalidTTL(t *testing.T) {
 	assert := testify.New(t)

@@ -78,19 +78,25 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 	token := strconv.FormatUint(randomToken(), 10)
 
 	// 获取锁成功，返回释放锁的方法
-	handleRelease := func() error {
-		defer func() {
-			<-mu
-			r.local.Delete(resource)
-		}()
-		var err error
-		for retry := r.retry; retry > 0; retry-- {
-			err = unlockScript.Run(context.Background(), r.conn, []string{resource}, token).Err()
-			if err == nil {
-				return nil
+	// release内部使用带3s超时的独立ctx：acquire阶段的ctx此时可能已过期，不能复用
+	var releaseOnce sync.Once
+	var releaseErr error
+	release := func() error {
+		releaseOnce.Do(func() {
+			defer func() {
+				<-mu
+				r.local.Delete(resource)
+			}()
+			rctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			for retry := r.retry; retry > 0; retry-- {
+				releaseErr = unlockScript.Run(rctx, r.conn, []string{resource}, token).Err()
+				if releaseErr == nil {
+					return
+				}
 			}
-		}
-		return err
+		})
+		return releaseErr
 	}
 
 	timer := time.NewTimer(0)
@@ -99,7 +105,7 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 	for {
 		select {
 		case <-ctx.Done():
-			_ = handleRelease()
+			_ = release()
 			return nil, ctx.Err()
 		case <-timer.C:
 			timer.Reset(spinInterval())
@@ -110,7 +116,7 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 					retry--
 					continue
 				}
-				_ = handleRelease()
+				_ = release()
 				return nil, err
 			}
 			if !ok {
@@ -118,7 +124,7 @@ func (r *redisAdapter) Lock(ctx context.Context, resource string, ttl uint64) (R
 				runtime.Gosched()
 				continue
 			}
-			return releaseFunc(handleRelease), nil
+			return releaseFunc(release), nil
 		}
 	}
 }
@@ -140,18 +146,24 @@ func (r *redisAdapter) TryLock(resource string, ttl uint64) (Releaser, bool, err
 	}
 
 	// 获取锁成功，返回释放锁的方法
-	handleRelease := func() error {
-		var err error
-		for retry := r.retry; retry > 0; retry-- {
-			err = unlockScript.Run(context.Background(), r.conn, []string{resource}, token).Err()
-			if err == nil {
-				return nil
+	// release内部使用带3s超时的独立ctx，可重复调用（幂等）
+	var releaseOnce sync.Once
+	var releaseErr error
+	release := func() error {
+		releaseOnce.Do(func() {
+			rctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			for retry := r.retry; retry > 0; retry-- {
+				releaseErr = unlockScript.Run(rctx, r.conn, []string{resource}, token).Err()
+				if releaseErr == nil {
+					return
+				}
 			}
-		}
-		return err
+		})
+		return releaseErr
 	}
 
-	return releaseFunc(handleRelease), true, nil
+	return releaseFunc(release), true, nil
 }
 
 // LockFunc 分布式自旋锁执行fn

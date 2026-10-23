@@ -24,7 +24,7 @@ type Locker interface {
 
 	// TryLock 尝试获取锁
 	// resource 资源标识，相同的资源标识会互斥
-	// ttl 生存时间 (秒)，必须大于0
+	// ttl 生存时间 (秒)
 	TryLock(resource string, ttl uint64) (Releaser, bool, error)
 
 	// LockFunc 分布式自旋锁执行fn
@@ -36,6 +36,7 @@ type Locker interface {
 
 type Releaser interface {
 	// Release 释放锁
+	// 内部使用带3s超时的独立ctx执行，可重复调用（幂等）
 	Release() error
 }
 
