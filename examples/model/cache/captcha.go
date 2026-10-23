@@ -18,7 +18,7 @@ var (
 )
 
 type CaptchaCache struct {
-	model.CacheModel
+	model.CacheModel[string]
 	ttl    int64
 	format string
 }
@@ -41,10 +41,6 @@ func (mdl *CaptchaCache) Store(uk string, opname string) (string, error) {
 
 func (mdl *CaptchaCache) Load(uk string, opname string) (string, error) {
 	key := fmt.Sprintf(mdl.format, uk, opname)
-	var code string
-	_, err := mdl.Cache.Get(key, &code)
-	if err != nil {
-		return "", err
-	}
+	code, _, err := mdl.Cache.Get(key)
 	return code, err
 }

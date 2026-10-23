@@ -10,7 +10,7 @@ import (
 )
 
 type AuthUserCache struct {
-	model.CacheModel
+	model.CacheModel[AuthUserData]
 	ttl int64
 }
 
@@ -30,8 +30,7 @@ func NewAuthUserCache(ctx framework.Context) *AuthUserCache {
 func (mdl *AuthUserCache) Get(token string) (*AuthUserData, bool, error) {
 	key := fmt.Sprintf(utils.CacheAuthToken, token)
 
-	var info AuthUserData
-	exists, err := mdl.Cache.Get(key, &info)
+	info, exists, err := mdl.Cache.Get(key)
 	if err != nil {
 		return nil, false, err
 	}

@@ -2,9 +2,6 @@ package cache
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"reflect"
 	"time"
 
 	"github.com/lazygo/lazygo/redis"
@@ -19,7 +16,7 @@ type redisCache struct {
 }
 
 // newRedisCache 初始化redis适配器
-func newRedisCache(opt map[string]string) (Cache, error) {
+func newRedisCache(opt map[string]string) (backend, error) {
 	name, ok := opt["name"]
 	if !ok || name == "" {
 		return nil, ErrInvalidRedisAdapterParams
@@ -36,63 +33,22 @@ func newRedisCache(opt map[string]string) (Cache, error) {
 	return a, err
 }
 
-// Remember 获取缓存，如果没有命中缓存则使用fn实时获取
-func (r *redisCache) Remember(key string, fn func() (any, error), ttl int64, ret any) (bool, error) {
+func (r *redisCache) Get(key string) ([]byte, bool, error) {
 	key = r.prefix + key
 	item, err := r.handler.Get(context.Background(), key).Bytes()
-	if err == nil {
-		err = json.Unmarshal(item, ret)
-		return true, err
+	if err == goredis.Nil {
+		// 未命中
+		return nil, false, nil
 	}
-	if err != goredis.Nil {
-		return false, err
-	}
-
-	// 穿透
-	data, err := fn()
 	if err != nil {
-		return false, err
+		return nil, false, err
 	}
-	rRet := reflect.ValueOf(ret)
-	if rRet.Kind() != reflect.Ptr {
-		return false, errors.New("ret need a pointer")
-	}
-	rRet.Elem().Set(reflect.ValueOf(data))
-
-	value, err := json.Marshal(ret)
-	if err != nil {
-		return false, err
-	}
-	err = r.handler.Set(context.Background(), key, value, time.Duration(ttl)*time.Second).Err()
-
-	return false, err
+	return item, true, nil
 }
 
-func (r *redisCache) Set(key string, val any, ttl int64) error {
+func (r *redisCache) Set(key string, val []byte, ttl int64) error {
 	key = r.prefix + key
-	value, err := json.Marshal(val)
-	if err != nil {
-		return err
-	}
-	err = r.handler.Set(context.Background(), key, value, time.Duration(ttl)*time.Second).Err()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (r *redisCache) Get(key string, ret any) (bool, error) {
-	key = r.prefix + key
-	item, err := r.handler.Get(context.Background(), key).Bytes()
-	if err == nil {
-		err = json.Unmarshal(item, ret)
-		return true, err
-	}
-	if err != goredis.Nil {
-		return false, err
-	}
-
-	return true, nil
+	return r.handler.Set(context.Background(), key, val, time.Duration(ttl)*time.Second).Err()
 }
 
 func (r *redisCache) Has(key string) (bool, error) {

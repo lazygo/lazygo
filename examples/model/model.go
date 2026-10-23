@@ -34,20 +34,16 @@ type BaseResp struct {
 type TxModel[T any] struct {
 	sqldb.TxModel[T]
 }
-type CacheModel struct {
-	cache.Cache
+type CacheModel[T any] struct {
+	cache.Cache[T]
 }
 
-func (m *CacheModel) SetCache(name string) {
-	m.Cache = m.cache(name)
-}
-
-func (m *CacheModel) cache(name string) cache.Cache {
-	instance, err := cache.Instance(name)
+func (m *CacheModel[T]) SetCache(name string) {
+	c, err := cache.Instance[T](name)
 	if err != nil {
 		panic(fmt.Sprintln(name, err))
 	}
-	return instance
+	m.Cache = c
 }
 
 type RedisModel struct {
