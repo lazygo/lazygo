@@ -105,7 +105,7 @@ func (m *TxModel[T]) Tx() *Tx {
 	return m.tx
 }
 
-func (m *TxModel[T]) QueryBuilder() *builder {
+func (m *TxModel[T]) QueryBuilder() *Builder {
 	table := m.table
 	if table == "" {
 		// 没有指定表名
@@ -114,7 +114,7 @@ func (m *TxModel[T]) QueryBuilder() *builder {
 	return m.tx.Table(table)
 }
 
-func (m *TxModel[T]) Table(table string) *builder {
+func (m *TxModel[T]) Table(table string) *Builder {
 	if table == "" {
 		// 没有指定表名
 		panic("没有指定表名")

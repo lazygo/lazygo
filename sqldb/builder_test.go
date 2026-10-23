@@ -63,7 +63,7 @@ func TestWhere(t *testing.T) {
 	// ((a=1 AND b=2) OR c=3) AND d=4
 	// map 遍历顺序随机，以下 8 种排列（2x2x2）均为合法结果，
 	// 校验时必须保证 SQL 与 args 的位置一一对应
-	// QueryString 不改变构建器状态，这里使用新的 builder，避免与上面的用例叠加条件
+	// QueryString 不改变构建器状态，这里使用新的 Builder，避免与上面的用例叠加条件
 	builder2 := newBuilder(nil, "table_name")
 	builder2.Where(map[string]any{
 		string(OR): map[string]any{

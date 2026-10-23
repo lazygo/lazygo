@@ -236,7 +236,7 @@ func TestRegressFirstEmpty(t *testing.T) {
 	assert.Zero(data)
 }
 
-// 写操作后 builder 状态清空
+// 写操作后 Builder 状态清空
 func TestRegressBuilderClear(t *testing.T) {
 	assert := testify.New(t)
 	db := regressDB(t)

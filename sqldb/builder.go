@@ -13,7 +13,7 @@ var (
 )
 
 // 查询构建器
-type builder struct {
+type Builder struct {
 	tx        *Tx
 	table     Table
 	cond      *groupCond // 查询构建器中暂存的条件，用于链式调用。每调用一次Where，此数组追加元素。调用查询或更新方法后，此条件自动清空
@@ -27,8 +27,8 @@ type builder struct {
 }
 
 // newBuilder 实例化查询构建器
-func newBuilder(tx *Tx, table Table) *builder {
-	return &builder{
+func newBuilder(tx *Tx, table Table) *Builder {
+	return &Builder{
 		tx:    tx,
 		table: table,
 		cond:  newGroup(AND),
@@ -51,7 +51,7 @@ func withBefore(tx *Tx, hook func(string, ...any) func()) *Tx {
 // cond map[string]interface{}                map查询条件，同WhereMap
 // field string, value []any                  In查询条件，同WhereIn
 // field string, op string value interface{}  同WhereIn
-func (b *builder) Where(cond ...any) *builder {
+func (b *Builder) Where(cond ...any) *Builder {
 	b.lastError = b.cond.where(cond...)
 	return b
 }
@@ -61,38 +61,38 @@ func (b *builder) Where(cond ...any) *builder {
 // key中包含条件运算符时，例如 Map{"key >=": 1}  会拼接为 `k2` >= 'v2'
 // key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like”
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
-func (b *builder) WhereMap(cond map[string]any) *builder {
+func (b *Builder) WhereMap(cond map[string]any) *Builder {
 	b.cond.whereMap(cond)
 	return b
 }
 
 // WhereRaw 子句查询
-func (b *builder) WhereRaw(cond string, args ...any) *builder {
+func (b *Builder) WhereRaw(cond string, args ...any) *Builder {
 	b.cond.whereRaw(cond, args...)
 	return b
 }
 
 // WhereIn IN查询
-func (b *builder) WhereIn(k string, in []any) *builder {
+func (b *Builder) WhereIn(k string, in []any) *Builder {
 	b.cond.meta(k, "IN", in...)
 	return b
 }
 
 // WhereNotIn NOT IN查询
-func (b *builder) WhereNotIn(k string, in []any) *builder {
+func (b *Builder) WhereNotIn(k string, in []any) *Builder {
 	b.cond.meta(k, "NOT IN", in...)
 	return b
 }
 
 // ClearCond 清空当前where
 // （每次调用Where会向当前查询构建器中暂存条件，用于链式调用）
-func (b *builder) ClearCond() *builder {
+func (b *Builder) ClearCond() *Builder {
 	b.cond.clear()
 	return b
 }
 
 // Clear 清空当前where和Limit、Offset等内容
-func (b *builder) Clear() *builder {
+func (b *Builder) Clear() *Builder {
 	b.ClearCond()
 	b.fields = nil
 	b.groupBy = []string{}
@@ -104,19 +104,19 @@ func (b *builder) Clear() *builder {
 	return b
 }
 
-func (b *builder) GroupBy(ks ...string) *builder {
+func (b *Builder) GroupBy(ks ...string) *Builder {
 	for _, k := range ks {
 		b.groupBy = append(b.groupBy, buildK(k))
 	}
 	return b
 }
 
-func (b *builder) OrderByRand() *builder {
+func (b *Builder) OrderByRand() *Builder {
 	b.orderBy = append(b.orderBy, "RAND()")
 	return b
 }
 
-func (b *builder) OrderBy(k string, direct string) *builder {
+func (b *Builder) OrderBy(k string, direct string) *Builder {
 	direct = strings.ToUpper(direct)
 	if direct != "ASC" && direct != "DESC" {
 		// params error
@@ -127,24 +127,24 @@ func (b *builder) OrderBy(k string, direct string) *builder {
 	return b
 }
 
-func (b *builder) Offset(offset int64) *builder {
+func (b *Builder) Offset(offset int64) *Builder {
 	b.offset = offset
 	return b
 }
 
-func (b *builder) Limit(limit int64) *builder {
+func (b *Builder) Limit(limit int64) *Builder {
 	b.limit = limit
 	return b
 }
 
-func (b *builder) Select(fields ...string) *builder {
+func (b *Builder) Select(fields ...string) *Builder {
 	slices.Sort(fields)
 	b.fields = fields
 	return b
 }
 
 // BeforeHook sql执行前hook，仅对下一次查询或更新操作生效
-func (b *builder) BeforeHook(h func(string, ...any) func()) *builder {
+func (b *Builder) BeforeHook(h func(string, ...any) func()) *Builder {
 	if h == nil {
 		return b
 	}
@@ -155,7 +155,7 @@ func (b *builder) BeforeHook(h func(string, ...any) func()) *builder {
 // buildCond 构建条件
 // 把cond用 AND 连接起来
 // 仅拼接字符串，不改变查询构建器中暂存的条件，状态由调用方负责清理
-func (b *builder) buildCond() (string, []any) {
+func (b *Builder) buildCond() (string, []any) {
 	result := b.cond.String()
 	args := b.cond.Args()
 	return strings.TrimSpace(result), args
@@ -164,7 +164,7 @@ func (b *builder) buildCond() (string, []any) {
 // QueryString 拼接查询语句字符串
 // 仅拼接字符串，不改变查询构建器中暂存的条件和Limit、Offset等内容
 // 状态由查询或更新方法（Find/First/One/Update等）在执行后自动清空
-func (b *builder) QueryString() (string, []any, error) {
+func (b *Builder) QueryString() (string, []any, error) {
 	if b.table == "" {
 		return "", nil, ErrEmptyTableName
 	}
@@ -198,7 +198,7 @@ func (b *builder) QueryString() (string, []any, error) {
 }
 
 // Count 查询统计个数
-func (b *builder) Count() (int64, error) {
+func (b *Builder) Count() (int64, error) {
 	if b.table == "" {
 		return 0, ErrEmptyTableName
 	}
@@ -213,7 +213,7 @@ func (b *builder) Count() (int64, error) {
 
 // Find 查询并返回多条记录
 // field string 返回的字段 示例："*"
-func (b *builder) Find[T any]() ([]T, int, error) {
+func (b *Builder) Find[T any]() ([]T, int, error) {
 	defer b.Clear()
 
 	queryString, args, err := b.QueryString()
@@ -226,7 +226,7 @@ func (b *builder) Find[T any]() ([]T, int, error) {
 
 // First 查询并返回单条记录
 // field string 返回的字段 示例："*"
-func (b *builder) First[T any]() (T, int, error) {
+func (b *Builder) First[T any]() (T, int, error) {
 	defer b.Clear()
 
 	queryString, args, err := b.Limit(1).QueryString()
@@ -239,7 +239,7 @@ func (b *builder) First[T any]() (T, int, error) {
 }
 
 // Exists 判读记录是否存在
-func (b *builder) Exists() (bool, error) {
+func (b *Builder) Exists() (bool, error) {
 	_, err := b.One("(0) AS _row")
 	if err != nil {
 		if errors.Is(err, ErrNoData) {
@@ -252,7 +252,7 @@ func (b *builder) Exists() (bool, error) {
 
 // One 查询并返回单个字段
 // field string 返回的字段 示例："name"、"count(*) AS count"
-func (b *builder) One(field string) (string, error) {
+func (b *Builder) One(field string) (string, error) {
 	defer b.Clear()
 
 	queryString, args, err := b.Limit(1).Select(field).QueryString()
@@ -273,7 +273,7 @@ func (b *builder) One(field string) (string, error) {
 // Insert 单条插入
 // set map[string]interface{} 插入的数据
 // 返回插入的id，错误信息
-func (b *builder) Insert(set map[string]any) (int64, error) {
+func (b *Builder) Insert(set map[string]any) (int64, error) {
 	defer b.Clear()
 
 	if b.table == "" {
@@ -313,7 +313,7 @@ func (b *builder) Insert(set map[string]any) (int64, error) {
 // set map[string]interface{} 更新的字段
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
-func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
+func (b *Builder) Update(set map[string]any, limit ...int) (int64, error) {
 	defer b.Clear()
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
@@ -363,7 +363,7 @@ func (b *builder) Update(set map[string]any, limit ...int) (int64, error) {
 // set map[string]interface{} 更新的字段
 // limit （可选参数）限制更新limit
 // 返回影响的条数，错误信息
-func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
+func (b *Builder) UpdateRaw(set string, limit ...int) (int64, error) {
 	defer b.Clear()
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
@@ -413,7 +413,7 @@ func (b *builder) UpdateRaw(set string, limit ...int) (int64, error) {
 // amount int 自增的数量
 // set map[string]interface{} （可选参数）自增同时update的字段
 // 返回影响的条数，错误信息
-func (b *builder) Increment(column string, amount int64, set ...map[string]any) (int64, error) {
+func (b *Builder) Increment(column string, amount int64, set ...map[string]any) (int64, error) {
 	defer b.Clear()
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond
@@ -474,12 +474,12 @@ func (b *builder) Increment(column string, amount int64, set ...map[string]any) 
 // amount int 自减的数量
 // set map[string]interface{} （可选参数）自减同时update的字段
 // 返回影响的条数，错误信息
-func (b *builder) Decrement(column string, amount int64, set ...map[string]any) (int64, error) {
+func (b *Builder) Decrement(column string, amount int64, set ...map[string]any) (int64, error) {
 	return b.Increment(column, -amount, set...)
 }
 
 // Delete 删除
-func (b *builder) Delete(limit ...int) (int64, error) {
+func (b *Builder) Delete(limit ...int) (int64, error) {
 	defer b.Clear()
 
 	// 构建where条件，先构建where条件，防止执行不到ClearCond

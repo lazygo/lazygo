@@ -25,7 +25,7 @@ type invoker interface {
 }
 
 // Table 获取查询构建器
-func (d *Tx) Table(table string) *builder {
+func (d *Tx) Table(table string) *Builder {
 	return newBuilder(d, Table(table))
 }
 
