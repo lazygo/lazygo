@@ -607,7 +607,7 @@ db.Table("user").
     Where("id", []int{1, 2, 3}).            // 值为任意类型切片：IN查询，生成 `id` IN(?, ?, ?)
 
     // —— 3个参数 ——
-    Where("age", ">", 18).                  // 指定运算符：运算符原样拼入，如 > >= < <= != like 等
+    Where("age", ">", 18).                  // 指定运算符：运算符原样拼入，如 > >= < <= != like contains 等
     Where("deleted_at", "=", nil).          // 值为nil：= 生成 IS NULL，!= 生成 IS NOT NULL
     Where("status", "in", []any{1, 2}).     // 运算符 in / not in（不区分大小写）：IN / NOT IN 查询，
                                             // 值为非切片时按单元素IN处理
@@ -625,7 +625,7 @@ ClearCond()                                 // 手动清空已暂存的条件
 **WhereMap 规则**
 
 - key 不含空格时按等于处理；值为 nil 生成 `IS NULL`，值为切片生成 IN 查询
-- key 含空格时按空格拆分为 `字段 运算符`，运算符支持 `>` `>=` `<` `<=` `!=` `in` `not in` `like`
+- key 含空格时按空格拆分为 `字段 运算符`，运算符支持 `>` `>=` `<` `<=` `!=` `in` `not in` `like` `contains`（模糊匹配语义见下文“模糊匹配”一节）
 - 值为 map 时，以该 key（AND/OR）为关系符嵌套条件分组：
 
 ```go
@@ -638,6 +638,24 @@ db.Table("user").Where(map[string]any{
     "status": 1,
 })
 ```
+
+**模糊匹配（like / contains）**
+
+- `like`：模式**原样**绑定为参数，由调用方自行处理 `%` 包裹与通配符转义，可表达前缀（`kw%`）、后缀（`%kw`）、多段等任意模式：
+
+```go
+cond["name like"] = sqldb.LikePattern(kw) // 安全模糊匹配：转义 %、_、\ 后包裹为 %kw%
+cond["name like"] = "prefix%"             // 前缀匹配（自行构造模式）
+```
+
+- `contains`：固定"包含匹配"语义，生成 `LIKE ?`，参数自动经 `LikePattern` 转义并包裹为 `%kw%`。关键字中的 `%`、`_`、`\` 按字面量匹配，不会意外改变匹配行为：
+
+```go
+db.Table("user").Where("name", "contains", kw) // `name` LIKE ?，参数为转义后的 %kw%
+cond["title contains"] = kw                    // WhereMap 形式，效果相同
+```
+
+`LikePattern` 的转义符为反斜杠，兼容 MySQL / PostgreSQL / SQLite 的默认 LIKE 语义；如需原生转义符行为（如开启 `NO_BACKSLASH_ESCAPES` 的 MySQL），请使用 `WhereRaw` 自行处理。
 
 **排序、分组与分页**
 

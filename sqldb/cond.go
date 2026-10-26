@@ -30,17 +30,22 @@ type metaCond struct {
 func (c *metaCond) String() string {
 	if len(c.args) == 0 {
 		// IN空集恒假，NOT IN空集恒真，IS / IS NOT 判空
-		if strings.Contains(strings.ToUpper(c.op), "IN") {
-			if strings.HasPrefix(strings.ToUpper(strings.TrimSpace(c.op)), "NOT") {
+		op := strings.ToUpper(strings.TrimSpace(c.op))
+		if strings.Contains(op, "IN") && op != "CONTAINS" {
+			if strings.HasPrefix(op, "NOT") {
 				return "1=1"
 			}
 			return "1=0"
 		}
-		op := strings.ToUpper(strings.TrimSpace(c.op))
 		if op == "" || op == "IS" {
 			return fmt.Sprintf("%s IS NULL", buildK(c.key))
 		}
 		return fmt.Sprintf("%s %s NULL", buildK(c.key), op)
+	}
+	// contains: 模糊包含匹配，参数在 Args() 中经 LikePattern 转义包裹
+	// 注意必须先于 IN 分支判断，否则 "CONTAINS" 会被 Contains(..., "IN") 误判为 IN 列表
+	if strings.EqualFold(strings.TrimSpace(c.op), "contains") {
+		return buildK(c.key) + " LIKE ?"
 	}
 	if strings.Contains(strings.ToUpper(c.op), "IN") {
 		arr := make([]string, 0, len(c.args))
@@ -53,6 +58,11 @@ func (c *metaCond) String() string {
 }
 
 func (c *metaCond) Args() []any {
+	if len(c.args) == 1 && strings.EqualFold(strings.TrimSpace(c.op), "contains") {
+		if keyword, ok := c.args[0].(string); ok {
+			return []any{LikePattern(keyword)}
+		}
+	}
 	return c.args
 }
 

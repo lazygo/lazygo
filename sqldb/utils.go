@@ -119,3 +119,15 @@ func buildQuery(params map[string]string) string {
 	}
 	return query.Encode()
 }
+
+// LikePattern 将关键字转义并包裹为 LIKE 模糊匹配模式 %kw%。
+// 转义 %、_ 和 \（转义符为反斜杠，兼容 MySQL / PostgreSQL / SQLite 的默认 LIKE 语义），
+// 避免关键字中的通配符改变匹配行为。一般配合 "field like" 条件使用：
+//
+//	cond["name like"] = sqldb.LikePattern(keyword)
+func LikePattern(keyword string) string {
+	keyword = strings.ReplaceAll(keyword, `\`, `\\`)
+	keyword = strings.ReplaceAll(keyword, `%`, `\%`)
+	keyword = strings.ReplaceAll(keyword, `_`, `\_`)
+	return `%` + keyword + `%`
+}

@@ -59,7 +59,8 @@ func (b *Builder) Where(cond ...any) *Builder {
 // WhereMap Map查询
 // key中不包含运算符时，会自动将map拼接为`k1`='v2' AND `k2`='v2' 的形式
 // key中包含条件运算符时，例如 Map{"key >=": 1}  会拼接为 `k2` >= 'v2'
-// key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like”
+// key中的运算符应与key名之间使用空格隔开，可用的运算符包括 “>” “>=” “<” “<=” “!=” “in” “not in” “like” “contains”
+// “contains” 为模糊包含匹配（生成 LIKE ?，参数自动经 LikePattern 转义包裹为 %kw%）；“like” 原样使用传入的值，需自行处理通配符
 // map的某个key对应的值为任意类型切片时，会将此key及其对应的切片转换为IN查询条件
 func (b *Builder) WhereMap(cond map[string]any) *Builder {
 	b.cond.whereMap(cond)
