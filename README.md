@@ -28,6 +28,7 @@ lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（M
   - [缓存](#缓存)
   - [分布式锁](#分布式锁)
   - [错误处理](#错误处理)
+- [动态库（c-shared）示例](#动态库c-shared示例)
 
 ## 快速开始
 
@@ -988,3 +989,16 @@ count, err := locker.LockFunc(ctx, "order:123", 30, func() (int, error) {
 ### 错误处理
 
 > 该章节文档待补充。
+
+## 动态库（c-shared）示例
+
+lazygo 搭建的服务可编译为 C 共享库（`-buildmode=c-shared`），供 C 程序、脚本引擎（如 MQL）等
+宿主加载：库内置的 HTTP/WS 服务器跑在 Go 自己的 goroutine 上，宿主通过
+`Init`/`EventLoop`/`AsyncSend`/`Request` 四个 C API 与库双向交互；每个请求经三种
+**投递模式**之一线程安全地交给宿主执行——函数指针回调（纯 C 宿主）、Windows 窗口消息
+（GUI 宿主）、事件队列轮询（脚本/服务宿主，推荐）——ABI 支持宽字符（`wchar_t`）与
+窄字符（`char`，UTF-8）两种构建，随 `UNICODE` 开关切换。
+
+完整实例见 [examples/dylib](examples/dylib)：包含宿主 API 说明、三平台构建命令
+（macOS/Windows 交叉编译/Linux）、以及 C 测试（EVENT_LOOP / CALLBACK 双模式、
+HTTP→库→宿主→HTTP 全链路回环）。
