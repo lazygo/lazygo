@@ -40,7 +40,8 @@ lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（M
 # 安装lazygo
 go install github.com/lazygo/lazygo@latest
 
-# 创建项目 lazygo create 包名 目录名
+# 创建项目 lazygo create 包名 目录名 [execute|dylib]
+# execute（默认）：完整的HTTP服务应用；dylib：编译为C动态库的项目
 lazygo create github.com/lazygo/myproject myproject
 cd myproject
 
@@ -61,7 +62,7 @@ go install github.com/lazygo/lazygo@latest
 mkdir myproject
 cd myproject
 
-# 初始化项目 lazygo init 包名
+# 初始化项目 lazygo init 包名 [execute|dylib]
 lazygo init github.com/lazygo/myproject
 
 # 运行
@@ -73,7 +74,11 @@ make build
 
 ### 项目文件目录结构
 
-项目初始化后，将会自动创建下列文件目录结构。
+项目初始化后，将会自动创建下列文件目录结构（execute 模式）。
+
+> 以 `dylib` 模式创建时只生成 C 动态库相关文件（main.go、bridge.go、server.go、
+> main.h/main.c、hostbridge.h、tests/），不含下列应用目录，详见
+> [动态库（c-shared）示例](#动态库c-shared示例)。
 
 ```text
 .
@@ -997,7 +1002,8 @@ lazygo 搭建的服务可编译为 C 共享库（`-buildmode=c-shared`），供 
 `Init`/`EventLoop`/`AsyncSend`/`Request` 四个 C API 与库双向交互；每个请求经三种
 **投递模式**之一线程安全地交给宿主执行——函数指针回调（纯 C 宿主）、Windows 窗口消息
 （GUI 宿主）、事件队列轮询（脚本/服务宿主，推荐）——ABI 支持宽字符（`wchar_t`）与
-窄字符（`char`，UTF-8）两种构建，随 `UNICODE` 开关切换。代码位于 [examples/dylib](examples/dylib)。
+窄字符（`char`，UTF-8）两种构建，随 `UNICODE` 开关切换。代码位于 [examples/dylib](examples/dylib)，
+也可通过 `lazygo create 包名 目录名 dylib` 直接创建 dylib 项目。
 
 ### 宿主 API（hostbridge.h）
 

@@ -13,25 +13,34 @@ import (
 //go:embed examples
 var project embed.FS
 
+// 项目模板模式
+const (
+	modeExecute = "execute"
+	modeDylib   = "dylib"
+)
+
 func main() {
 
 	if len(os.Args) < 2 {
-		fmt.Printf("lazygo [create|init] PackageName [ProjectName]\n")
+		fmt.Printf("lazygo [create|init] PackageName [ProjectName] [execute|dylib]\n")
 		return
 	}
 
 	var packageName string
 	var projectName string
+	var mode string
 
 	op := strings.ToLower(os.Args[1])
+	args := os.Args[2:]
 	switch op {
 	case "create":
-		if len(os.Args) < 4 {
-			fmt.Printf("lazygo create PackageName ProjectName\n")
+		if len(args) < 2 {
+			fmt.Printf("lazygo create PackageName ProjectName [execute|dylib]\n")
 			return
 		}
-		packageName = os.Args[2]
-		projectName = os.Args[3]
+		packageName = args[0]
+		projectName = args[1]
+		args = args[2:]
 
 		_, err := os.Stat(projectName)
 		if !os.IsNotExist(err) {
@@ -45,27 +54,38 @@ func main() {
 		}
 
 	case "init":
-		if len(os.Args) < 3 {
-			fmt.Printf("lazygo create PackageName ProjectName\n")
+		if len(args) < 1 {
+			fmt.Printf("lazygo init PackageName [execute|dylib]\n")
 			return
 		}
-		packageName = os.Args[2]
+		packageName = args[0]
+		projectName = "."
+		args = args[1:]
 		empty, err := DirIsEmpty(".")
 		if err != nil {
-
+			fmt.Printf("检查目录失败: %v\n", err)
+			return
 		}
 		if !empty {
 			fmt.Printf("current dir not empty\n")
 			return
 		}
 	default:
-		fmt.Printf("lazygo create|init PackageName [ProjectName]\n")
+		fmt.Printf("lazygo create|init PackageName [ProjectName] [execute|dylib]\n")
 		return
 	}
 
-	if projectName == "" {
-		fmt.Printf("lazygo create|init PackageName [ProjectName]\n")
-		return
+	mode = modeExecute
+	if len(args) > 0 {
+		switch strings.ToLower(args[0]) {
+		case modeExecute, "exe":
+			mode = modeExecute
+		case modeDylib:
+			mode = modeDylib
+		default:
+			fmt.Printf("未知模式 %s，可选 execute（默认）/ dylib\n", args[0])
+			return
+		}
 	}
 
 	project, err := fs.Sub(project, "examples")
@@ -73,10 +93,44 @@ func main() {
 		panic(err) // unexpected or a typo
 	}
 	fs.WalkDir(project, ".", func(path string, d fs.DirEntry, err error) error {
-		if path == "." || path == ".." {
+		if err != nil {
+			return err
+		}
+		if path == "." {
 			return nil
 		}
-		projectPath := filepath.Join(projectName, path)
+
+		// 按模式过滤模板子树：execute 释放完整应用（跳过dylib），dylib 只释放dylib目录且铺平到项目根
+		rel := path
+		switch mode {
+		case modeDylib:
+			if path == "dylib" {
+				return nil
+			}
+			if !strings.HasPrefix(path, "dylib/") {
+				if d.IsDir() {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			rel = strings.TrimPrefix(path, "dylib/")
+		case modeExecute:
+			if path == "dylib" || strings.HasPrefix(path, "dylib/") {
+				if d.IsDir() && path == "dylib" {
+					return fs.SkipDir
+				}
+				return nil
+			}
+			// 可执行入口位于exe目录，释放到项目根
+			if path == "exe" {
+				return nil
+			}
+			if strings.HasPrefix(path, "exe/") {
+				rel = strings.TrimPrefix(path, "exe/")
+			}
+		}
+
+		projectPath := filepath.Join(projectName, rel)
 		if strings.HasSuffix(projectPath, "go.mod_") || strings.HasSuffix(projectPath, "go.sum_") {
 			projectPath = strings.TrimRight(projectPath, "_")
 		}
@@ -104,6 +158,8 @@ func main() {
 		}
 		return nil
 	})
+
+	fmt.Printf("项目创建完成（模式: %s）\n", mode)
 }
 
 func DirIsEmpty(name string) (bool, error) {
