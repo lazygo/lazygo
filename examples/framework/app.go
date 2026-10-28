@@ -1,7 +1,9 @@
 package framework
 
 import (
+	"io"
 	"log"
+	"os"
 	"sync"
 
 	"github.com/lazygo/lazygo/server"
@@ -30,7 +32,13 @@ func Server() *server.Server {
 			return ctx.Succ(data)
 		})
 
-		httpServer.Logger = log.New(ErrorLog, "", log.LstdFlags&log.Llongfile)
+		// 未经过 lazygo config 初始化日志的场景（如 agent）退化为 stderr，
+		// 否则 nil writer 会在 server 首次输出日志时 panic
+		var w io.Writer = os.Stderr
+		if ErrorLog != nil {
+			w = ErrorLog
+		}
+		httpServer.Logger = log.New(w, "", log.LstdFlags|log.Llongfile)
 	})
 	return httpServer
 }
