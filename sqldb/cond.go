@@ -2,6 +2,7 @@ package sqldb
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 )
 
@@ -179,11 +180,40 @@ func (g *groupCond) where(cond ...any) error {
 }
 
 func (g *groupCond) meta(key string, op string, args ...any) {
+	// IN/NOT IN 列表去重（保持首次出现顺序）。重复值在 SQL 语义上等价，
+	// 去重仅使查询更紧凑。判断条件与 metaCond.String 的 IN 分支保持一致：
+	// "CONTAINS" 包含子串 "IN"，必须先排除
+	op = strings.TrimSpace(op)
+	if strings.Contains(strings.ToUpper(op), "IN") && !strings.EqualFold(op, "contains") {
+		args = dedupINArgs(args)
+	}
 	g.cond = append(g.cond, &metaCond{
 		key:  key,
 		op:   op,
 		args: args,
 	})
+}
+
+// dedupINArgs 对 IN/NOT IN 参数去重，保持首次出现顺序。
+// 不可比较的元素（少见）原样保留
+func dedupINArgs(args []any) []any {
+	if len(args) < 2 {
+		return args
+	}
+	seen := make(map[any]struct{}, len(args))
+	out := make([]any, 0, len(args))
+	for _, a := range args {
+		if t := reflect.TypeOf(a); t != nil && !t.Comparable() {
+			out = append(out, a)
+			continue
+		}
+		if _, ok := seen[a]; ok {
+			continue
+		}
+		seen[a] = struct{}{}
+		out = append(out, a)
+	}
+	return out
 }
 
 func (g *groupCond) whereMap(cond map[string]any) {
