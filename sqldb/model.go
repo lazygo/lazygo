@@ -142,7 +142,7 @@ func defaultFields[T any](fields []string) []string {
 
 // starField 判断字段串是否为星号通配（容忍首尾空白与反引号包裹，如 " * "、"`*`"）
 func starField(field string) bool {
-	return strings.Trim(strings.TrimSpace(field), "`") == "*"
+	return strings.Trim(field, "` \n\t") == "*"
 }
 
 func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (T, int, error) {
