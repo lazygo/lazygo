@@ -5,30 +5,30 @@ go 1.27
 require (
 	github.com/ArtisanCloud/PowerLibs/v3 v3.3.2
 	github.com/BurntSushi/toml v1.6.0
-	github.com/andybalholm/brotli v1.2.5
+	github.com/andybalholm/brotli v1.2.7
 	github.com/bradfitz/gomemcache v0.0.0-20260422231931-4d751bb6e37c
 	github.com/coder/websocket v1.8.15
 	github.com/go-sql-driver/mysql v1.10.1
-	github.com/klauspost/compress v1.20.1
-	github.com/lazygo/pkg v0.0.0-20261021091032-e914bd599a12
+	github.com/klauspost/compress v1.20.3
+	github.com/lazygo/pkg v0.0.0-20261102143649-e6d5f270cce9
 	github.com/mattn/go-sqlite3 v1.14.52
 	github.com/patrickmn/go-cache v2.1.0+incompatible
-	github.com/redis/go-redis/v9 v9.22.0
-	github.com/shirou/gopsutil/v4 v4.26.9
+	github.com/redis/go-redis/v9 v9.23.0
+	github.com/shirou/gopsutil/v4 v4.26.10
 	github.com/stretchr/testify v1.12.1
 	go4.org/netipx v0.0.0-20260823151212-3075585bcbeb
-	golang.org/x/crypto v0.57.0
+	golang.org/x/crypto v0.58.0
 )
 
 require (
 	filippo.io/edwards25519 v1.2.0 // indirect
-	github.com/ArtisanCloud/PowerSocialite/v3 v3.0.11 // indirect
-	github.com/ArtisanCloud/PowerWeChat/v3 v3.4.57 // indirect
+	github.com/ArtisanCloud/PowerSocialite/v3 v3.0.12 // indirect
+	github.com/ArtisanCloud/PowerWeChat/v3 v3.4.58 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/clbanning/mxj v1.8.4 // indirect
 	github.com/clbanning/mxj/v2 v2.7.0 // indirect
 	github.com/cristalhq/jwt/v5 v5.4.0 // indirect
-	github.com/ebitengine/purego v0.11.1 // indirect
+	github.com/ebitengine/purego v0.11.2 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
 	github.com/google/go-querystring v1.2.0 // indirect
 	github.com/lufia/plan9stats v0.0.0-20260216142805-b3301c5f2a88 // indirect
@@ -37,20 +37,20 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.196 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.205 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.3.172 // indirect
-	github.com/tencentyun/cos-go-sdk-v5 v0.7.75 // indirect
+	github.com/tencentyun/cos-go-sdk-v5 v0.7.76 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
 	github.com/tklauser/numcpus v0.12.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.opentelemetry.io/otel v1.4.0 // indirect
 	go.opentelemetry.io/otel/trace v1.4.0 // indirect
-	go.uber.org/atomic v1.11.0 // indirect
+	go.uber.org/atomic v1.12.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
 	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
-	golang.org/x/sys v0.48.0 // indirect
+	golang.org/x/sys v0.49.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
