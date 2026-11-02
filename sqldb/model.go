@@ -125,9 +125,9 @@ func (m *TxModel[T]) Table(table string) *Builder {
 // defaultFields 查询未显式指定字段时，默认取模型类型的全部字段
 // （JOIN 模型带 E./F. 前缀别名）。否则 SELECT * 的列名无法映射到带前缀的结构体，
 // 会静默返回 n>0 但字段全零的数据（此类错误无报错、极难排查）。
-// 显式传入的 "*" 与未指定同义，一并展开为模型字段
+// 显式传入的 "*" 与未指定同义（容忍首尾空白与反引号包裹），一并展开为模型字段
 func defaultFields[T any](fields []string) []string {
-	if len(fields) == 1 && strings.Trim(fields[0], "`") == "*" {
+	if len(fields) == 1 && starField(fields[0]) {
 		fields = nil
 	}
 	if len(fields) > 0 {
@@ -138,6 +138,11 @@ func defaultFields[T any](fields []string) []string {
 		return list
 	}
 	return fields
+}
+
+// starField 判断字段串是否为星号通配（容忍首尾空白与反引号包裹，如 " * "、"`*`"）
+func starField(field string) bool {
+	return strings.Trim(strings.TrimSpace(field), "`") == "*"
 }
 
 func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (T, int, error) {

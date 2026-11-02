@@ -120,6 +120,13 @@ func TestJoinModelFirstDefaultFields(t *testing.T) {
 	assert.Equal(2, star.Status)
 	assert.Equal("demo-entry", star.Entry)
 
+	// 带首尾空白的 "*" 变体同样展开
+	spaced, n, err := mdl.First(cond, " * ")
+	assert.Nil(err)
+	assert.Equal(1, n)
+	assert.Equal(2, spaced.Status)
+	assert.Equal("demo-entry", spaced.Entry)
+
 	// Find 同路径
 	list, n, err := mdl.Find(cond)
 	assert.Nil(err)
@@ -149,9 +156,11 @@ func TestDefaultFields(t *testing.T) {
 	explicit := []string{"`O`.`id`"}
 	assert.Equal(explicit, defaultFields[OrderWithUser](explicit))
 
-	// 显式 "*"（含反引号包裹）与未指定同义，展开为模型字段
-	assert.Contains(defaultFields[OrderWithUser]([]string{"*"}), "`O`.`name` AS `O.name`")
-	assert.Contains(defaultFields[OrderWithUser]([]string{"`*`"}), "`U`.`uid` AS `U.uid`")
+	// 显式 "*"（含空白/反引号干扰变体）与未指定同义，展开为模型字段
+	starVariants := []string{"*", "* ", " *", " * ", "`*`", " `*` ", "\t*\n", "  `*`\t"}
+	for _, star := range starVariants {
+		assert.Contains(defaultFields[OrderWithUser]([]string{star}), "`O`.`name` AS `O.name`", "star variant %q", star)
+	}
 
 	// 非结构体类型回退默认行为（fields 保持为空 → 上层按 * 处理）
 	assert.Nil(defaultFields[int](nil))
