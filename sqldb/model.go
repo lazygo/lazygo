@@ -122,8 +122,22 @@ func (m *TxModel[T]) Table(table string) *Builder {
 	return m.tx.Table(table)
 }
 
+// defaultFields 查询未显式指定字段时，默认取模型类型的全部字段
+// （JOIN 模型带 E./F. 前缀别名）。否则 SELECT * 的列名无法映射到带前缀的结构体，
+// 会静默返回 n>0 但字段全零的数据（此类错误无报错、极难排查）
+func defaultFields[T any](fields []string) []string {
+	if len(fields) > 0 {
+		return fields
+	}
+	var t T
+	if list := StructFields(t); len(list) > 0 {
+		return list
+	}
+	return fields
+}
+
 func (mdl *TxModel[T]) First(cond map[string]any, fields ...string) (T, int, error) {
-	return mdl.QueryBuilder().Where(cond).Select(fields...).First[T]()
+	return mdl.QueryBuilder().Where(cond).Select(defaultFields[T](fields)...).First[T]()
 }
 
 func (mdl *TxModel[T]) Exists(cond map[string]any) (bool, error) {
@@ -135,7 +149,7 @@ func (mdl *TxModel[T]) Count(cond map[string]any) (int64, error) {
 }
 
 func (mdl *TxModel[T]) Find(cond map[string]any, fields ...string) ([]T, int, error) {
-	return mdl.QueryBuilder().Where(cond).Select(fields...).Find[T]()
+	return mdl.QueryBuilder().Where(cond).Select(defaultFields[T](fields)...).Find[T]()
 }
 
 func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, groupby []string, fields ...string) (*PaginatorResponse[T], int, error) {
@@ -162,6 +176,9 @@ func (mdl *TxModel[T]) Paginator(cond map[string]any, req *PaginatorRequest, gro
 			// 分组查询时不允许SELECT *（ONLY_FULL_GROUP_BY），默认查询分组字段
 			fields = groupby
 		}
+	}
+	if len(fields) == 0 {
+		fields = defaultFields[T](nil)
 	}
 	list, n, err := builder.
 		Offset(int64(req.Size * max((req.Page-1), 0))).
