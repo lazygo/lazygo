@@ -10,7 +10,7 @@ require (
 	github.com/coder/websocket v1.8.15
 	github.com/go-sql-driver/mysql v1.10.1
 	github.com/klauspost/compress v1.20.4
-	github.com/lazygo/pkg v0.0.0-20261102143649-e6d5f270cce9
+	github.com/lazygo/pkg v0.0.0-20261111172744-b63975f033bb
 	github.com/mattn/go-sqlite3 v1.14.53
 	github.com/patrickmn/go-cache v2.1.0+incompatible
 	github.com/redis/go-redis/v9 v9.23.0
@@ -37,7 +37,7 @@ require (
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/power-devops/perfstat v0.0.0-20260805114148-88456608a4f6 // indirect
 	github.com/rogpeppe/go-internal v1.9.0 // indirect
-	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.205 // indirect
+	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/common v1.3.212 // indirect
 	github.com/tencentcloud/tencentcloud-sdk-go/tencentcloud/sms v1.3.172 // indirect
 	github.com/tencentyun/cos-go-sdk-v5 v0.7.76 // indirect
 	github.com/tklauser/go-sysconf v0.4.0 // indirect
@@ -49,7 +49,7 @@ require (
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/zap v1.27.0 // indirect
 	go.yaml.in/yaml/v3 v3.0.5 // indirect
-	golang.org/x/exp v0.0.0-20261014143641-f0251eb4aa3e // indirect
+	golang.org/x/exp v0.0.0-20261109185158-a52e3aef5920 // indirect
 	golang.org/x/sys v0.50.0 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
