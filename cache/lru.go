@@ -18,8 +18,10 @@ func newLruCache(opt map[string]string) (backend, error) {
 	}
 	prefix := opt["prefix"]
 
-	var err error
 	lru, err := memory.LRUCache(name)
+	if err != nil {
+		return nil, err
+	}
 	l := &lruCache{
 		name:    name,
 		prefix:  prefix,

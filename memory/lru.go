@@ -81,17 +81,24 @@ func (lru *LRUImpl) addNew(key string, value Value, ttl time.Duration) error {
 }
 
 // updateInplace 更新缓存
-func (lru *LRUImpl) updateInplace(element *list.Element, value Value) error {
+func (lru *LRUImpl) updateInplace(element *list.Element, value Value, ttl time.Duration) error {
 	valueSize := len(value)
 	if uint64(valueSize) > lru.capacity {
 		return ErrSizeOverflow
 	}
-	sizeDiff := valueSize - element.Value.(*item).size
-	element.Value.(*item).value = value
-	element.Value.(*item).size = valueSize
-	lru.size += uint64(sizeDiff)
+	now := time.Now()
+	it := element.Value.(*item)
+	sizeDiff := valueSize - it.size
+	it.value = value
+	it.size = valueSize
+	it.timeAccessed = now
+	it.deadline = now.Add(ttl)
+	if sizeDiff >= 0 {
+		lru.size += uint64(sizeDiff)
+	} else {
+		lru.size -= uint64(-sizeDiff)
+	}
 	lru.list.MoveToFront(element)
-	element.Value.(*item).timeAccessed = time.Now()
 	lru.checkCapacity()
 	return nil
 }
@@ -146,7 +153,7 @@ func (lru *LRUImpl) Set(key string, val []byte, expiration int32) error {
 	defer lru.mu.Unlock()
 
 	if element := lru.table[key]; element != nil {
-		return lru.updateInplace(element, value)
+		return lru.updateInplace(element, value, time.Duration(expiration)*time.Second)
 	}
 	return lru.addNew(key, value, time.Duration(expiration)*time.Second)
 }
@@ -179,11 +186,15 @@ func (lru *LRUImpl) Flush() {
 
 // Size 获取lru已使用大小
 func (lru *LRUImpl) Size() uint64 {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	return lru.size
 }
 
 // Capacity 获取lru容量
 func (lru *LRUImpl) Capacity() uint64 {
+	lru.mu.Lock()
+	defer lru.mu.Unlock()
 	return lru.capacity
 }
 

@@ -82,8 +82,44 @@ func TestLRU(t *testing.T) {
 	assert.Equal(val.String(), "98765432109876543210")
 
 	// test timeout
-	time.Sleep(2 * 1)
+	time.Sleep(2 * time.Second)
 	val, ok = lru.Get("xxx")
 	assert.False(ok)
 
+}
+
+// Set 已存在的 key 时应刷新过期时间
+func TestLRUSetRefreshTTL(t *testing.T) {
+
+	assert := testify.New(t)
+
+	conf := []Config{
+		{
+			Name:     "test_refresh",
+			Capacity: 20 * KB,
+		},
+	}
+	err := Init(conf)
+	assert.Nil(err)
+
+	lru, err := LRUCache("test_refresh")
+	assert.Nil(err)
+
+	// 重复 Set 应延长 TTL
+	lru.Set("refresh", []byte("v"), 1)
+	time.Sleep(600 * time.Millisecond)
+	lru.Set("refresh", []byte("v"), 1)
+	time.Sleep(600 * time.Millisecond)
+	val, ok := lru.Get("refresh")
+	assert.True(ok)
+	assert.Equal(val.String(), "v")
+
+	// 对已过期但尚未懒删除的 key 重新 Set，应立即可读到
+	lru.Set("expired", []byte("v"), 1)
+	time.Sleep(1100 * time.Millisecond)
+	err = lru.Set("expired", []byte("v2"), 1)
+	assert.Nil(err)
+	val, ok = lru.Get("expired")
+	assert.True(ok)
+	assert.Equal(val.String(), "v2")
 }
