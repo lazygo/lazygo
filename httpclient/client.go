@@ -34,8 +34,8 @@ type Client struct {
 func (hc *Client) ReadResponse(resp *http.Response) ([]byte, error) {
 
 	var body io.ReadCloser = resp.Body
-
-	switch resp.Header.Get(server.HeaderContentEncoding) {
+	encoding := strings.ToLower(resp.Header.Get(server.HeaderContentEncoding))
+	switch encoding {
 	case "gzip":
 		var err error
 		body, err = gzip.NewReader(resp.Body)
@@ -65,7 +65,7 @@ func (hc *Client) ReadResponse(resp *http.Response) ([]byte, error) {
 
 func (hc *Client) ReadRequest(data []byte, encoding string) (io.Reader, error) {
 	var buf bytes.Buffer
-	switch encoding {
+	switch strings.ToLower(encoding) {
 	case "gzip":
 		w := gzip.NewWriter(&buf)
 		defer w.Close()

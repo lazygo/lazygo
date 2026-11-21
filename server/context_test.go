@@ -708,3 +708,74 @@ func TestContextWithValue(t *testing.T) {
 	c.WithValue("name", nil)
 	assert.Nil(c.Value("name"))
 }
+
+// RegisterProcessor：框架外部扩展process预处理器
+func TestRegisterProcessor(t *testing.T) {
+	assert := assert.New(t)
+
+	// 无额外参数形态
+	RegisterProcessor("reverse", func(str string) string {
+		runes := []rune(str)
+		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+			runes[i], runes[j] = runes[j], runes[i]
+		}
+		return string(runes)
+	})
+	assert.Equal("cba", process("abc", []string{"reverse"}))
+
+	// 带额外参数形态（多参数）
+	RegisterProcessor("pad", func(str string, args ...string) string {
+		if len(args) < 2 {
+			return str
+		}
+		return args[0] + str + args[1]
+	})
+	assert.Equal("<abc>", process("abc", []string{"pad(<,>)"}))
+
+	// 内建处理器仍可用，且可与扩展处理器链式组合
+	assert.Equal("abc", process("  ABC  ", []string{"trim", "tolower"}))
+	assert.Equal("ab", process("abcdef", []string{"cut(2)"}))
+
+	// 未知处理器名不改动字符串
+	assert.Equal("abc", process("abc", []string{"not_exists"}))
+
+	// 同名覆盖
+	RegisterProcessor("reverse", func(str string) string { return "X" + str })
+	assert.Equal("Xabc", process("abc", []string{"reverse"}))
+	// 恢复，避免影响其他用例
+	RegisterProcessor("reverse", func(str string) string {
+		runes := []rune(str)
+		for i, j := 0, len(runes)-1; i < j; i, j = i+1, j-1 {
+			runes[i], runes[j] = runes[j], runes[i]
+		}
+		return string(runes)
+	})
+
+	// 非法签名panic
+	assert.Panics(func() { RegisterProcessor("bad", func(int) int { return 0 }) })
+	assert.Panics(func() { RegisterProcessor("", func(string) string { return "" }) })
+}
+
+func TestParseProc(t *testing.T) {
+	assert := assert.New(t)
+
+	name, args := parseProc("trim")
+	assert.Equal("trim", name)
+	assert.Nil(args)
+
+	name, args = parseProc("cut(20)")
+	assert.Equal("cut", name)
+	assert.Equal([]string{"20"}, args)
+
+	name, args = parseProc("pad(<, >)")
+	assert.Equal("pad", name)
+	assert.Equal([]string{"<", ">"}, args)
+
+	name, args = parseProc("name()")
+	assert.Equal("name", name)
+	assert.Empty(args)
+
+	// 缺少右括号，整体视为名字（匹配不到处理器则跳过）
+	name, _ = parseProc("cut(20")
+	assert.Equal("cut(20", name)
+}

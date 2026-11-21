@@ -743,22 +743,3 @@ func toType(val any, rType reflect.Type, procList []string) (any, bool) {
 		return val, false
 	}
 }
-
-func process(str string, procList []string) string {
-	for _, proc := range procList {
-		proc = strings.TrimSpace(strings.ToLower(proc))
-		switch {
-		case strings.HasPrefix(proc, "trim"):
-			str = strings.TrimSpace(str)
-		case strings.HasPrefix(proc, "tolower"):
-			str = strings.ToLower(str)
-		case strings.HasPrefix(proc, "toupper"):
-			str = strings.ToUpper(str)
-		case strings.HasPrefix(proc, "cut("):
-			if n, err := strconv.Atoi(proc[4 : len(proc)-1]); err == nil {
-				str = goutils.CutRune(str, n)
-			}
-		}
-	}
-	return str
-}

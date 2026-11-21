@@ -508,6 +508,30 @@ type ToolsUploadRequest struct {
 - `toupper`：字符串转为大写；
 - `cut(num int)`：如果utf8字符串字符数量超过num个，则将字符串截断。
 
+内建预处理器之外，可通过 `server.RegisterProcessor` 注册自定义处理器扩展，支持两种形态：
+
+- `func(string) string`：不带额外参数，以 `process:"name"` 形式引用；
+- `func(string, ...string) string`：带额外参数，以 `process:"name(a,b)"` 形式引用，args 为括号内按逗号拆分的参数。
+
+```go
+// 无额外参数：?name=  abc  → "abc"
+server.RegisterProcessor("collapse", func(s string) string {
+    return strings.Join(strings.Fields(s), " ")
+})
+
+// 带额外参数：?name=abc → "[abc]"
+server.RegisterProcessor("wrap", func(s string, args ...string) string {
+    if len(args) < 2 {
+        return s
+    }
+    return args[0] + s + args[1]
+})
+
+type SearchRequest struct {
+    Keyword string `json:"keyword" bind:"query" process:"collapse,wrap([,])"`
+}
+```
+
 `Request` 需要实现 `func Verify() error` 和 `func Clear()` 两个函数。
 
 - `Verify` 函数在参数绑定后执行，用于对请求参数内容进行校验。
