@@ -126,6 +126,8 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 	}
 
 	if headers[HeaderSpecifiedIP] != "" {
+		// 控制头不转发给目标服务器
+		delete(headers, HeaderSpecifiedIP)
 		var ips []netip.Addr
 		iplist := strings.SplitSeq(headers[HeaderSpecifiedIP], ",")
 		for item := range iplist {
@@ -137,7 +139,7 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 			ips = append(ips, ip)
 		}
 		if len(ips) > 0 {
-			ctx = context.WithValue(ctx, specifiedIPCtxKey{}, ips)
+			ctx = context.WithValue(ctx, specifiedIPCtxKey{}, SpecifiedIP(ips))
 		}
 	}
 
@@ -169,7 +171,7 @@ func (hc *Client) Request(ctx context.Context, httpMethod string, url string, bo
 				continue
 			}
 			if k == "Host" {
-				req.Host = k
+				req.Host = v
 				continue
 			}
 			req.Header.Add(k, v)

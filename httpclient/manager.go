@@ -60,7 +60,7 @@ func New(conf *Config) *Manager {
 	}
 	if conf.HTTPDNSAdapter != "" {
 		httpdns, err := httpdns.Instance(conf.HTTPDNSAdapter)
-		if err != nil {
+		if err == nil {
 			m.httpdns = httpdns
 		}
 	}

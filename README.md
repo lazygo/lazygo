@@ -1,6 +1,6 @@
 # lazygo
 
-lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（MySQL/缓存/分布式锁）等常用组件，帮助快速搭建 HTTP 服务。
+lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（SQL数据库/缓存/分布式锁）等常用组件，帮助快速搭建 HTTP 服务。
 
 ## 目录
 
@@ -22,12 +22,17 @@ lazygo 是一个 Go 语言 Web 框架，提供路由、控制器、模型层（M
   - [注册控制器到HTTP路由](#注册控制器到http路由)
   - [Request 参数绑定和预处理](#request-参数绑定和预处理)
 - [上下文Context](#上下文context)
+  - [请求数据](#请求数据)
+  - [数据传递](#数据传递)
+  - [响应输出](#响应输出)
+  - [其他](#其他)
 - [日志](#日志)
 - [模型](#模型)
-  - [mysql](#mysql)
-  - [缓存](#缓存)
-  - [分布式锁](#分布式锁)
-  - [错误处理](#错误处理)
+- [SQL数据库](#sql数据库)
+- [缓存](#缓存)
+- [分布式锁](#分布式锁)
+- [错误处理](#错误处理)
+- [HTTP客户端](#http客户端)
 - [动态库（c-shared）示例](#动态库c-shared示例)
 
 ## 快速开始
@@ -554,7 +559,86 @@ func (r *ToolsUploadRequest) Clear() {
 
 ## 上下文Context
 
-> 该章节文档待补充。
+Context 封装了一次 HTTP 请求处理的完整环境：请求与响应对象、路由参数、请求级数据存取和响应输出方法。它贯穿中间件、控制器和服务的整个调用链，并实现了标准库 `context.Context` 接口（Deadline/Done/Err 跟随请求的 context，可安全传递给下游的异步任务）。
+
+### 请求数据
+
+```go
+// URL参数
+c.QueryParam("page")              // 字符串
+c.GetInt("page", 1)               // 带默认值：查不到或解析失败时返回默认值
+c.GetString("name", "anonymous")
+c.GetInt64 / GetUint / GetUint64  // 同理
+
+// 表单数据
+c.FormValue("keyword")
+c.PostString("name", "")          // Post表单，带默认值
+c.PostInt / PostInt64 / PostUint / PostUint64
+values, err := c.FormParams()     // 全部表单值 url.Values
+fh, err := c.FormFile("image")    // 上传文件 *multipart.FileHeader
+form, err := c.MultipartForm()    // 完整multipart表单
+
+// 请求头与Cookie
+c.RequestHeader("X-Real-IP")
+val, ok := c.Cookie("session_id")
+
+// 路由参数（见路由章的路径参数）
+id, ok := c.Param("id")
+values := c.ParamValues()         // 全部参数值，按路由模板中的顺序
+
+// 请求本体（标准库对象，暴露全部底层能力）
+req := c.Request()
+```
+
+请求体到结构体的绑定（`c.Bind`）以及 bind/process 注解的完整说明见[控制器](#控制器)一章的 Request 参数绑定部分。
+
+### 数据传递
+
+```go
+// 在中间件中存入，在控制器中取出（也可在控制器与service间传递）
+c.WithValue("uid", uint64(1001))
+uid := c.Value("uid")
+
+// 传nil删除
+c.WithValue("uid", nil)
+```
+
+配合[控制器](#控制器)章提到的 `framework.Context` 扩展方式，可以在项目中对 Context 做类型化扩展（如 `ctx.GetUID()`），examples 的 `framework/context.go` 即是这种做法。
+
+### 响应输出
+
+```go
+// JSON / 字节 / HTML
+c.JSON(200, map[string]any{"errno": 0, "data": list})
+c.Blob(200, server.MIMETextPlainCharsetUTF8, []byte("pong"))
+c.HTML(200, "<h1>hello</h1>")
+c.HTMLBlob(200, htmlBytes)
+
+// 流式与文件
+c.Stream(200, server.MIMEApplicationJSON, reader)
+c.File("./assets/report.pdf")                 // 文件不存在时返回404
+c.Attachment("./assets/report.pdf", "report.pdf")  // 附件下载
+c.Inline("./assets/report.pdf", "report.pdf")      // 浏览器内打开
+
+// 状态与重定向
+c.NoContent(204)
+c.Redirect(302, "/login")                     // code范围300-308，否则返回ErrInvalidRedirectCode
+```
+
+说明：
+
+- 控制器方法按框架约定**返回**数据或 error 时，由 `HTTPOKHandler` / `HTTPErrorHandler` 统一渲染（见控制器章）；上面这些方法用于在控制器或中间件中**自行输出**响应的场景，两者不要混用（自行输出后不要再返回数据让框架重复渲染）
+- `c.ResponseWriter()` 暴露底层的 `*ResponseWriter`（可读取 `Status` / `Size` / `Committed`，或注册 `Before`/`After` 回调）；Context 对象由框架池化管理，**不要在请求结束后持有或跨goroutine使用**
+
+### 其他
+
+```go
+c.GetRoutePath()      // 匹配到的路由模板路径，如 /user/:id
+c.Handler()           // 匹配到的handler（中间件中可用）
+c.Error(err)          // 交给统一的HTTPErrorHandler处理（中间件中常用）
+c.IsDebug()           // 是否Debug模式
+c.Event(method, subject)  // 获取事件频道，WebSocket/Call推送用（见路由章事件通道）
+```
 
 ## 日志
 
@@ -562,15 +646,113 @@ func (r *ToolsUploadRequest) Clear() {
 
 ## 模型
 
-### mysql
+模型层基于 `TxModel[T]` 泛型封装常用 CRUD，底层数据访问见 [SQL数据库](#sql数据库)。
 
-#### 连接数据库
+`TxModel[T]` 以泛型结构体约定封装常用 CRUD，数据约定：
 
-数据库驱动需在使用前自行引入：
+- 主键 `id` 使用 `uint64`，时间戳字段使用 `int64`
+- 创建/更新时间默认不自动写入，通过 `AutoCTime`/`AutoMTime` 指定字段名后自动维护：`Create` 时写入创建时间和更新时间，`Modify` 时写入更新时间
+- 数据库字段定义为 NOT NULL；允许 NULL 的字段使用 `sql.Null[T]` 类型
+- 结构体字段通过 json tag 与列名匹配
 
 ```go
-import _ "github.com/go-sql-driver/mysql"
+type UserData struct {
+    Id    uint64         `json:"id"`
+    Name  string         `json:"name"`
+    Email sql.NullString `json:"email"`
+    Ctime int64          `json:"ctime"`
+    Mtime int64          `json:"mtime"`
+}
+
+type UserModel struct {
+    sqldb.TxModel[UserData]
+}
+
+func NewUserModel() *UserModel {
+    mdl := &UserModel{}
+    mdl.SetTable("user")
+    db, _ := sqldb.Database("default")
+    mdl.SetTx(&db.Tx)
+    return mdl
+}
+
+// 开启自动维护创建/更新时间（不调用则默认不写入，字段名可自定义）
+mdl.AutoCTime("ctime")
+mdl.AutoMTime("mtime")
 ```
+
+使用示例：
+
+```go
+mdl := NewUserModel()
+
+// 新增，自动写入ctime/mtime，返回自增id
+id, err := mdl.Create(&UserData{Name: "a"})
+
+// 按主键更新（默认id），mtime自动刷新
+n, err := mdl.Modify(&UserData{Id: uint64(id), Name: "b"})
+// 也可指定其他唯一键作为更新条件
+n, err = mdl.Modify(&UserData{Uid: 100, Name: "b"}, "uid")
+
+// 查询：空结果返回零值, 0, nil，需同时判断 err 和 n
+data, n, err := mdl.First(map[string]any{"id": id})
+if err != nil {
+    return err
+}
+if n == 0 {
+    // 记录不存在
+}
+
+list, n, err := mdl.Find(map[string]any{"age >": 18})
+
+ok, err := mdl.Exists(map[string]any{"name": "a"})
+cnt, err := mdl.Count(map[string]any{"age >": 18})
+
+// 分页：Order/Sort为主排序字段，Orders可附加次级排序，groupby传nil表示不分组
+req := &sqldb.PaginatorRequest{
+    Page:  1,    // 页码，从1开始
+    Size:  10,   // 每页条数
+    Order: "id", // 排序字段
+    Sort:  "desc",
+    Orders: []sqldb.OrderBy{ // 可选：次级排序
+        {Field: "age", Sort: "asc"},
+    },
+}
+resp, n, err := mdl.Paginator(map[string]any{"status": 1}, req, nil)
+// resp.Page / resp.Size / resp.Total / resp.List
+// Total 为总记录数；入参可先经 Clean 清洗（非法page/size回落默认值，size超上限截断）
+req.Clean(sqldb.DefaultPaginatorMaxSize, sqldb.DefaultPaginatorRequest)
+
+// 分组分页：total统计组数；不传fields时默认只查询分组字段
+resp, _, err = mdl.Paginator(map[string]any{}, req, []string{"age"})
+```
+
+在事务中使用：在 `db.Transaction` 回调里重新 `SetTx(tx)` 即可让 Model 的操作加入事务。
+
+```go
+err := db.Transaction(func(tx *sqldb.Tx) error {
+    mdl := NewUserModel()
+    mdl.SetTx(tx)
+    _, err := mdl.Create(&UserData{Name: "a"})
+    return err
+})
+```
+
+## SQL数据库
+
+`sqldb` 包提供 SQL 数据库支持：通过**驱动（Driver）+ 配置**接入具体数据库，内置 `MySQLConfig`（MySQL）和 `SQLiteConfig`（SQLite3）两种配置类型。查询构建器与 Model 封装对两种数据库用法一致，切换数据库只需更换配置与驱动引入。
+
+### 连接数据库
+
+数据库驱动需在使用前自行引入（`Driver` 字段与驱动注册名对应）：
+
+```go
+import (
+    _ "github.com/go-sql-driver/mysql"  // MySQL驱动，Driver字段填 "mysql"
+    _ "github.com/mattn/go-sqlite3"     // SQLite3驱动（可选），Driver字段填 "sqlite3"
+```
+
+MySQL 配置示例：
 
 ```go
 err := sqldb.Init([]sqldb.MySQLConfig{
@@ -598,9 +780,22 @@ db, err := sqldb.Database("default")
 defer sqldb.CloseAll()
 ```
 
-注意：扫描 `time.Time` 类型的字段需要在 `Params` 中设置 `parseTime=true`。
+SQLite3 配置示例（单机/嵌入式场景）：
 
-#### 查询构建器
+```go
+err := sqldb.Init([]sqldb.SQLiteConfig{
+    {
+        Driver: "sqlite3",
+        Name:   "local",
+        Path:   "./data/app.db",      // 数据库文件路径
+        Params: map[string]string{"_pragma": "busy_timeout(5000)"},
+    },
+})
+```
+
+注意：扫描 `time.Time` 类型的字段需要在 MySQL 的 `Params` 中设置 `parseTime=true`。
+
+### 查询构建器
 
 `db.Table()` 无需类型参数；写操作直接链式调用；读操作在终端方法（`Find` / `First`）上指定类型参数。每次返回一个新的查询构建器，构建器不是 goroutine 安全的，链式调用时暂存的条件、ORDER BY、LIMIT 等状态仅属于本次串式操作。
 
@@ -817,103 +1012,11 @@ user, _, err := db.First[User]("SELECT * FROM user WHERE id = ?", 1)
 result, err := db.Exec("UPDATE user SET name = ? WHERE id = ?", "a", 1)
 ```
 
-#### Model 封装
-
-`TxModel[T]` 以泛型结构体约定封装常用 CRUD，数据约定：
-
-- 主键 `id` 使用 `uint64`，时间戳字段使用 `int64`
-- 创建/更新时间默认不自动写入，通过 `AutoCTime`/`AutoMTime` 指定字段名后自动维护：`Create` 时写入创建时间和更新时间，`Modify` 时写入更新时间
-- 数据库字段定义为 NOT NULL；允许 NULL 的字段使用 `sql.Null[T]` 类型
-- 结构体字段通过 json tag 与列名匹配
-
-```go
-type UserData struct {
-    Id    uint64         `json:"id"`
-    Name  string         `json:"name"`
-    Email sql.NullString `json:"email"`
-    Ctime int64          `json:"ctime"`
-    Mtime int64          `json:"mtime"`
-}
-
-type UserModel struct {
-    sqldb.TxModel[UserData]
-}
-
-func NewUserModel() *UserModel {
-    mdl := &UserModel{}
-    mdl.SetTable("user")
-    db, _ := sqldb.Database("default")
-    mdl.SetTx(&db.Tx)
-    return mdl
-}
-
-// 开启自动维护创建/更新时间（不调用则默认不写入，字段名可自定义）
-mdl.AutoCTime("ctime")
-mdl.AutoMTime("mtime")
-```
-
-使用示例：
-
-```go
-mdl := NewUserModel()
-
-// 新增，自动写入ctime/mtime，返回自增id
-id, err := mdl.Create(&UserData{Name: "a"})
-
-// 按主键更新（默认id），mtime自动刷新
-n, err := mdl.Modify(&UserData{Id: uint64(id), Name: "b"})
-// 也可指定其他唯一键作为更新条件
-n, err = mdl.Modify(&UserData{Uid: 100, Name: "b"}, "uid")
-
-// 查询：空结果返回零值, 0, nil，需同时判断 err 和 n
-data, n, err := mdl.First(map[string]any{"id": id})
-if err != nil {
-    return err
-}
-if n == 0 {
-    // 记录不存在
-}
-
-list, n, err := mdl.Find(map[string]any{"age >": 18})
-
-ok, err := mdl.Exists(map[string]any{"name": "a"})
-cnt, err := mdl.Count(map[string]any{"age >": 18})
-
-// 分页：Order/Sort为主排序字段，Orders可附加次级排序，groupby传nil表示不分组
-req := &sqldb.PaginatorRequest{
-    Page:  1,    // 页码，从1开始
-    Size:  10,   // 每页条数
-    Order: "id", // 排序字段
-    Sort:  "desc",
-    Orders: []sqldb.OrderBy{ // 可选：次级排序
-        {Field: "age", Sort: "asc"},
-    },
-}
-resp, n, err := mdl.Paginator(map[string]any{"status": 1}, req, nil)
-// resp.Page / resp.Size / resp.Total / resp.List
-// Total 为总记录数；入参可先经 Clean 清洗（非法page/size回落默认值，size超上限截断）
-req.Clean(sqldb.DefaultPaginatorMaxSize, sqldb.DefaultPaginatorRequest)
-
-// 分组分页：total统计组数；不传fields时默认只查询分组字段
-resp, _, err = mdl.Paginator(map[string]any{}, req, []string{"age"})
-```
-
-在事务中使用：在 `db.Transaction` 的回调里重新 `SetTx(tx)` 即可让 Model 的操作加入事务。
-
-```go
-err := db.Transaction(func(tx *sqldb.Tx) error {
-    mdl := NewUserModel()
-    mdl.SetTx(tx)
-    _, err := mdl.Create(&UserData{Name: "a"})
-    return err
-})
-```
-
-### 缓存
+## 缓存
 
 泛型缓存接口 `Cache[T]`，值统一以 JSON 序列化存储，支持 `memory`（进程内LRU）、`redis`、`memcache` 三种适配器。
 
-#### 初始化
+### 初始化
 
 适配器的 `Option` 中，`name` 指向底层已初始化的实例名，`prefix` 为key前缀：
 
@@ -933,7 +1036,7 @@ err := cache.Init([]cache.Config{
 }, "default")
 ```
 
-#### 使用
+### 使用
 
 每个命名实例都可以是强类型句柄，`Get`/`Remember` 直接返回类型化数据：
 
@@ -965,11 +1068,11 @@ err = cache.Forget("k")
 
 缓存值支持任意可 JSON 序列化的类型（结构体、切片、map、基本类型）。
 
-### 分布式锁
+## 分布式锁
 
 基于 redis 的分布式锁（`SET NX` + 释放token校验），支持进程内串行、自旋等待与随机抖动。
 
-#### 初始化
+### 初始化
 
 ```go
 err := locker.Init([]locker.Config{
@@ -981,7 +1084,7 @@ err := locker.Init([]locker.Config{
 }, "lock")
 ```
 
-#### 使用
+### 使用
 
 ```go
 // 自旋锁：拿不到锁时自旋等待，ctx控制最长等待时间
@@ -1015,9 +1118,67 @@ count, err := locker.LockFunc(ctx, "order:123", 30, func() (int, error) {
 - 释放使用 Lua 脚本做 token 校验，只删除自己持有的锁，不会误删他人锁
 - 同进程内相同资源串行竞争，避免对 redis 的无效压力
 
-### 错误处理
+## 错误处理
 
 > 该章节文档待补充。
+
+## HTTP客户端
+
+`httpclient` 包基于 `net/http.Client` 封装，内建：自定义 DNS 解析与缓存（DNS 失败时 HTTPDNS 兜底）、多 IP 轮询拨号、指定 IP 直连、gzip/deflate/br/zstd 内容压缩的自动处理、重试与超时控制。
+
+### 创建客户端
+
+```go
+// 可选：自定义DNS服务器、HTTPDNS兜底（需先初始化httpdns实例）
+m := httpclient.New(&httpclient.Config{
+    DNSResolverAddr: "8.8.8.8:53",   // 自定义DNS服务器，空则使用系统DNS
+    HTTPDNSAdapter:  "baidu",        // httpdns实例名，DNS解析失败时兜底
+})
+
+c := m.Client(&httpclient.HttpConfig{
+    Timeout:             10 * time.Second,     // 整体超时
+    DialerTimeout:       5 * time.Second,      // 拨号超时（默认5秒）
+    MaxIdleConnsPerHost: 10,
+    ProxyURL:            proxyURL,             // 代理；Scheme填 "env" 则使用环境变量代理
+    TLSConfig:           &tls.Config{...},     // 默认 InsecureSkipVerify=true，生产环境请务必显式配置
+})
+```
+
+HTTPDNS 初始化（内置百度适配器）：
+
+```go
+httpdns.Init([]httpdns.Config{
+    {
+        Name:    "baidu",
+        Adapter: "baidu",
+        Option:  map[string]string{"account": "xxx", "secret": "xxx"},
+    },
+}, "baidu")
+```
+
+### 发起请求
+
+```go
+body, statusCode, err := c.Request(ctx, http.MethodPost, "https://api.example.com/user", reqBody, map[string]string{
+    "Content-Type": "application/json",
+    // "Content-Encoding": "gzip",   // 设置后请求体自动压缩
+})
+```
+
+除普通请求头外，还支持三个控制头（由客户端消费，不会转发给目标服务器）：
+
+| 控制头 | 说明 |
+|---|---|
+| `X-Control-Request-Retry-Times` | 失败重试次数，0-10，默认3 |
+| `X-Control-Request-Timeout-Sec` | 本次请求超时（秒），覆盖客户端默认超时 |
+| `X-Control-Request-Specified-IP` | 逗号分隔的IP列表，跳过DNS解析直连这些IP（多IP依次尝试） |
+
+响应侧自动处理 `Content-Encoding: gzip/deflate/br/zstd/compress` 的解压，无需手动处理。
+
+### 其他
+
+- `httpclient.LogDebug` / `httpclient.LogError` 为包级日志函数变量，可替换为项目日志器
+- DNS 解析结果缓存2分钟；同域名多IP时依次尝试直至连通
 
 ## 动态库（c-shared）示例
 
