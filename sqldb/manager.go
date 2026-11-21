@@ -14,9 +14,9 @@ type Manager struct {
 var manager = &Manager{}
 
 // init 初始化数据库连接
-func (m *Manager) init(conf []Config) error {
+func (m *Manager) init[T Config](conf []T) error {
 	for _, item := range conf {
-		if _, ok := manager.Load(item.name()); ok {
+		if _, ok := manager.Load(item.GetName()); ok {
 			// 已连接的就不再次连接了
 			continue
 		}
@@ -29,9 +29,9 @@ func (m *Manager) init(conf []Config) error {
 			db.Close()
 			return err
 		}
-		m.Store(item.name(), &DB{Tx{
+		m.Store(item.GetName(), &DB{Tx{
 			invoker: db,
-			name:    item.name(),
+			name:    item.GetName(),
 			before:  func(query string, args ...any) func() { return func() {} },
 		}})
 	}
@@ -54,26 +54,22 @@ func (m *Manager) closeAll() error {
 
 // open 连接数据库
 func (m *Manager) open(item Config) (*sql.DB, error) {
-	dsn := item.dsn()
-	database, err := sql.Open(item.driver(), dsn)
+	dsn := item.GetDSN()
+	database, err := sql.Open(item.GetDriver(), dsn)
 	if err != nil {
 		return nil, err
 	}
-	database.SetMaxIdleConns(item.maxIdleConns())
-	database.SetMaxOpenConns(item.maxOpenConns())
-	if item.connMaxLifetime() > 0 {
-		database.SetConnMaxLifetime(time.Duration(item.connMaxLifetime()) * time.Second)
+	database.SetMaxIdleConns(item.GetMaxIdleConns())
+	database.SetMaxOpenConns(item.GetMaxOpenConns())
+	if item.GetConnMaxLifetime() > 0 {
+		database.SetConnMaxLifetime(time.Duration(item.GetConnMaxLifetime()) * time.Second)
 	}
 	return database, nil
 }
 
 // Init 初始化数据库
-func Init[T MySQLConfig | SQLiteConfig](conf []T) error {
-	var configs []Config
-	for _, item := range conf {
-		configs = append(configs, Config(item))
-	}
-	return manager.init(configs)
+func Init[T Config](conf []T) error {
+	return manager.init(conf)
 }
 
 // CloseAll 关闭数据库连接

@@ -20,14 +20,14 @@ type MySQLConfig struct {
 	ConnMaxLifetime int               `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
 }
 
-func (c MySQLConfig) name() string {
+func (c MySQLConfig) GetName() string {
 	return c.Name
 }
-func (c MySQLConfig) driver() string {
+func (c MySQLConfig) GetDriver() string {
 	return c.Driver
 }
 
-func (c MySQLConfig) dsn() string {
+func (c MySQLConfig) GetDSN() string {
 	dsn := fmt.Sprintf(
 		"%s:%s@%s(%s:%d)/%s",
 		c.User,
@@ -43,15 +43,15 @@ func (c MySQLConfig) dsn() string {
 	return dsn
 }
 
-func (c MySQLConfig) maxOpenConns() int {
+func (c MySQLConfig) GetMaxOpenConns() int {
 	return c.MaxOpenConns
 }
 
-func (c MySQLConfig) maxIdleConns() int {
+func (c MySQLConfig) GetMaxIdleConns() int {
 	return c.MaxIdleConns
 }
 
-func (c MySQLConfig) connMaxLifetime() int {
+func (c MySQLConfig) GetConnMaxLifetime() int {
 	return c.ConnMaxLifetime
 }
 
@@ -65,15 +65,15 @@ type SQLiteConfig struct {
 	ConnMaxLifetime int               `json:"conn_max_lifetime" toml:"conn_max_lifetime"`
 }
 
-func (c SQLiteConfig) name() string {
+func (c SQLiteConfig) GetName() string {
 	return c.Name
 }
 
-func (c SQLiteConfig) driver() string {
+func (c SQLiteConfig) GetDriver() string {
 	return c.Driver
 }
 
-func (c SQLiteConfig) dsn() string {
+func (c SQLiteConfig) GetDSN() string {
 	dsn := c.Path
 	if len(c.Params) > 0 {
 		dsn += "?" + buildQuery(c.Params)
@@ -81,23 +81,23 @@ func (c SQLiteConfig) dsn() string {
 	return dsn
 }
 
-func (c SQLiteConfig) maxOpenConns() int {
+func (c SQLiteConfig) GetMaxOpenConns() int {
 	return c.MaxOpenConns
 }
 
-func (c SQLiteConfig) maxIdleConns() int {
+func (c SQLiteConfig) GetMaxIdleConns() int {
 	return c.MaxIdleConns
 }
 
-func (c SQLiteConfig) connMaxLifetime() int {
+func (c SQLiteConfig) GetConnMaxLifetime() int {
 	return c.ConnMaxLifetime
 }
 
 type Config interface {
-	name() string
-	driver() string
-	dsn() string
-	maxOpenConns() int
-	maxIdleConns() int
-	connMaxLifetime() int
+	GetName() string
+	GetDriver() string
+	GetDSN() string
+	GetMaxOpenConns() int
+	GetMaxIdleConns() int
+	GetConnMaxLifetime() int
 }
